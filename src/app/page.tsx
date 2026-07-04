@@ -1,6 +1,13 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Gate() {
+  const { mode, status, signedIn, hasAccess, signOut } = useAuth();
+  const authed = mode === "demo" || (signedIn && hasAccess);
+
   return (
     <section style={{ textAlign: "center", padding: "40px 0 20px" }}>
       <div className="moons" style={{ justifyContent: "center", marginBottom: 18, fontSize: 22 }} aria-hidden="true">
@@ -17,18 +24,131 @@ export default function Gate() {
         style={{ width: "100%", maxWidth: 340, height: "auto", margin: "0 auto 30px", display: "block" }}
       />
 
-      <div style={{ maxWidth: 300, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
-        <Link href="/convene" className="btn gold" style={{ textDecoration: "none", display: "block" }}>
-          Enter the council
-        </Link>
-        <Link href="/initiation" className="btn" style={{ textDecoration: "none", display: "block" }}>
-          Petition for initiation
-        </Link>
+      <div style={{ maxWidth: 320, margin: "0 auto" }}>
+        {status === "loading" ? (
+          <p className="whisper" style={{ fontSize: 15 }}>Consulting the register…</p>
+        ) : authed ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Link href="/convene" className="btn gold" style={{ textDecoration: "none", display: "block" }}>
+              Enter the council
+            </Link>
+            <Link href="/initiation" className="btn" style={{ textDecoration: "none", display: "block" }}>
+              Petition for initiation
+            </Link>
+          </div>
+        ) : status === "no-membership" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p className="whisper" style={{ fontSize: 15 }}>
+              You are known to the gate, but not yet of the Council. Your petition awaits the Keiser&rsquo;s decree.
+            </p>
+            <Link href="/initiation" className="btn" style={{ textDecoration: "none", display: "block" }}>
+              Petition for initiation
+            </Link>
+            <button className="btn" onClick={signOut}>Withdraw</button>
+          </div>
+        ) : (
+          <LoginPanel />
+        )}
       </div>
 
       <p className="whisper" style={{ marginTop: 30, fontSize: 15 }}>
         The twelfth moon awaits. Speak the vintage, or be turned away.
       </p>
     </section>
+  );
+}
+
+function LoginPanel() {
+  const { signInWithGoogle, signInWithOtp, signInWithPassword, signUpWithPassword } = useAuth();
+  const [tab, setTab] = useState<"password" | "link">("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const doPassword = async (signup: boolean) => {
+    setBusy(true); setErr(null); setMsg(null);
+    const res = signup
+      ? await signUpWithPassword(email, password)
+      : await signInWithPassword(email, password);
+    setBusy(false);
+    if (res.error) setErr(res.error);
+    else if (signup && "needsConfirm" in res && res.needsConfirm) setMsg("Check your inbox to confirm your sigil.");
+  };
+
+  const doLink = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    const res = await signInWithOtp(email);
+    setBusy(false);
+    if (res.error) setErr(res.error);
+    else setMsg("A rite of passage has been sent to your inbox.");
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, textAlign: "left" }}>
+      <button className="btn" onClick={signInWithGoogle} style={{ textAlign: "center" }}>
+        <i className="ti ti-brand-google" style={{ marginRight: 6 }} /> Enter by Google
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--faint)" }}>
+        <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+        <span className="eyebrow" style={{ fontSize: 8.5 }}>or by sigil</span>
+        <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+      </div>
+
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="name@vessel.com"
+        autoComplete="email"
+      />
+      {tab === "password" && (
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="your secret word"
+          autoComplete="current-password"
+          onKeyDown={(e) => e.key === "Enter" && doPassword(false)}
+        />
+      )}
+
+      {err && <p style={{ color: "#c98", fontSize: 13, margin: 0 }}>{err}</p>}
+      {msg && <p className="scr" style={{ fontSize: 15, margin: 0 }}>{msg}</p>}
+
+      {tab === "password" ? (
+        <>
+          <button className="btn gold" disabled={busy || !email || !password} onClick={() => doPassword(false)}>
+            {busy ? "Entering…" : "Enter"}
+          </button>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+            <button onClick={() => doPassword(true)} disabled={busy || !email || !password}
+              style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>
+              Forge a secret word
+            </button>
+            <button onClick={() => { setTab("link"); setErr(null); setMsg(null); }}
+              style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>
+              Send a magic link
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <button className="btn gold" disabled={busy || !email} onClick={doLink}>
+            {busy ? "Sending…" : "Send magic link"}
+          </button>
+          <button onClick={() => { setTab("password"); setErr(null); setMsg(null); }}
+            style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, textAlign: "center" }}>
+            Enter with a secret word instead
+          </button>
+        </>
+      )}
+
+      <Link href="/initiation" className="btn" style={{ textDecoration: "none", display: "block", textAlign: "center", marginTop: 4 }}>
+        Petition for initiation
+      </Link>
+    </div>
   );
 }

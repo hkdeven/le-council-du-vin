@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import Emblem from "./Emblem";
-import { useSession, ROLE_RANK } from "./Session";
+import { useAuth, ROLE_RANK } from "./AuthProvider";
 import type { Role } from "@/lib/types";
 
 const NAV: { href: string; label: string; icon: string; min: Role }[] = [
@@ -16,18 +17,64 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
 ];
 
 const ROLES: Role[] = ["initiate", "member", "keiser"];
+const PUBLIC = ["/", "/initiation"];
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div style={{ textAlign: "center", padding: "70px 0" }}>{children}</div>;
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { role, setRole } = useSession();
+  const router = useRouter();
+  const { mode, loading, signedIn, hasAccess, role, member, email, setRole, signOut } = useAuth();
 
-  const bare = pathname === "/" || pathname === "/initiation";
+  const bare = PUBLIC.includes(pathname);
+
+  // Enforce login on every protected route (live mode only — demo stays open).
+  useEffect(() => {
+    if (mode === "live" && !loading && !bare && !signedIn) {
+      router.replace("/");
+    }
+  }, [mode, loading, bare, signedIn, router]);
+
   if (bare) {
     return (
       <main style={{ maxWidth: 680, margin: "0 auto", padding: "0 18px" }}>
         {children}
       </main>
     );
+  }
+
+  // Protected route states (live mode).
+  if (mode === "live") {
+    if (loading) {
+      return (
+        <Centered>
+          <i className="ti ti-loader-2" style={{ fontSize: 26, color: "var(--gold)" }} aria-hidden="true" />
+          <p className="whisper" style={{ fontSize: 15, marginTop: 10 }}>Consulting the register…</p>
+        </Centered>
+      );
+    }
+    if (!signedIn) {
+      return (
+        <Centered>
+          <p className="whisper" style={{ fontSize: 16 }}>The gate is barred. Redirecting…</p>
+        </Centered>
+      );
+    }
+    if (!hasAccess) {
+      return (
+        <Centered>
+          <Emblem size={84} />
+          <p className="whisper" style={{ fontSize: 16, maxWidth: 400, margin: "14px auto 0" }}>
+            You are known to the gate, but not yet of the Council. Your petition awaits the Keiser&rsquo;s decree.
+          </p>
+          <button className="btn" style={{ width: "auto", padding: "12px 24px", marginTop: 22 }} onClick={signOut}>
+            Withdraw
+          </button>
+        </Centered>
+      );
+    }
   }
 
   const active = NAV.find((n) => pathname.startsWith(n.href));
@@ -54,9 +101,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             in vino veritas
           </span>
         </div>
-        {/* Stand-in role switcher until Supabase Auth is wired; role will then
-            come from the signed-in member row. */}
-        {(
+
+        {mode === "demo" ? (
           <div
             className="roles"
             style={{ marginLeft: "auto", display: "flex", border: "1px solid var(--line)", borderRadius: 20, overflow: "hidden" }}
@@ -81,6 +127,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {r}
               </button>
             ))}
+          </div>
+        ) : (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ textAlign: "right", lineHeight: 1.2 }}>
+              <div className="scr" style={{ fontSize: 15 }}>{member?.cult_name || email}</div>
+              <div className="eyebrow" style={{ fontSize: 8.5 }}>{role}</div>
+            </div>
+            <button
+              onClick={signOut}
+              aria-label="Depart"
+              title="Depart"
+              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--dim)", padding: "7px 9px", cursor: "pointer" }}
+            >
+              <i className="ti ti-logout" />
+            </button>
           </div>
         )}
       </header>

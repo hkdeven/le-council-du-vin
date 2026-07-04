@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SessionProvider } from "@/components/Session";
+import { AuthProvider } from "@/components/AuthProvider";
 import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
@@ -29,9 +29,9 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <SessionProvider>
+        <AuthProvider>
           <AppShell>{children}</AppShell>
-        </SessionProvider>
+        </AuthProvider>
       </body>
     </html>
   );
