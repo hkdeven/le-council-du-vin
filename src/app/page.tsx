@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Gate() {
   return (
     <section style={{ textAlign: "center", padding: "40px 0 20px" }}>
-      <div className="moons" style={{ justifyContent: "center", marginBottom: 18 }} aria-hidden="true">
+      <div className="moons" style={{ justifyContent: "center", marginBottom: 18, fontSize: 22 }} aria-hidden="true">
         <i className="ti ti-moon-stars" />
         <i className="ti ti-moon" />
         <i className="ti ti-circle" />
