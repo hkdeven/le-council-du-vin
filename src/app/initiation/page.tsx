@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Emblem from "@/components/Emblem";
 import { supabase } from "@/lib/supabase";
+
+/* eslint-disable-next-line @next/next/no-img-element */
+const Mark = ({ size }: { size: number }) => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img src="/favicon-mark.png" alt="" aria-hidden="true" width={size} height={size} style={{ display: "block", margin: "0 auto" }} />
+);
 
 const ZODIAC = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -44,7 +49,7 @@ export default function Initiation() {
   if (sent) {
     return (
       <section style={{ textAlign: "center", padding: "60px 0" }}>
-        <Emblem size={96} />
+        <Mark size={96} />
         <h1 className="disp" style={{ fontSize: 20, marginTop: 12, fontWeight: 500 }}>
           Your petition is sealed
         </h1>
@@ -60,8 +65,24 @@ export default function Initiation() {
 
   return (
     <section style={{ padding: "24px 0 40px" }}>
-      <div style={{ textAlign: "center", marginBottom: 8 }}>
-        <Emblem size={72} />
+      <Link
+        href="/"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          color: "var(--dim)",
+          textDecoration: "none",
+          fontFamily: "'Cinzel', serif",
+          fontSize: 10,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+        }}
+      >
+        <i className="ti ti-arrow-left" aria-hidden="true" /> The gate
+      </Link>
+      <div style={{ textAlign: "center", marginBottom: 8, marginTop: 8 }}>
+        <Mark size={72} />
       </div>
       <h1 className="disp" style={{ fontSize: 20, textAlign: "center", fontWeight: 500 }}>
         The initiation rite
