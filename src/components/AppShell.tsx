@@ -19,7 +19,7 @@ const ROLES: Role[] = ["initiate", "member", "keiser"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { role, setRole, demo } = useSession();
+  const { role, setRole } = useSession();
 
   const bare = pathname === "/" || pathname === "/initiation";
   if (bare) {
@@ -54,7 +54,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             in vino veritas
           </span>
         </div>
-        {demo && (
+        {/* Stand-in role switcher until Supabase Auth is wired; role will then
+            come from the signed-in member row. */}
+        {(
           <div
             className="roles"
             style={{ marginLeft: "auto", display: "flex", border: "1px solid var(--line)", borderRadius: 20, overflow: "hidden" }}
