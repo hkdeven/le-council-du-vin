@@ -1,0 +1,264 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #060606;
+  --ink2: #0e0d0c;
+  --panel: #131211;
+  --gold: #9c8a5f;
+  --gold2: #cbbd93;
+  --parch: #cbc5b7;
+  --dim: #7c766a;
+  --faint: #5a554c;
+  --line: rgba(160, 150, 120, 0.2);
+  --line2: rgba(180, 168, 120, 0.42);
+  --wine: #7a3038;
+}
+
+html,
+body {
+  background: var(--ink);
+  color: var(--parch);
+  font-family: "EB Garamond", serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(203, 189, 147, 0.25);
+}
+
+/* Typographic voices ------------------------------------------------ */
+.disp {
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.09em;
+  color: var(--gold2);
+}
+.scr {
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  color: var(--gold2);
+}
+.whisper {
+  color: var(--faint);
+  font-style: italic;
+  font-family: "Cormorant Garamond", serif;
+}
+.eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Surfaces ---------------------------------------------------------- */
+.card {
+  background: var(--ink2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.tag {
+  display: inline-block;
+  font-family: "Cinzel", serif;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+/* Buttons ----------------------------------------------------------- */
+.btn {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--line2);
+  color: var(--gold2);
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn:hover {
+  background: rgba(160, 150, 120, 0.08);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn.gold {
+  background: var(--gold2);
+  color: #0a0a0a;
+  border-color: var(--gold2);
+}
+.btn.gold:hover {
+  background: #d8caa0;
+}
+.btn.danger {
+  border-color: var(--wine);
+  color: #c98;
+}
+
+/* Fields ------------------------------------------------------------ */
+label.field {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 14px 0 6px;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  background: #080706;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--parch);
+  padding: 9px 11px;
+  font-family: "EB Garamond", serif;
+  font-size: 15px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--line2);
+}
+textarea {
+  min-height: 62px;
+  resize: vertical;
+}
+select option {
+  background: #0e0d0c;
+}
+
+/* Pills ------------------------------------------------------------- */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px 13px;
+  font-size: 13px;
+  color: var(--dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pill.on {
+  border-color: var(--line2);
+  color: var(--gold2);
+  background: rgba(160, 150, 120, 0.1);
+}
+
+/* Score orbs -------------------------------------------------------- */
+.orbs {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+.orb {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  transition: all 0.1s;
+}
+.orb.f {
+  background: var(--gold2);
+  border-color: var(--gold2);
+}
+
+/* Ranking rows ------------------------------------------------------ */
+.rk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rk:last-child {
+  border-bottom: none;
+}
+.bar {
+  height: 5px;
+  background: rgba(160, 150, 120, 0.14);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+
+/* Avatars + cloth --------------------------------------------------- */
+.av {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #1a1614;
+  border: 1px solid var(--line2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  color: var(--gold2);
+  flex: none;
+}
+.cloth {
+  width: 72px;
+  height: 94px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #171513, #070605);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Cinzel", serif;
+  font-size: 28px;
+  color: var(--gold2);
+}
+.metric {
+  background: var(--ink2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 13px 15px;
+}
+.metric b {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-size: 23px;
+  color: var(--gold2);
+  font-weight: 500;
+}
+.metric span {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.moons {
+  display: flex;
+  gap: 10px;
+  color: var(--gold);
+  font-size: 17px;
+  opacity: 0.75;
+}
