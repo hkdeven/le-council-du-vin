@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 export default function Gate() {
   const { mode, status, signedIn, hasAccess, signOut } = useAuth();
   const authed = mode === "demo" || (signedIn && hasAccess);
+  const [showLogin, setShowLogin] = useState(false);
 
   return (
     <section style={{ textAlign: "center", padding: "40px 0 20px" }}>
@@ -46,8 +47,17 @@ export default function Gate() {
             </Link>
             <button className="btn" onClick={signOut}>Withdraw</button>
           </div>
+        ) : showLogin ? (
+          <LoginPanel onBack={() => setShowLogin(false)} />
         ) : (
-          <LoginPanel />
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <button className="btn gold" onClick={() => setShowLogin(true)}>
+              Enter the council
+            </button>
+            <Link href="/initiation" className="btn" style={{ textDecoration: "none", display: "block" }}>
+              Petition for initiation
+            </Link>
+          </div>
         )}
       </div>
 
@@ -58,7 +68,7 @@ export default function Gate() {
   );
 }
 
-function LoginPanel() {
+function LoginPanel({ onBack }: { onBack: () => void }) {
   const { signInWithGoogle, signInWithOtp, signInWithPassword, signUpWithPassword } = useAuth();
   const [tab, setTab] = useState<"password" | "link">("password");
   const [email, setEmail] = useState("");
@@ -146,9 +156,10 @@ function LoginPanel() {
         </>
       )}
 
-      <Link href="/initiation" className="btn" style={{ textDecoration: "none", display: "block", textAlign: "center", marginTop: 4 }}>
-        Petition for initiation
-      </Link>
+      <button onClick={onBack}
+        style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, textAlign: "center" }}>
+        <i className="ti ti-arrow-left" style={{ fontSize: 13, marginRight: 4 }} /> turn back
+      </button>
     </div>
   );
 }
