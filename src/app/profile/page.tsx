@@ -277,7 +277,7 @@ export default function Profile() {
         localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, venue, avatar }));
       } catch {}
     }
-    window.dispatchEvent(new Event("lcv-profile"));
+    window.dispatchEvent(new CustomEvent("lcv-profile", { detail: { avatar } }));
     setSaved(true);
   };
 

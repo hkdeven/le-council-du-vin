@@ -123,6 +123,17 @@ create policy "offerings update" on offerings for update using (auth.uid() is no
 drop policy if exists "offerings delete" on offerings;
 create policy "offerings delete" on offerings for delete using (auth.uid() is not null);
 
+-- Reveal photos: a public Storage bucket that signed-in members may upload to.
+insert into storage.buckets (id, name, public)
+  values ('reveal-photos', 'reveal-photos', true)
+  on conflict (id) do nothing;
+drop policy if exists "reveal photos upload" on storage.objects;
+create policy "reveal photos upload" on storage.objects
+  for insert to authenticated with check (bucket_id = 'reveal-photos');
+drop policy if exists "reveal photos update" on storage.objects;
+create policy "reveal photos update" on storage.objects
+  for update to authenticated using (bucket_id = 'reveal-photos');
+
 -- Annals: everyone reads the codex; only the Keiser commits/amends.
 alter table annals enable row level security;
 drop policy if exists "annals read" on annals;

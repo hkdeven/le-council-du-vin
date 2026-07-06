@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
-import { fetchGatherings, createGathering, updateGathering, deleteGathering } from "@/lib/gatherings";
+import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickCurrent } from "@/lib/gatherings";
 import { supabase } from "@/lib/supabase";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
@@ -149,10 +149,11 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
 }
 
 function MeetingBody({
-  m, isCurrent, isKeiser, meId, members, onUpdate, onDelete, count, setCount,
+  m, isCurrent, isKeiser, meId, members, onUpdate, onAttendees, onDelete, count, setCount,
 }: {
   m: Gathering; isCurrent: boolean; isKeiser: boolean; meId: string | null; members: Member[];
-  onUpdate: (patch: Partial<Gathering>) => void; onDelete?: () => void; count?: number; setCount?: (n: number) => void;
+  onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void;
+  onDelete?: () => void; count?: number; setCount?: (n: number) => void;
 }) {
   const [showGuests, setShowGuests] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -164,8 +165,9 @@ function MeetingBody({
   const todayISO = new Date().toISOString().slice(0, 10);
   const showRite = isCurrent && (m.status === "scoring" || todayISO === m.gather_date);
 
+  // Refetch-before-write so two people RSVPing at once don't clobber each other.
   const toggleRsvp = (id: string) =>
-    onUpdate({ attendees: attendees.includes(id) ? attendees.filter((x) => x !== id) : [...attendees, id] });
+    toggleAttendee(m.id, id).then(onAttendees).catch((e) => alert(`Could not update the RSVP: ${e.message}`));
 
   const share = () => {
     // WhatsApp markdown: *bold*
@@ -341,7 +343,7 @@ function MeetingBody({
   );
 }
 
-function FutureCard({ m, isKeiser, meId, members, onUpdate, onDelete }: { m: Gathering; isKeiser: boolean; meId: string | null; members: Member[]; onUpdate: (patch: Partial<Gathering>) => void; onDelete?: () => void }) {
+function FutureCard({ m, isKeiser, meId, members, onUpdate, onAttendees, onDelete }: { m: Gathering; isKeiser: boolean; meId: string | null; members: Member[]; onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void; onDelete?: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -362,7 +364,7 @@ function FutureCard({ m, isKeiser, meId, members, onUpdate, onDelete }: { m: Gat
       </div>
       {open && (
         <div style={{ marginTop: 12 }}>
-          <MeetingBody m={m} isCurrent={false} isKeiser={isKeiser} meId={meId} members={members} onUpdate={onUpdate} />
+          <MeetingBody m={m} isCurrent={false} isKeiser={isKeiser} meId={meId} members={members} onUpdate={onUpdate} onAttendees={onAttendees} />
         </div>
       )}
     </div>
@@ -394,8 +396,8 @@ export default function Convene() {
     }
   }, [mode]);
 
-  const current = meetings[0] ?? null;
-  const future = current ? meetings.slice(1) : [];
+  const current = pickCurrent(meetings);
+  const future = meetings.filter((m) => m.id !== current?.id);
   const [count, setCount] = useWineCount(current);
 
   const [newTheme, setNewTheme] = useState("");
@@ -405,6 +407,11 @@ export default function Convene() {
     setMeetings((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
     updateGathering(id, patch).catch((e) => alert(`Could not save the meeting: ${e.message}`));
   };
+
+  // RSVP already persisted via toggleAttendee (refetch-before-write); this only
+  // syncs the local view, so we don't re-write (and re-clobber) the array.
+  const setAttendeesLocal = (id: string, next: string[]) =>
+    setMeetings((ms) => ms.map((m) => (m.id === id ? { ...m, attendees: next } : m)));
 
   const deleteMeeting = (id: string) => {
     setMeetings((ms) => ms.filter((m) => m.id !== id));
@@ -444,7 +451,7 @@ export default function Convene() {
       </div>
 
       {current ? (
-        <MeetingBody m={current} isCurrent isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(current.id, p)} onDelete={isKeiser ? () => deleteMeeting(current.id) : undefined} count={count} setCount={setCount} />
+        <MeetingBody m={current} isCurrent isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(current.id, p)} onAttendees={(next) => setAttendeesLocal(current.id, next)} onDelete={isKeiser ? () => deleteMeeting(current.id) : undefined} count={count} setCount={setCount} />
       ) : (
         <div className="card"><p className="whisper" style={{ margin: 0, fontSize: 15 }}>The table is bare. Summon a gathering below.</p></div>
       )}
@@ -454,7 +461,7 @@ export default function Convene() {
           <MoonDivider />
           <div className="eyebrow" style={{ margin: "0 0 10px" }}>Gatherings to come</div>
           {future.map((m) => (
-            <FutureCard key={m.id} m={m} isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(m.id, p)} onDelete={() => deleteMeeting(m.id)} />
+            <FutureCard key={m.id} m={m} isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(m.id, p)} onAttendees={(next) => setAttendeesLocal(m.id, next)} onDelete={() => deleteMeeting(m.id)} />
           ))}
 
           <div className="card">

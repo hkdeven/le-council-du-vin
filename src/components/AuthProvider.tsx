@@ -163,7 +163,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const roleForAvatar: Role = gated ? member?.role ?? "initiate" : demoRole;
   const [avatar, setAvatarState] = useState<string | null>(null);
   useEffect(() => {
-    const load = () => {
+    // A profile save dispatches `lcv-profile` with the new avatar in `detail`,
+    // so the header updates instantly in live mode (where the member row is
+    // otherwise cached until reload).
+    const load = (e?: Event) => {
+      const detail = e && (e as CustomEvent).detail;
+      if (detail && typeof detail === "object" && "avatar" in detail) {
+        setAvatarState((detail as { avatar: string | null }).avatar ?? null);
+        return;
+      }
       if (gated) { setAvatarState(member?.avatar_url ?? null); return; }
       try {
         const raw = localStorage.getItem(`lcv_profile_${roleForAvatar}`);

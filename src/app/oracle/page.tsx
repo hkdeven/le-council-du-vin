@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
 import { fetchThemes, proposeTheme, favourTheme, editTheme, removeTheme, PoolTheme } from "@/lib/themes";
-import { fetchPolls, createPoll, updatePoll } from "@/lib/polls";
+import { fetchPolls, createPoll, updatePoll, toggleVote } from "@/lib/polls";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { shareToWhatsApp } from "@/lib/share";
@@ -25,18 +25,19 @@ function MoonDivider() {
   );
 }
 
-function PollCard({ poll, meId, members, onUpdate, onArchive }: {
+function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
   poll: Poll; meId: string | null; members: Member[];
-  onUpdate: (patch: Partial<Poll>) => void; onArchive: () => void;
+  onUpdate: (patch: Partial<Poll>) => void; onVoted: (options: Poll["options"]) => void; onArchive: () => void;
 }) {
   const [newDate, setNewDate] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const options = [...poll.options].sort((a, b) => a.date.localeCompare(b.date));
   const lead = Math.max(0, ...poll.options.map((o) => o.voters.length));
 
+  // Refetch-before-write so simultaneous voters don't overwrite each other.
   const vote = (id: string) => {
     if (!meId) return;
-    onUpdate({ options: poll.options.map((o) => o.id === id ? { ...o, voters: o.voters.includes(meId) ? o.voters.filter((v) => v !== meId) : [...o.voters, meId] } : o) });
+    toggleVote(poll.id, id, meId).then(onVoted).catch((e) => alert(`Could not record your vote: ${e.message}`));
   };
   const addDate = () => {
     if (!newDate) return;
@@ -206,7 +207,7 @@ export default function Oracle() {
         </div>
       )}
       {open.map((p) => (
-        <PollCard key={p.id} poll={p} meId={meId} members={members} onUpdate={(patch) => changePoll(p.id, patch)} onArchive={() => changePoll(p.id, { status: "archived" })} />
+        <PollCard key={p.id} poll={p} meId={meId} members={members} onUpdate={(patch) => changePoll(p.id, patch)} onVoted={(options) => setPolls((ps) => ps.map((x) => (x.id === p.id ? { ...x, options } : x)))} onArchive={() => changePoll(p.id, { status: "archived" })} />
       ))}
 
       {archived.length > 0 && (

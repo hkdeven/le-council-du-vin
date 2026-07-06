@@ -6,7 +6,7 @@ import { toRoman } from "@/lib/util";
 import { fetchAllOfferings } from "@/lib/bottles";
 import { fetchAllBallots, tallyFromBallots, sealedAmong, MemberBallot } from "@/lib/ballots";
 import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
-import { fetchCurrentGathering } from "@/lib/gatherings";
+import { fetchCurrentGathering, updateGathering } from "@/lib/gatherings";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
 import BottleReveal from "@/components/BottleReveal";
@@ -130,6 +130,22 @@ export default function Reveal() {
   // The reveal opens only when every attendee has sealed — or once committed.
   const sealedCount = sealedAmong(ballots, attendees);
   const locked = !committed && (attendees.length === 0 || sealedCount < attendees.length);
+
+  // While still sealed, poll for newly-sealed ballots so the reveal unlocks and
+  // tallies live — no refresh needed. Stops the moment it opens (so it never
+  // clobbers the Keiser's claims/disqualifications, which only happen after).
+  useEffect(() => {
+    if (!g || committed || !locked) return;
+    const iv = setInterval(async () => {
+      const bs = await fetchAllBallots(g.id);
+      setBallots(bs);
+      const tally = tallyFromBallots(bs, wineCount);
+      setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
+        cloth, title: "", owner: "", score: tally[cloth]?.avg || 0, votes: tally[cloth]?.votes || 0, dq: false,
+      })));
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [g, committed, locked, wineCount]);
 
   // Ranking is computed, never stored: qualified bottles by score, the
   // disqualified banished to the bottom without a rank.
@@ -320,7 +336,11 @@ export default function Reveal() {
               </>
             )}
           </div>
-          <BottleReveal photos={g?.reveal_photos || []} />
+          <BottleReveal
+            photos={g?.reveal_photos || []}
+            gatheringId={g?.id}
+            onPhotos={(next) => { if (g) updateGathering(g.id, { reveal_photos: next }).catch((e) => alert(`Could not save the photos: ${e.message}`)); }}
+          />
         </>
       )}
     </section>

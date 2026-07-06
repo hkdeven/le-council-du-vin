@@ -1,23 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import { uploadRevealPhoto } from "@/lib/photos";
 
 // The bottle-lineup photos are real-world images that clash with the site's
 // occult theme, so they stay hidden behind a deliberate click. Members can add
 // more; clicking a photo opens it full-resolution in a new tab. Broken/missing
-// images hide themselves so nothing ever shows as a broken thumbnail.
-export default function BottleReveal({ photos: initial }: { photos: string[] }) {
+// images hide themselves so nothing ever shows as a broken thumbnail. In live
+// mode uploads go to Supabase Storage and the URLs persist on the gathering.
+export default function BottleReveal({ photos: initial, gatheringId, onPhotos }: {
+  photos: string[]; gatheringId?: string; onPhotos?: (next: string[]) => void;
+}) {
   const [shown, setShown] = useState(false);
   const [photos, setPhotos] = useState<string[]>(initial);
   const [broken, setBroken] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  const onAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    // Demo: preview via object URLs. Once live, upload to Supabase Storage and
-    // store the returned public URLs on the gathering instead.
-    const urls = files.map((f) => URL.createObjectURL(f));
-    setPhotos((p) => [...p, ...urls]);
     e.target.value = "";
+    if (!files.length || !gatheringId) return;
+    setBusy(true);
+    try {
+      const urls: string[] = [];
+      for (const f of files) urls.push(await uploadRevealPhoto(gatheringId, f));
+      const next = [...photos, ...urls];
+      setPhotos(next);
+      onPhotos?.(next);
+    } catch (err) {
+      alert(`Could not add the photo: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const visible = photos.filter((p) => !broken.includes(p));
@@ -50,9 +64,9 @@ export default function BottleReveal({ photos: initial }: { photos: string[] }) 
           )}
 
           <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
-            <label className="btn" style={{ width: "auto", padding: "10px 16px", cursor: "pointer" }}>
-              <i className="ti ti-camera-plus" style={{ marginRight: 6 }} /> Add photos
-              <input type="file" accept="image/*" multiple onChange={onAdd} style={{ display: "none" }} />
+            <label className="btn" style={{ width: "auto", padding: "10px 16px", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
+              <i className="ti ti-camera-plus" style={{ marginRight: 6 }} /> {busy ? "Adding…" : "Add photos"}
+              <input type="file" accept="image/*" multiple disabled={busy} onChange={onAdd} style={{ display: "none" }} />
             </label>
             <button
               onClick={() => setShown(false)}

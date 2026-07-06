@@ -70,8 +70,19 @@ export async function fetchGatherings(): Promise<Gathering[]> {
   return localAll();
 }
 
+// The meeting the rite and reveal operate on: the soonest one that is today or
+// still to come; if every meeting is in the past, the most recent one (so the
+// last reveal/codex still resolves). Prevents a concluded meeting from staying
+// "current" once a later one exists.
+export function pickCurrent(all: Gathering[]): Gathering | null {
+  if (all.length === 0) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = all.find((g) => (g.gather_date || "") >= today);
+  return upcoming ?? all[all.length - 1];
+}
+
 export async function fetchCurrentGathering(): Promise<Gathering | null> {
-  return (await fetchGatherings())[0] ?? null;
+  return pickCurrent(await fetchGatherings());
 }
 
 // Insert. In live the DB assigns the uuid id, so we return the stored row.
@@ -92,6 +103,26 @@ export async function updateGathering(id: string, patch: Partial<Gathering>): Pr
     return;
   }
   localSave(localAll().map((m) => (m.id === id ? { ...m, ...patch } : m)));
+}
+
+// Toggle one member's RSVP. Reads the current attendees fresh right before
+// writing so two people RSVPing at once don't overwrite each other's entry.
+// Returns the new attendee list.
+export async function toggleAttendee(gatheringId: string, memberId: string): Promise<string[]> {
+  if (gatheringsLive()) {
+    const { data } = await supabase!.from("gatherings").select("attendees").eq("id", gatheringId).maybeSingle();
+    const current: string[] = (data?.attendees as string[]) || [];
+    const next = current.includes(memberId) ? current.filter((x) => x !== memberId) : [...current, memberId];
+    const { error } = await supabase!.from("gatherings").update({ attendees: next }).eq("id", gatheringId);
+    if (error) throw new Error(error.message);
+    return next;
+  }
+  const list = localAll();
+  const g = list.find((m) => m.id === gatheringId);
+  const current = g?.attendees || [];
+  const next = current.includes(memberId) ? current.filter((x) => x !== memberId) : [...current, memberId];
+  localSave(list.map((m) => (m.id === gatheringId ? { ...m, attendees: next } : m)));
+  return next;
 }
 
 export async function deleteGathering(id: string): Promise<void> {
