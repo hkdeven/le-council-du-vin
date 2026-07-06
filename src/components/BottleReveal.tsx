@@ -24,9 +24,8 @@ export default function BottleReveal({ photos: initial }: { photos: string[] }) 
 
   return (
     <div style={{ marginTop: 22 }}>
-      <div className="eyebrow" style={{ marginBottom: 8 }}>The vessels, unveiled</div>
       {!shown ? (
-        <button className="btn" onClick={() => setShown(true)}>
+        <button className="btn" style={{ fontSize: 14 }} onClick={() => setShown(true)}>
           <i className="ti ti-eye" style={{ marginRight: 6 }} /> Look upon the bottles
         </button>
       ) : (

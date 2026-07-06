@@ -33,6 +33,7 @@ interface AuthValue {
   role: Role;
   member: Member | null;
   email: string | null;
+  avatar: string | null;
   authError: string | null;
   // Demo-mode role switcher (no real auth when Supabase env is absent).
   setRole: (r: Role) => void;
@@ -56,6 +57,7 @@ const AuthContext = createContext<AuthValue>({
   role: "keiser",
   member: null,
   email: null,
+  avatar: null,
   authError: null,
   setRole: noop,
   signInWithGoogle: noop,
@@ -158,6 +160,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMember(null);
   }, []);
 
+  const roleForAvatar: Role = gated ? member?.role ?? "initiate" : demoRole;
+  const [avatar, setAvatarState] = useState<string | null>(null);
+  useEffect(() => {
+    const load = () => {
+      if (gated) { setAvatarState(member?.avatar_url ?? null); return; }
+      try {
+        const raw = localStorage.getItem(`lcv_profile_${roleForAvatar}`);
+        setAvatarState(raw ? JSON.parse(raw).avatar ?? null : null);
+      } catch { setAvatarState(null); }
+    };
+    load();
+    window.addEventListener("lcv-profile", load);
+    return () => window.removeEventListener("lcv-profile", load);
+  }, [roleForAvatar, member]);
+
   const signedIn = gated ? !!session : true;
   const hasAccess = gated ? !!member : true;
   const role: Role = gated ? member?.role ?? "initiate" : demoRole;
@@ -182,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         member,
         email: session?.user?.email ?? null,
+        avatar,
         authError,
         setRole,
         signInWithGoogle,

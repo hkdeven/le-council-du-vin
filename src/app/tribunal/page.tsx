@@ -1,19 +1,114 @@
 "use client";
 
-import { useState } from "react";
-import { seedApplications } from "@/lib/seed";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Application } from "@/lib/types";
+import { loadDqCounts, DQ_THRESHOLD } from "@/lib/annals";
+import { loadApplications, updateApplication } from "@/lib/applications";
+import { addMember } from "@/lib/members";
+import { sunSign } from "@/lib/astrology";
+import MoonDivider from "@/components/MoonDivider";
+import type { Application, Member } from "@/lib/types";
+
+const fmtDate = (d: string) =>
+  new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+// An expulsion hearing: a member who has hit the disqualification threshold.
+// Every member votes to keep or cast out; the Keiser decrees the end of it.
+function ExpulsionCard({ name, count }: { name: string; count: number }) {
+  const [votes, setVotes] = useState<{ keep: number; out: number }>({ keep: 0, out: 0 });
+  const [myVote, setMyVote] = useState<"keep" | "out" | null>(null);
+  const [verdict, setVerdict] = useState<"kept" | "expelled" | null>(null);
+
+  const vote = (v: "keep" | "out") => {
+    if (myVote === v) return;
+    setVotes((x) => ({
+      keep: x.keep + (v === "keep" ? 1 : 0) - (myVote === "keep" ? 1 : 0),
+      out: x.out + (v === "out" ? 1 : 0) - (myVote === "out" ? 1 : 0),
+    }));
+    setMyVote(v);
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 14, borderColor: "var(--wine)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+        <div className="av" style={{ width: 40, height: 40 }}>
+          {name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+        </div>
+        <div>
+          <div className="disp" style={{ fontSize: 16 }}>{name}</div>
+          <div className="whisper" style={{ fontSize: 14, color: "var(--wine)" }}>
+            {count} wines cast out for breaking theme · the threshold of {DQ_THRESHOLD} is met
+          </div>
+        </div>
+      </div>
+      {verdict ? (
+        <p className="scr" style={{ margin: 0, fontSize: 16 }}>
+          {verdict === "kept" ? "The Council shows mercy — they remain, on thinnest ice." : "The seat is forfeit. Their glass is emptied."}
+        </p>
+      ) : (
+        <>
+          <p className="whisper" style={{ margin: "0 0 10px", fontSize: 14 }}>
+            All members must vote: keep them, or take them out.
+          </p>
+          <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+            <button className={`btn${myVote === "keep" ? " gold" : ""}`} style={{ flex: 1 }} onClick={() => vote("keep")}>
+              Keep them · {votes.keep}
+            </button>
+            <button className="btn danger" style={{ flex: 1 }} onClick={() => vote("out")}>
+              Take them out · {votes.out}
+            </button>
+          </div>
+          <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>The decree is the Keiser&rsquo;s alone.</p>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn" style={{ flex: 1 }} onClick={() => setVerdict("kept")}>Decree: mercy</button>
+            <button className="btn danger" style={{ flex: 1 }} onClick={() => setVerdict("expelled")}>Decree: expulsion</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
 export default function Tribunal() {
-  const [apps, setApps] = useState<Application[]>(seedApplications);
+  const [apps, setApps] = useState<Application[]>([]);
+  const [dq, setDq] = useState<Record<string, number>>({});
 
-  const decree = async (id: string, status: "anointed" | "cast_out") => {
-    if (supabase) await supabase.from("applications").update({ status }).eq("id", id);
-    setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+  useEffect(() => {
+    setApps(loadApplications());
+    setDq(loadDqCounts());
+  }, []);
+
+  const decree = async (a: Application, status: "anointed" | "cast_out") => {
+    // Anointing grants limited access: a new initiate joins the roster, whom the
+    // Keiser can later elevate to full member from the profile roster.
+    if (status === "anointed") {
+      const member: Member = {
+        id: `m-${a.id}`,
+        email: a.email,
+        cult_name: a.cult_name,
+        short_name: initialsOf(a.cult_name),
+        role: "initiate",
+        date_of_birth: a.date_of_birth || null,
+        time_of_birth: a.time_of_birth || null,
+        active: true,
+      };
+      addMember(member);
+      if (supabase) {
+        await supabase.from("members").upsert(
+          { email: member.email, cult_name: member.cult_name, short_name: member.short_name, role: "initiate", date_of_birth: member.date_of_birth, time_of_birth: member.time_of_birth, active: true },
+          { onConflict: "email" }
+        );
+      }
+    }
+    updateApplication(a.id, { status });
+    if (supabase) await supabase.from("applications").update({ status }).eq("id", a.id);
+    setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status } : x)));
   };
 
   const pending = apps.filter((a) => a.status === "pending");
+  const summoned = Object.entries(dq).filter(([, n]) => n >= DQ_THRESHOLD);
 
   return (
     <section>
@@ -36,7 +131,7 @@ export default function Tribunal() {
             <div>
               <div className="disp" style={{ fontSize: 16 }}>{a.cult_name}</div>
               <div className="whisper" style={{ fontSize: 14 }}>
-                {a.zodiac} · governed by {a.element?.toLowerCase()}
+                {a.date_of_birth ? (() => { const s = sunSign(a.date_of_birth!); return `Born ${fmtDate(a.date_of_birth!)}${s ? ` · ${s.symbol} ${s.name}` : ""}`; })() : a.email}
               </div>
             </div>
           </div>
@@ -68,9 +163,12 @@ export default function Tribunal() {
           <p className="whisper" style={{ margin: "0 0 12px", fontSize: 15 }}>
             The Council has spoken. The decree is yours alone, Keiser.
           </p>
+          <p className="whisper" style={{ margin: "0 0 12px", fontSize: 13 }}>
+            To anoint grants an <b style={{ color: "var(--gold2)" }}>initiate&rsquo;s</b> access — the gatherings, the rite, the reveal. Elevate them to full member later from your profile roster.
+          </p>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn gold" style={{ flex: 1 }} onClick={() => decree(a.id, "anointed")}>Anoint</button>
-            <button className="btn danger" style={{ flex: 1 }} onClick={() => decree(a.id, "cast_out")}>Cast out</button>
+            <button className="btn gold" style={{ flex: 1 }} onClick={() => decree(a, "anointed")}>Anoint as initiate</button>
+            <button className="btn danger" style={{ flex: 1 }} onClick={() => decree(a, "cast_out")}>Cast out</button>
           </div>
         </div>
       ))}
@@ -84,6 +182,19 @@ export default function Tribunal() {
           </span>
         </div>
       ))}
+
+      {summoned.length > 0 && (
+        <>
+          <MoonDivider />
+          <h2 className="disp" style={{ fontSize: 16, fontWeight: 500 }}>Expulsion hearings</h2>
+          <p style={{ color: "var(--dim)", fontSize: 14, marginTop: 2, marginBottom: 14 }}>
+            Souls who have offended the theme {DQ_THRESHOLD} times stand before the Council.
+          </p>
+          {summoned.map(([name, count]) => (
+            <ExpulsionCard key={name} name={name} count={count} />
+          ))}
+        </>
+      )}
     </section>
   );
 }

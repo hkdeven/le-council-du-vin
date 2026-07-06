@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Emblem from "./Emblem";
+import Avatar from "./Avatar";
 import { useAuth, ROLE_RANK } from "./AuthProvider";
 import type { Role } from "@/lib/types";
 
@@ -19,7 +20,7 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
 const PUBLIC = ["/", "/initiation"];
 const DEMO_NAMES: Record<Role, string> = {
   initiate: "Cassian Vale",
-  member: "Sister Larissa",
+  member: "Priestess Larissa",
   keiser: "The Keiser",
 };
 
@@ -30,7 +31,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { mode, loading, signedIn, hasAccess, role, member, email } = useAuth();
+  const { mode, loading, signedIn, hasAccess, role, member, email, avatar, signOut } = useAuth();
 
   const bare = PUBLIC.includes(pathname);
 
@@ -114,7 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: "none" }}
         >
           <span className="eyebrow" style={{ fontSize: 9 }}>{role}</span>
-          <span className="av" style={{ width: 34, height: 34 }}>{initials}</span>
+          <Avatar src={avatar} initials={initials} size={34} />
         </Link>
       </header>
 

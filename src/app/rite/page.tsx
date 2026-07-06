@@ -1,16 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { seedGathering } from "@/lib/seed";
+import Link from "next/link";
 import { aromasFor } from "@/lib/aromas";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
+import { loadBallot, saveBallot } from "@/lib/ballots";
+import { currentGathering } from "@/lib/gatherings";
+import type { Gathering } from "@/lib/types";
 
 export default function Rite() {
   const { role } = useAuth();
   const isKeiser = role === "keiser";
-  const [total, setTotal] = useWineCount(seedGathering.id, seedGathering.wine_count);
+  const meId = role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
+
+  const [g, setG] = useState<Gathering | null>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setG(currentGathering());
+    setReady(true);
+  }, []);
+  const gid = g?.id ?? "none";
+
+  const [total, setTotal] = useWineCount(gid, g?.wine_count ?? 11);
   const wines = Array.from({ length: total }, (_, i) => i + 1);
 
   const [current, setCurrent] = useState(1);
@@ -20,12 +33,22 @@ export default function Rite() {
   const [newAroma, setNewAroma] = useState("");
   const [sealed, setSealed] = useState(false);
 
+  // Restore a previously sealed (or in-progress) ballot for this member.
+  useEffect(() => {
+    if (!meId || !g) return;
+    const b = loadBallot(g.id, meId);
+    if (b) {
+      setScores(b.scores || {});
+      setSealed(!!b.sealed);
+    }
+  }, [meId, g]);
+
   const score = scores[current] ?? 0;
   const aromas = aromasByWine[current] ?? [];
   const notes = notesByWine[current] ?? "";
   // A small random handful of aromas per wine (deterministic), plus any the
   // taster has added themselves so they stay visible/selected.
-  const suggestions = aromasFor(`${seedGathering.id}-${current}`);
+  const suggestions = aromasFor(`${gid}-${current}`);
   const displayedAromas = [...suggestions, ...aromas.filter((a) => !suggestions.includes(a))];
   const judged = wines.filter((w) => scores[w] != null).length;
 
@@ -46,9 +69,21 @@ export default function Rite() {
   }, [total]);
 
   // Set any wine's score — from the focused card or the ballot. Free to revise
-  // an earlier wine while judging a later one (relative scoring).
-  const setScore = (wine: number, val: number) =>
-    setScores((s) => ({ ...s, [wine]: val }));
+  // an earlier wine while judging a later one (relative scoring). Revising a
+  // sealed ballot breaks the seal until it is sealed again.
+  const setScore = (wine: number, val: number) => {
+    setScores((s) => {
+      const next = { ...s, [wine]: val };
+      if (meId) saveBallot(gid, meId, { scores: next, sealed: false });
+      return next;
+    });
+    setSealed(false);
+  };
+
+  const sealReckoning = () => {
+    if (meId) saveBallot(gid, meId, { scores, sealed: true });
+    setSealed(true);
+  };
 
   const toggleAroma = (a: string) =>
     setAromasByWine((m) => {
@@ -65,6 +100,17 @@ export default function Rite() {
     });
     setNewAroma("");
   };
+
+  if (ready && !g) {
+    return (
+      <section style={{ textAlign: "center", padding: "70px 0" }}>
+        <i className="ti ti-glass-full" style={{ fontSize: 30, color: "var(--gold)" }} aria-hidden="true" />
+        <p className="whisper" style={{ fontSize: 16, marginTop: 12 }}>
+          No gathering is scheduled. The convening comes first.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section>
@@ -119,7 +165,7 @@ export default function Rite() {
         )}
 
         <div style={{ textAlign: "center" }}>
-          <label className="field">The verdict</label>
+          <label className="field" style={{ fontSize: 14, color: "#fff" }}>The verdict</label>
           <div className="orbs mid" style={{ justifyContent: "center" }} role="slider" aria-label={`Score for wine ${current}, out of ten`} aria-valuenow={score} aria-valuemin={1} aria-valuemax={10}>
             {Array.from({ length: 10 }, (_, i) => i + 1).map((i) => (
               <span key={i} className={`orb${i <= score ? " f" : ""}`} onClick={() => setScore(current, i)}>
@@ -128,7 +174,7 @@ export default function Rite() {
             ))}
           </div>
 
-          <label className="field">Aromas caught</label>
+          <label className="field" style={{ fontSize: 14, color: "#fff" }}>Aromas</label>
           <div className="pills" style={{ justifyContent: "center" }}>
             {displayedAromas.map((a) => (
               <span key={a} className={`pill${aromas.includes(a) ? " on" : ""}`} onClick={() => toggleAroma(a)}>
@@ -149,7 +195,7 @@ export default function Rite() {
             </button>
           </div>
 
-          <label className="field">Whispered notes</label>
+          <label className="field" style={{ fontSize: 14, color: "#fff" }}>Whispered notes</label>
           <textarea
             value={notes}
             onChange={(e) => setNotesByWine((m) => ({ ...m, [current]: e.target.value }))}
@@ -205,10 +251,16 @@ export default function Rite() {
         className="btn gold"
         style={{ marginTop: 14 }}
         disabled={judged < total || sealed}
-        onClick={() => setSealed(true)}
+        onClick={sealReckoning}
       >
-        {sealed ? "Sealed · awaiting the reveal" : judged < total ? `Seal the reckoning · ${judged}/${total} judged` : "Seal the reckoning"}
+        {sealed ? "Sealed" : judged < total ? `Seal the reckoning · ${judged}/${total} judged` : "Seal the reckoning"}
       </button>
+
+      {sealed && (
+        <Link href="/reveal" className="btn" style={{ display: "block", textDecoration: "none", textAlign: "center", fontSize: 14, marginTop: 10 }}>
+          <i className="ti ti-eye" style={{ marginRight: 6 }} /> Proceed to the revelation
+        </Link>
+      )}
     </section>
   );
 }

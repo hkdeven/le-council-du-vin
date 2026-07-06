@@ -19,7 +19,15 @@ export interface Member {
 export interface DateOption {
   id: string;
   date: string;
-  voters: string[];
+  voters: string[]; // member ids
+}
+
+export interface Poll {
+  id: string;
+  title: string;
+  status: "open" | "archived";
+  created_at: string;
+  options: DateOption[];
 }
 
 export interface Theme {
@@ -41,9 +49,14 @@ export interface Gathering {
   host_id?: string | null;
   host_name?: string | null;
   gather_date: string;
+  gather_time?: string | null;
   status: "upcoming" | "scoring" | "revealed";
   wine_count: number;
   reveal_photos?: string[] | null;
+  rules_text?: string | null;
+  threat_text?: string | null;
+  venue_instructions?: string | null;
+  attendees?: string[]; // member ids who have RSVP'd
 }
 
 export interface Wine {
@@ -72,8 +85,8 @@ export interface Application {
   id: string;
   cult_name: string;
   email: string;
-  zodiac?: string | null;
-  element?: string | null;
+  date_of_birth?: string | null;
+  time_of_birth?: string | null;
   draw_reason?: string | null;
   if_wine?: string | null;
   wine_sin?: string | null;

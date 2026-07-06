@@ -121,6 +121,7 @@ input,
 select,
 textarea {
   width: 100%;
+  box-sizing: border-box;
   background: #080706;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -285,4 +286,37 @@ select option {
   color: var(--gold);
   font-size: 17px;
   opacity: 0.75;
+}
+
+/* Reveal flip card ---------------------------------------------------- */
+.flip {
+  perspective: 1200px;
+}
+.flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flip.on .flip-inner {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 12px;
+}
+.flip-front {
+  transform: rotateY(180deg);
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.rise {
+  animation: riseIn 0.7s ease both;
 }

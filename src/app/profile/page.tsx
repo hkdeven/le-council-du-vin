@@ -3,14 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
+import { loadMembers, saveMember } from "@/lib/members";
 import { supabase } from "@/lib/supabase";
 import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
 import AvatarCropper from "@/components/AvatarCropper";
-import type { Role } from "@/lib/types";
+import type { Role, Member } from "@/lib/types";
 
 const DEMO_NAMES: Record<Role, string> = {
   initiate: "Cassian Vale",
-  member: "Sister Larissa",
+  member: "Priestess Larissa",
   keiser: "The Keiser",
 };
 const ROLES: Role[] = ["initiate", "member", "keiser"];
@@ -62,6 +63,92 @@ function Row({ label, tip, value, valueTip, hint }: { label: string; tip?: strin
       <span style={{ display: "inline-flex", alignItems: "center", color: hint ? "var(--faint)" : "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: hint ? "italic" : "normal", fontSize: 16 }}>
         {hint || value}{valueTip && !hint && <InfoTip text={valueTip} align="right" />}
       </span>
+    </div>
+  );
+}
+
+const ALL_ROLES: Role[] = ["initiate", "member", "keiser"];
+
+// Keiser-only: the full roster, every account editable in place.
+function RosterEditor() {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => setMembers(loadMembers()), []);
+
+  const edit = (id: string, patch: Partial<Member>) => {
+    saveMember(id, patch);
+    setMembers((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    if (supabase) supabase.from("members").update(patch).eq("id", id);
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="eyebrow" style={{ marginBottom: 4 }}>The council roster</div>
+      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+        Every soul&rsquo;s account. Yours to amend — the Keiser alone sees this.
+      </p>
+      {members.map((m) => {
+        const open = openId === m.id;
+        return (
+          <div key={m.id} style={{ borderTop: "1px solid var(--line)", padding: "9px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                onClick={() => setOpenId(open ? null : m.id)}
+                style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+              >
+                <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)" }} />
+                <span className="av" style={{ width: 30, height: 30, fontSize: 11, flex: "none" }}>{m.short_name}</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: "var(--gold2)" }}>{m.cult_name}</span>
+                  <span className="whisper" style={{ fontSize: 12, display: "block" }}>{m.email}</span>
+                </span>
+              </button>
+              {m.role === "initiate" && (
+                <button onClick={() => edit(m.id, { role: "member" })} title="Elevate to full member"
+                  style={{ width: "auto", flex: "none", background: "none", border: "1px solid var(--line2)", borderRadius: 14, color: "var(--gold2)", padding: "4px 12px", cursor: "pointer", fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                  <i className="ti ti-arrow-big-up-lines" style={{ fontSize: 12, marginRight: 4 }} />Elevate
+                </button>
+              )}
+              <span className="tag" style={{ opacity: m.active ? 1 : 0.4, flex: "none" }}>{m.role}</span>
+            </div>
+            {open && (
+              <div style={{ paddingLeft: 40, marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <label className="field" style={{ marginTop: 0 }}>Cult name</label>
+                  <input value={m.cult_name} onChange={(e) => edit(m.id, { cult_name: e.target.value })} />
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ flex: "1 1 60%" }}>
+                    <label className="field" style={{ marginTop: 0 }}>Email</label>
+                    <input value={m.email} onChange={(e) => edit(m.id, { email: e.target.value })} />
+                  </div>
+                  <div style={{ flex: "1 1 40%" }}>
+                    <label className="field" style={{ marginTop: 0 }}>Initials</label>
+                    <input value={m.short_name} maxLength={2} onChange={(e) => edit(m.id, { short_name: e.target.value.toUpperCase() })} />
+                  </div>
+                </div>
+                <div>
+                  <label className="field" style={{ marginTop: 0 }}>Rank</label>
+                  <div className="pills">
+                    {ALL_ROLES.map((r) => (
+                      <span key={r} className={`pill${m.role === r ? " on" : ""}`} onClick={() => edit(m.id, { role: r })}>{r}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="field" style={{ marginTop: 0 }}>Venue instructions</label>
+                  <textarea value={m.venue_instructions || ""} onChange={(e) => edit(m.id, { venue_instructions: e.target.value || null })} placeholder="Gate codes, parking, the dog…" />
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontSize: 15, color: "var(--parch)" }}>
+                  <input type="checkbox" checked={m.active} onChange={(e) => edit(m.id, { active: e.target.checked })} style={{ width: "auto" }} />
+                  Active in the Council
+                </label>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -126,6 +213,7 @@ export default function Profile() {
   const save = async () => {
     try {
       localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, venue, avatar }));
+      window.dispatchEvent(new Event("lcv-profile"));
     } catch {}
     if (supabase && email) {
       await supabase.from("members").update({
@@ -237,6 +325,8 @@ export default function Profile() {
         </button>
         {saved && <span className="scr" style={{ fontSize: 15 }}>Your record is kept.</span>}
       </div>
+
+      {role === "keiser" && <RosterEditor />}
 
       {mode === "demo" ? (
         <div className="card">

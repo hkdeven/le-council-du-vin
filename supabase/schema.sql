@@ -63,6 +63,19 @@ create table if not exists wines (
   unique (gathering_id, cloth_number)
 );
 
+-- Private bottle registrations --------------------------------------
+-- Each member may log the wine they plan to bring, ahead of the night.
+-- RLS intent (policies pass): only the owner may select/update their row
+-- until the gathering's status is 'revealed'; then all members may read.
+create table if not exists bottles (
+  id uuid primary key default gen_random_uuid(),
+  gathering_id uuid references gatherings(id) on delete cascade,
+  member_id uuid references members(id) on delete cascade,
+  title text not null,
+  created_at timestamptz not null default now(),
+  unique (gathering_id, member_id)
+);
+
 -- Scores (one per member per wine) ----------------------------------
 create table if not exists scores (
   id uuid primary key default gen_random_uuid(),
@@ -80,8 +93,8 @@ create table if not exists applications (
   id uuid primary key default gen_random_uuid(),
   cult_name text not null,
   email text not null,
-  zodiac text,
-  element text,
+  date_of_birth date,
+  time_of_birth time,
   draw_reason text,
   if_wine text,
   wine_sin text,
@@ -89,6 +102,9 @@ create table if not exists applications (
   status text not null default 'pending' check (status in ('pending','anointed','cast_out')),
   created_at timestamptz not null default now()
 );
+-- For databases created before birth details replaced star sign/element:
+alter table applications add column if not exists date_of_birth date;
+alter table applications add column if not exists time_of_birth time;
 
 create table if not exists application_votes (
   id uuid primary key default gen_random_uuid(),

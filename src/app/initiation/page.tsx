@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { addApplication } from "@/lib/applications";
 
 /* eslint-disable-next-line @next/next/no-img-element */
 const Mark = ({ size }: { size: number }) => (
@@ -10,17 +11,11 @@ const Mark = ({ size }: { size: number }) => (
   <img src="/favicon-mark.png" alt="" aria-hidden="true" width={size} height={size} style={{ display: "block", margin: "0 auto" }} />
 );
 
-const ZODIAC = [
-  "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-  "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
-];
-const ELEMENTS = ["Earth", "Fire", "Water", "Air"];
-
 export default function Initiation() {
   const [cultName, setCultName] = useState("");
   const [email, setEmail] = useState("");
-  const [zodiac, setZodiac] = useState("Scorpio");
-  const [element, setElement] = useState("Fire");
+  const [dob, setDob] = useState("");
+  const [tob, setTob] = useState("");
   const [drawReason, setDrawReason] = useState("");
   const [ifWine, setIfWine] = useState("");
   const [wineSin, setWineSin] = useState("");
@@ -30,18 +25,19 @@ export default function Initiation() {
 
   const submit = async () => {
     setBusy(true);
-    if (supabase) {
-      await supabase.from("applications").insert({
-        cult_name: cultName,
-        email,
-        zodiac,
-        element,
-        draw_reason: drawReason,
-        if_wine: ifWine,
-        wine_sin: wineSin,
-        oath,
-      });
-    }
+    const record = {
+      cult_name: cultName,
+      email,
+      date_of_birth: dob || null,
+      time_of_birth: tob || null,
+      draw_reason: drawReason,
+      if_wine: ifWine,
+      wine_sin: wineSin,
+      oath,
+    };
+    // Demo: persist so the petition reaches the Keiser's tribunal.
+    addApplication({ id: `app-${Date.now()}`, status: "pending", created_at: new Date().toISOString(), ...record });
+    if (supabase) await supabase.from("applications").insert(record);
     setBusy(false);
     setSent(true);
   };
@@ -98,21 +94,19 @@ export default function Initiation() {
         <label className="field">A sigil to reach you by</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@vessel.com" />
 
-        <label className="field">Under which star were you born</label>
-        <select value={zodiac} onChange={(e) => setZodiac(e.target.value)}>
-          {ZODIAC.map((z) => (
-            <option key={z} value={z}>{z}</option>
-          ))}
-        </select>
-
-        <label className="field">Which element governs your blood?</label>
-        <div className="pills">
-          {ELEMENTS.map((el) => (
-            <span key={el} className={`pill${element === el ? " on" : ""}`} onClick={() => setElement(el)}>
-              {el}
-            </span>
-          ))}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 140px" }}>
+            <label className="field">Date of birth</label>
+            <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+          </div>
+          <div style={{ flex: "1 1 140px" }}>
+            <label className="field">Time of birth</label>
+            <input type="time" value={tob} onChange={(e) => setTob(e.target.value)} />
+          </div>
         </div>
+        <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
+          The stars that made you — your chart is drawn from these.
+        </p>
 
         <label className="field">What draws you to the vine?</label>
         <textarea value={drawReason} onChange={(e) => setDrawReason(e.target.value)} placeholder="Speak plainly…" />

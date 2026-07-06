@@ -38,20 +38,20 @@ emblem.
 | Screen | Purpose |
 | --- | --- |
 | **Gate** | Landing / sign-in. Two buttons — members enter, outsiders petition. Login options appear only after clicking "Enter the council". |
-| **Initiation** | Cult-style application — chosen name, zodiac, governing element, ritual questions, the oath. Public; links back to the gate. |
-| **Convene** | The current moon: theme, rotating host, date, attendees. The **Keiser sets the bottle count** for the night here. On an official wine night, a **tarot card + reading is dealt to each member**, renewed every gathering. |
-| **The rite** | Blind scoring — a focused card (a designed gold **cloth medallion** for the wine number `1–20`, from `public/cloths/` (WebP, all preloaded on entry so switching wines is instant; text fallback beyond 20)), 1–10 orb verdict showing its number, random 3–4 aroma prompts per wine from a 100-aroma bank plus **add-your-own**, and notes — plus a **ballot** of every wine you can re-score in one tap, so a later pour can unseat earlier favourites. |
-| **Reveal** | Cloths lifted, scores tallied, champion + full ranking with the shamed last place. A **bottle-lineup photo gallery** (`gathering.reveal_photos[]`, served from `public/reveals/`) sits behind a deliberate click so the off-theme photos never appear automatically; members can **add more photos**, tapping any opens it full-resolution in a new tab, and missing/broken images hide themselves. |
-| **Oracle** | Forecasting the moons ahead: a **date-voting poll** (replaces the WhatsApp poll), the theme idea-pool (propose with an optional supporting line + favour; the Keiser can delete themes), and the hosting wheel. |
-| **Tribunal** | Keiser-only. Applicants + the Council's non-binding tally + the final decree. |
-| **Codex** | Historical stats and data visualisations. |
-| **Profile** | Editable identity — click the avatar circle to upload + crop a portrait, click the name to rename, edit venue instructions, and set date + time of birth. From birth, a set of **read-only, tooltipped** fields is derived (`src/lib/astrology.ts`): western element + sun sign, moon sign (Schlyter lunar longitude), ascendant/rising (approx), and Chinese Shengxiao (animal) + Wu Xing (five-element, with a per-result tooltip). Reached via the header chip; in open mode it also hosts the "view as" tier switcher, in enforced mode the sign-out. |
+| **Initiation** | Cult-style application — chosen name, email, **date + time of birth** (the chart is drawn from these; no more star-sign/element questions), ritual questions, the oath. Public; the petition persists (`src/lib/applications.ts` in demo, `applications` table live) and surfaces in the Keiser's tribunal. Links back to the gate. |
+| **Convene** | The next meeting front-and-centre plus **future gatherings** (collapsed by default) and a Keiser **"summon a new gathering"**. Each meeting (Keiser can **edit** theme, supporting line, host, date, and time via a pencil): rotating host, editable **observances** + **Keiser's decree** copy (seeded defaults), host **venue** (prefilled from the host, editable here without syncing back to their profile), **RSVP** (the last section of the meeting card; members self-RSVP, the Keiser can RSVP on anyone's behalf), and the Keiser bottle count. Each member can privately log **"your offering"** (inside the card, under Enter the rite) — the wine they plan to bring, hidden from everyone (even the Keiser); once sealed the name is hidden on screen too, with edit/erase controls. **Enter the rite** sits inside the meeting card (above the host line) and appears **only on the day of the meeting**. Moon-phase divider before "Gatherings to come". The whole card is **shareable to WhatsApp** (bold-formatted details + `RSVP here` link, for non-members; the link-preview image is the black-gold logo via OpenGraph). The Keiser can also **cancel** a gathering. |
+| **The rite** | Blind scoring — a focused card (a designed gold **cloth medallion** for the wine number `1–20`, from `public/cloths/` (WebP, all preloaded on entry so switching wines is instant; text fallback beyond 20)), 1–10 orb verdict showing its number, random 3–4 aroma prompts per wine from a 100-aroma bank plus **add-your-own**, and notes — plus a **ballot** of every wine you can re-score in one tap, so a later pour can unseat earlier favourites. Sealing **persists the ballot** (`src/lib/ballots.ts`; revising after breaks the seal) and surfaces a **"Proceed to the revelation"** button. |
+| **Reveal** | **Locked until every RSVP'd attendee has a sealed ballot** (computed from real ballots, no seed). Scores are **real tallies** — the average of every sealed ballot per cloth. The champion card sits **face-down** (the "Turn the card, crown the goddess" art, `public/reveal-back.webp`) — click to flip, then the ranked bottles rise one by one. Each member **claims their own bottle** (one per soul; claiming pulls in their pre-registered offering; **release** undoes a mistake); titles are click-to-edit. The **Keiser can disqualify** off-theme wines — they lose their rank, fall to the bottom struck-through, and feed the **disqualification ledger** (threshold {5} → expulsion hearing). When all is recorded, **"Commit it to the Annals"** (visible to all, Keiser-only action) locks the result into the codex — after which only the Keiser may amend, and his amendments flow back into the record. Bottle-photo gallery after the reckoning. |
+| **Oracle** | Forecasting the moons ahead. **Date polls** (multiple can run at once; any member creates a poll, adds dates, and votes; each date expands an **accordion of who voted**; polls can be **archived/restored**; shareable to WhatsApp). Then the theme idea-pool (propose with an optional supporting line + favour; the Keiser can **edit or delete** themes), and the hosting wheel — sections separated by moon-phase dividers. |
+| **Tribunal** | Keiser-only. Petitioners (name + birth-derived sun sign + their answers) + the Council's non-binding tally + the final decree. **Anoint as initiate** creates their account at initiate rank (limited access — Convene, Rite, Reveal only) and drops them into the profile roster, where the Keiser can later **Elevate** them to full member. Also **expulsion hearings**: members with five disqualifications are summoned — all members vote keep/cast-out, the Keiser decrees. |
+| **Codex** | a.k.a. **the Annals** — same page, not a separate one. Historical stats, the **committed reckonings** (expandable per gathering), and the **disqualification ledger** with the threshold-of-five flag. Ballot data never reaches the codex until the Keiser's "Commit it to the Annals" on the reveal — that click is the only doorway in. |
+| **Profile** | Editable identity — click the avatar circle to upload + crop a portrait, click the name to rename, edit venue instructions, and set date + time of birth. From birth, a set of **read-only, tooltipped** fields is derived (`src/lib/astrology.ts`): western element + sun sign, moon sign (Schlyter lunar longitude), ascendant/rising (approx), and Chinese Shengxiao (animal) + Wu Xing (five-element, with a per-result tooltip). The **Keiser** additionally sees **the council roster** here — every member's account in an accordion, each editable in place (cult name, email, initials, rank, venue instructions, active flag); edits persist (`src/lib/members.ts`) and flow through to where members are listed (Convene RSVP + host picker, Oracle host wheel + poll voters). Reached via the header chip; in open mode it also hosts the "view as" tier switcher, in enforced mode the sign-out. |
 
 ## Roles
 
-- **Initiate** — can petition; once anointed, sees the current moon's voting + results only (no history).
+- **Initiate** — anointed but not yet trusted. Limited access: **Convene, the Rite, and the Reveal only** (no Oracle, Codex, or Tribunal). The intended onboarding path — a prospective member fills the initiation rite, the Keiser anoints them to initiate, then elevates them to full member once they've stood a gathering.
 - **Member** — sees everything.
-- **Keiser** — super-admin. Final say on membership regardless of the vote, plus hosting and historical edits.
+- **Keiser** — super-admin. Final say on membership regardless of the vote, elevates initiates → members from the profile roster, plus hosting and historical edits.
 
 ## Notable features
 
@@ -90,8 +90,12 @@ npm install
 npm run dev
 ```
 
-Without a `.env.local`, the app runs in **demo mode** — every screen viewable on seeded
-content (`src/lib/seed.ts`), no writes. Add Supabase env (below) to switch to live mode.
+Without a `.env.local`, the app runs in **demo mode**. The only seeded content is the
+real member roster and theme pool (`src/lib/seed.ts`) — gatherings, RSVPs, offerings,
+ballots, reveals, and committed reckonings all start empty and persist per-browser in
+localStorage (`src/lib/gatherings.ts`, `ballots.ts`, `bottles.ts`, `annals.ts`), so the
+whole loop — summon → RSVP → rite → reveal → commit — is exercisable end to end.
+Add Supabase env (below) to switch to live mode.
 
 > Don't run `npm run build` while `next dev` is running — they share `.next` and the
 > build clobbers the dev server's CSS. Stop the dev server first, or use a clean checkout.
@@ -117,16 +121,16 @@ handles the Next build.
 **Done**
 - All eight screens in "The Deep", responsive, with seeded demo content.
 - Branding: favicon (`src/app/icon.png`), full logo, transparent art on true black.
-- Login wall (Google / magic link / password) + role gating — built, not yet switched on in production.
+- Login wall (Google SSO / magic link / password) + role gating — built. Initiate onboarding wired end to end: petition → Keiser anoints to initiate (limited access) → elevate to member from the profile roster.
 - Tarot per night, date-voting poll + WhatsApp share, custom aromas, orb-number verdict, per-member venue instructions.
 - GitHub repo + Supabase project provisioned, schema applied.
 
 **Pending**
-- Turn on access/auth in production (env vars in Netlify) — deferred by choice.
-- Wire pages from `src/lib/seed.ts` to live Supabase reads/writes (scores, themes, dates, applications).
+- **Turn the login wall on in production** — the code is done; enabling is three external steps: (1) fill `NEXT_PUBLIC_SUPABASE_*` in Netlify, (2) enable the Google provider + redirect URLs in Supabase Auth, (3) set `NEXT_PUBLIC_ENFORCE_LOGIN=true`. Until all three, the app stays open/navigable.
+- Wire the remaining pages to live Supabase reads/writes (scores, themes, polls, bottle registrations — the `bottles` table needs owner-only RLS until the gathering is revealed).
 - Invite screen (theme, date, host venue instructions, full details) + "Share invite to WhatsApp" for non-members.
 - Automated invite + reminders — email **two weeks prior**, reminder **two days prior**. Needs: an email provider (e.g. Resend), a scheduler (Supabase `pg_cron` + edge function), and — for automated WhatsApp — the WhatsApp Business API. Manual share links cover the interim.
-- Member voting UI on applications; anointing an applicant creates their `members` row.
+- Member voting UI on applications (the Council's tally is display-only for now; the Keiser's decree is binding).
 - Richer Codex charts.
 - Reveal-photo uploads: currently added client-side (session-only object URLs) — wire to Supabase Storage so photos persist and are shared.
 
