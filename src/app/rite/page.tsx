@@ -6,20 +6,22 @@ import { aromasFor } from "@/lib/aromas";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
-import { loadBallot, saveBallot } from "@/lib/ballots";
-import { currentGathering } from "@/lib/gatherings";
+import { fetchBallot, saveBallot } from "@/lib/ballots";
+import { fetchCurrentGathering } from "@/lib/gatherings";
 import type { Gathering } from "@/lib/types";
 
 export default function Rite() {
-  const { role } = useAuth();
+  const { mode, role, member } = useAuth();
   const isKeiser = role === "keiser";
-  const meId = role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
+  const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
 
   const [g, setG] = useState<Gathering | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    setG(currentGathering());
-    setReady(true);
+    fetchCurrentGathering().then((cg) => {
+      setG(cg);
+      setReady(true);
+    });
   }, []);
   const gid = g?.id ?? "none";
 
@@ -36,11 +38,14 @@ export default function Rite() {
   // Restore a previously sealed (or in-progress) ballot for this member.
   useEffect(() => {
     if (!meId || !g) return;
-    const b = loadBallot(g.id, meId);
-    if (b) {
-      setScores(b.scores || {});
-      setSealed(!!b.sealed);
-    }
+    let active = true;
+    fetchBallot(g.id, meId).then((b) => {
+      if (active && b) {
+        setScores(b.scores || {});
+        setSealed(!!b.sealed);
+      }
+    });
+    return () => { active = false; };
   }, [meId, g]);
 
   const score = scores[current] ?? 0;
@@ -74,14 +79,21 @@ export default function Rite() {
   const setScore = (wine: number, val: number) => {
     setScores((s) => {
       const next = { ...s, [wine]: val };
-      if (meId) saveBallot(gid, meId, { scores: next, sealed: false });
+      if (meId) saveBallot(gid, meId, { scores: next, sealed: false }).catch(() => {});
       return next;
     });
     setSealed(false);
   };
 
-  const sealReckoning = () => {
-    if (meId) saveBallot(gid, meId, { scores, sealed: true });
+  const sealReckoning = async () => {
+    if (meId) {
+      try {
+        await saveBallot(gid, meId, { scores, sealed: true });
+      } catch (e) {
+        alert(`Could not seal your reckoning: ${(e as Error).message}`);
+        return;
+      }
+    }
     setSealed(true);
   };
 

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { seedThemes, seedMembers, seedPolls } from "@/lib/seed";
+import { seedMembers } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
+import { fetchThemes, proposeTheme, favourTheme, editTheme, removeTheme, PoolTheme } from "@/lib/themes";
+import { fetchPolls, createPoll, updatePoll } from "@/lib/polls";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { shareToWhatsApp } from "@/lib/share";
@@ -115,53 +117,71 @@ function PollCard({ poll, meId, members, onUpdate, onArchive }: {
 }
 
 export default function Oracle() {
-  const { role } = useAuth();
+  const { mode, role, member } = useAuth();
   const isKeiser = role === "keiser";
-  const meId = role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
+  const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
 
-  const [polls, setPolls] = useState<Poll[]>(seedPolls);
-  const [members, setMembers] = useState(seedMembers);
-  useEffect(() => setMembers(loadMembers()), []);
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [members, setMembers] = useState<Member[]>(seedMembers);
+  const [themes, setThemes] = useState<PoolTheme[]>([]);
   const [showArchived, setShowArchived] = useState(false);
-
-  const [themes, setThemes] = useState(
-    seedThemes.filter((t) => t.status === "pool").sort((a, b) => b.favours - a.favours)
-  );
-  const [favoured, setFavoured] = useState<Record<string, boolean>>({});
   const [proposal, setProposal] = useState("");
   const [proposalDesc, setProposalDesc] = useState("");
+  const [editingTheme, setEditingTheme] = useState<string | null>(null);
+
+  const reloadThemes = () => fetchThemes(meId).then(setThemes);
+
+  useEffect(() => {
+    reloadThemes();
+    fetchPolls().then(setPolls);
+    if (mode === "live" && supabase) {
+      supabase.from("members").select("*").order("role").then(({ data }) => { if (data) setMembers(data as Member[]); });
+    } else {
+      setMembers(loadMembers());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, meId]);
 
   const open = polls.filter((p) => p.status === "open");
   const archived = polls.filter((p) => p.status === "archived");
 
-  const createPoll = () =>
-    setPolls((ps) => [{ id: `poll-${Date.now()}`, title: "Choose the next council meeting", status: "open" as const, created_at: new Date().toISOString(), options: [] }, ...ps]);
-  const updatePoll = (id: string, patch: Partial<Poll>) =>
+  const newPoll = async () => {
+    try {
+      const p = await createPoll("Choose the next council meeting");
+      setPolls((ps) => [p, ...ps]);
+    } catch (e) {
+      alert(`Could not open a poll: ${(e as Error).message}`);
+    }
+  };
+  const changePoll = (id: string, patch: Partial<Poll>) => {
     setPolls((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    updatePoll(id, patch).catch((e) => alert(`Could not save the poll: ${e.message}`));
+  };
 
   const favour = (id: string) => {
-    const already = favoured[id];
-    setFavoured((f) => ({ ...f, [id]: !already }));
-    setThemes((ts) => ts.map((t) => (t.id === id ? { ...t, favours: t.favours + (already ? -1 : 1) } : t)).sort((a, b) => b.favours - a.favours));
+    const t = themes.find((x) => x.id === id);
+    const on = !t?.favouredByMe;
+    setThemes((ts) => ts.map((x) => (x.id === id ? { ...x, favouredByMe: on, favours: Math.max(0, x.favours + (on ? 1 : -1)) } : x)).sort((a, b) => b.favours - a.favours));
+    favourTheme(id, meId, on).catch(() => reloadThemes());
   };
-  const propose = () => {
+  const propose = async () => {
     const title = proposal.trim();
     if (!title) return;
-    const description = proposalDesc.trim() || null;
-    setThemes((ts) => [...ts, { id: `local-${Date.now()}`, title, description, status: "pool" as const, favours: 1, created_at: new Date().toISOString() }].sort((a, b) => b.favours - a.favours));
     setProposal(""); setProposalDesc("");
-    if (supabase) supabase.from("themes").insert({ title, description, status: "pool" });
+    try {
+      await proposeTheme(title, proposalDesc.trim() || null);
+      reloadThemes();
+    } catch (e) {
+      alert(`Could not add the theme: ${(e as Error).message}`);
+    }
   };
-  const removeTheme = (id: string) => {
+  const remove = (id: string) => {
     setThemes((ts) => ts.filter((t) => t.id !== id));
-    if (supabase) supabase.from("themes").delete().eq("id", id);
+    removeTheme(id).catch(() => reloadThemes());
   };
-
-  // Keiser-only: amend a theme's title or supporting line in place.
-  const [editingTheme, setEditingTheme] = useState<string | null>(null);
-  const editTheme = (id: string, patch: { title?: string; description?: string | null }) => {
+  const edit = (id: string, patch: { title?: string; description?: string | null }) => {
     setThemes((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    if (supabase) supabase.from("themes").update(patch).eq("id", id);
+    editTheme(id, patch).catch(() => reloadThemes());
   };
 
   const wheel = [...members].filter((m) => m.active).sort((a, b) => (a.last_hosted || "").localeCompare(b.last_hosted || ""));
@@ -175,7 +195,7 @@ export default function Oracle() {
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <div className="eyebrow" style={{ flex: 1 }}>Date polls · mark every night you can make</div>
-        <button className="btn" style={{ width: "auto", padding: "8px 14px" }} onClick={createPoll}>
+        <button className="btn" style={{ width: "auto", padding: "8px 14px" }} onClick={newPoll}>
           <i className="ti ti-plus" style={{ marginRight: 5 }} /> New poll
         </button>
       </div>
@@ -186,7 +206,7 @@ export default function Oracle() {
         </div>
       )}
       {open.map((p) => (
-        <PollCard key={p.id} poll={p} meId={meId} members={members} onUpdate={(patch) => updatePoll(p.id, patch)} onArchive={() => updatePoll(p.id, { status: "archived" })} />
+        <PollCard key={p.id} poll={p} meId={meId} members={members} onUpdate={(patch) => changePoll(p.id, patch)} onArchive={() => changePoll(p.id, { status: "archived" })} />
       ))}
 
       {archived.length > 0 && (
@@ -198,7 +218,7 @@ export default function Oracle() {
             <div key={p.id} className="rk" style={{ opacity: 0.6 }}>
               <i className="ti ti-archive" style={{ color: "var(--dim)" }} />
               <div style={{ flex: 1 }}>{p.title} <span className="whisper" style={{ fontSize: 13 }}>· {p.options.length} dates</span></div>
-              <button onClick={() => updatePoll(p.id, { status: "open" })} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>restore</button>
+              <button onClick={() => changePoll(p.id, { status: "open" })} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>restore</button>
             </div>
           ))}
         </div>
@@ -213,8 +233,8 @@ export default function Oracle() {
             <i className={`ti ${THEME_ICONS[i % THEME_ICONS.length]}`} style={{ color: "var(--gold2)" }} aria-hidden="true" />
             {editingTheme === t.id ? (
               <div style={{ flex: 1 }}>
-                <input value={t.title} onChange={(e) => editTheme(t.id, { title: e.target.value })} placeholder="The theme…" />
-                <input value={t.description || ""} onChange={(e) => editTheme(t.id, { description: e.target.value || null })} placeholder="A supporting line (optional)…" style={{ marginTop: 6 }} />
+                <input value={t.title} onChange={(e) => edit(t.id, { title: e.target.value })} placeholder="The theme…" />
+                <input value={t.description || ""} onChange={(e) => edit(t.id, { description: e.target.value || null })} placeholder="A supporting line (optional)…" style={{ marginTop: 6 }} />
                 <button className="btn" style={{ width: "auto", padding: "6px 14px", marginTop: 6 }} onClick={() => setEditingTheme(null)}>Done</button>
               </div>
             ) : (
@@ -224,7 +244,7 @@ export default function Oracle() {
               </div>
             )}
             <button onClick={() => favour(t.id)} aria-label="Cast favour"
-              style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: favoured[t.id] ? "var(--gold2)" : "var(--faint)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, display: "flex", alignItems: "center", gap: 5 }}>
+              style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: t.favouredByMe ? "var(--gold2)" : "var(--faint)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, display: "flex", alignItems: "center", gap: 5 }}>
               <i className="ti ti-flame" />{t.favours} favours
             </button>
             {isKeiser && editingTheme !== t.id && (
@@ -234,7 +254,7 @@ export default function Oracle() {
               </button>
             )}
             {isKeiser && (
-              <button onClick={() => removeTheme(t.id)} aria-label="Cast this theme from the pool" title="Cast out"
+              <button onClick={() => remove(t.id)} aria-label="Cast this theme from the pool" title="Cast out"
                 style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", display: "flex", alignItems: "center", paddingLeft: 10 }}>
                 <i className="ti ti-trash" style={{ fontSize: 15 }} />
               </button>

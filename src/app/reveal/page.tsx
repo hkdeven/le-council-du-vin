@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { seedMembers } from "@/lib/seed";
 import { toRoman } from "@/lib/util";
-import { getBottleTitle } from "@/lib/bottles";
-import { tallyScores, loadBallot } from "@/lib/ballots";
-import { getAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
-import { currentGathering } from "@/lib/gatherings";
+import { fetchAllOfferings } from "@/lib/bottles";
+import { fetchAllBallots, tallyFromBallots, sealedAmong, MemberBallot } from "@/lib/ballots";
+import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
+import { fetchCurrentGathering } from "@/lib/gatherings";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
 import BottleReveal from "@/components/BottleReveal";
@@ -75,52 +75,61 @@ function OwnerSlot({ owner, mine, canClaim, canAct, onClaim, onRelease, style }:
 }
 
 export default function Reveal() {
-  const { role } = useAuth();
+  const { mode, role, member } = useAuth();
   const isKeiser = role === "keiser";
-  const meId = role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
-  const myName = seedMembers.find((m) => m.id === meId)?.cult_name || "";
+  const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
+  const myName = mode === "live" ? member?.cult_name || "" : seedMembers.find((m) => m.id === meId)?.cult_name || "";
 
   const [g, setG] = useState<Gathering | null>(null);
   const [ready, setReady] = useState(false);
-  useEffect(() => {
-    setG(currentGathering());
-    setReady(true);
-  }, []);
-  const gid = g?.id ?? "none";
-
-  const attendees = g?.attendees || [];
-  // A seal is real: an attendee whose ballot from the rite is sealed.
-  const sealedCount = g ? attendees.filter((id) => loadBallot(g.id, id)?.sealed).length : 0;
-  const locked = attendees.length === 0 || sealedCount < attendees.length;
-
-  const [wineCount] = useWineCount(gid, g?.wine_count ?? 11);
+  const [ballots, setBallots] = useState<MemberBallot[]>([]);
+  const [offerings, setOfferings] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<RevealRow[]>([]);
   const [committed, setCommitted] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [shown, setShown] = useState(0);
 
-  // Build the board: from the Annals when already committed (locked record),
-  // otherwise fresh cloths scored by the real tally of sealed ballots.
+  useEffect(() => {
+    fetchCurrentGathering().then((cg) => {
+      setG(cg);
+      setReady(true);
+    });
+  }, []);
+  const gid = g?.id ?? "none";
+  const attendees = g?.attendees || [];
+
+  const [wineCount] = useWineCount(gid, g?.wine_count ?? 11);
+
+  // Load every ballot + offering, and any committed annal, for this gathering.
   useEffect(() => {
     if (!g) return;
-    const annal = getAnnal(g.id);
-    if (annal) {
-      setRows(annal.rows.map((r) => ({ cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq })));
-      setCommitted(true);
-      return;
-    }
-    const tally = tallyScores(g.id, seedMembers.map((m) => m.id), wineCount);
-    setRows(
-      Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
-        cloth,
-        title: "",
-        owner: "",
-        score: tally[cloth]?.avg || 0,
-        votes: tally[cloth]?.votes || 0,
-        dq: false,
-      }))
-    );
-  }, [wineCount, g]);
+    let active = true;
+    (async () => {
+      const [bs, offs, annal] = await Promise.all([
+        fetchAllBallots(g.id),
+        fetchAllOfferings(g.id),
+        fetchAnnal(g.id),
+      ]);
+      if (!active) return;
+      setBallots(bs);
+      setOfferings(offs);
+      if (annal) {
+        setRows(annal.rows.map((r) => ({ cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq })));
+        setCommitted(true);
+      } else {
+        const tally = tallyFromBallots(bs, wineCount);
+        setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
+          cloth, title: "", owner: "",
+          score: tally[cloth]?.avg || 0, votes: tally[cloth]?.votes || 0, dq: false,
+        })));
+      }
+    })();
+    return () => { active = false; };
+  }, [g, wineCount]);
+
+  // The reveal opens only when every attendee has sealed — or once committed.
+  const sealedCount = sealedAmong(ballots, attendees);
+  const locked = !committed && (attendees.length === 0 || sealedCount < attendees.length);
 
   // Ranking is computed, never stored: qualified bottles by score, the
   // disqualified banished to the bottom without a rank.
@@ -139,12 +148,12 @@ export default function Reveal() {
   // Keiser amendments after committing flow straight back into the Annals.
   const persist = (next: RevealRow[]) => {
     setRows(next);
-    if (committed && isKeiser) writeAnnal(next);
+    if (committed && isKeiser) writeAnnal(next).catch((e) => alert(`Could not amend the Annals: ${e.message}`));
   };
 
-  const writeAnnal = (data: RevealRow[]) => {
+  const writeAnnal = async (data: RevealRow[]) => {
     const q = [...data].filter((r) => !r.dq).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
-    commitAnnal({
+    await commitAnnal({
       gatheringId: g!.id,
       number: g!.number,
       theme: g!.theme_title,
@@ -157,10 +166,14 @@ export default function Reveal() {
     });
   };
 
-  const commit = () => {
+  const commit = async () => {
     if (!isKeiser) return;
-    writeAnnal(rows);
-    setCommitted(true);
+    try {
+      await writeAnnal(rows);
+      setCommitted(true);
+    } catch (e) {
+      alert(`Could not commit to the Annals: ${(e as Error).message}`);
+    }
   };
 
   const patch = (cloth: number, p: Partial<RevealRow>) =>
@@ -169,12 +182,12 @@ export default function Reveal() {
   const myClaim = rows.find((r) => r.owner === myName) ?? null;
   const claim = (cloth: number) => {
     if (!meId || myClaim) return;
-    const mine = getBottleTitle(gid, meId);
-    persist(rows.map((r) => (r.cloth === cloth ? { ...r, owner: myName, title: r.title || mine || "" } : r)));
+    const mine = offerings[meId] || "";
+    persist(rows.map((r) => (r.cloth === cloth ? { ...r, owner: myName, title: r.title || mine } : r)));
   };
   const release = (cloth: number) => {
     if (!meId) return;
-    const mine = getBottleTitle(gid, meId);
+    const mine = offerings[meId] || "";
     persist(rows.map((r) => (r.cloth === cloth && r.owner === myName ? { ...r, owner: "", title: r.title === mine ? "" : r.title } : r)));
   };
 

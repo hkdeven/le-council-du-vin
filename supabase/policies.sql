@@ -57,5 +57,77 @@ insert into members (email, cult_name, short_name, role, active)
 values ('hkdeven@gmail.com', 'The Keiser', 'KE', 'keiser', true)
 on conflict (email) do update set role = 'keiser', active = true;
 
--- Later passes will add: authenticated reads on gatherings/wines/scores,
--- score upserts, theme proposals + favours, and application votes.
+-- Gatherings: every signed-in member reads the meetings; the Keiser summons,
+-- amends and cancels them; any signed-in member may update (needed for RSVP,
+-- which writes the attendees array).
+alter table gatherings enable row level security;
+drop policy if exists "gatherings read" on gatherings;
+create policy "gatherings read" on gatherings
+  for select using (auth.uid() is not null);
+drop policy if exists "gatherings keiser insert" on gatherings;
+create policy "gatherings keiser insert" on gatherings
+  for insert with check (is_keiser());
+drop policy if exists "gatherings member update" on gatherings;
+create policy "gatherings member update" on gatherings
+  for update using (auth.uid() is not null);
+drop policy if exists "gatherings keiser delete" on gatherings;
+create policy "gatherings keiser delete" on gatherings
+  for delete using (is_keiser());
+
+-- Themes + favours: members read + propose + favour; the Keiser amends/removes.
+alter table themes enable row level security;
+drop policy if exists "themes read" on themes;
+create policy "themes read" on themes for select using (auth.uid() is not null);
+drop policy if exists "themes member insert" on themes;
+create policy "themes member insert" on themes for insert with check (auth.uid() is not null);
+drop policy if exists "themes keiser update" on themes;
+create policy "themes keiser update" on themes for update using (is_keiser());
+drop policy if exists "themes keiser delete" on themes;
+create policy "themes keiser delete" on themes for delete using (is_keiser());
+alter table theme_favours enable row level security;
+drop policy if exists "favours read" on theme_favours;
+create policy "favours read" on theme_favours for select using (auth.uid() is not null);
+drop policy if exists "favours insert" on theme_favours;
+create policy "favours insert" on theme_favours for insert with check (auth.uid() is not null);
+drop policy if exists "favours delete" on theme_favours;
+create policy "favours delete" on theme_favours for delete using (auth.uid() is not null);
+
+-- Polls: any signed-in member may read, open, vote (update), archive.
+alter table polls enable row level security;
+drop policy if exists "polls read" on polls;
+create policy "polls read" on polls for select using (auth.uid() is not null);
+drop policy if exists "polls insert" on polls;
+create policy "polls insert" on polls for insert with check (auth.uid() is not null);
+drop policy if exists "polls update" on polls;
+create policy "polls update" on polls for update using (auth.uid() is not null);
+
+-- Ballots: any signed-in member may read (the reveal tallies everyone) and
+-- write their own scores.
+alter table ballots enable row level security;
+drop policy if exists "ballots read" on ballots;
+create policy "ballots read" on ballots for select using (auth.uid() is not null);
+drop policy if exists "ballots insert" on ballots;
+create policy "ballots insert" on ballots for insert with check (auth.uid() is not null);
+drop policy if exists "ballots update" on ballots;
+create policy "ballots update" on ballots for update using (auth.uid() is not null);
+
+-- Offerings: any signed-in member reads (the reveal shows claimed bottles) and
+-- writes their own.
+alter table offerings enable row level security;
+drop policy if exists "offerings read" on offerings;
+create policy "offerings read" on offerings for select using (auth.uid() is not null);
+drop policy if exists "offerings insert" on offerings;
+create policy "offerings insert" on offerings for insert with check (auth.uid() is not null);
+drop policy if exists "offerings update" on offerings;
+create policy "offerings update" on offerings for update using (auth.uid() is not null);
+drop policy if exists "offerings delete" on offerings;
+create policy "offerings delete" on offerings for delete using (auth.uid() is not null);
+
+-- Annals: everyone reads the codex; only the Keiser commits/amends.
+alter table annals enable row level security;
+drop policy if exists "annals read" on annals;
+create policy "annals read" on annals for select using (auth.uid() is not null);
+drop policy if exists "annals keiser insert" on annals;
+create policy "annals keiser insert" on annals for insert with check (is_keiser());
+drop policy if exists "annals keiser update" on annals;
+create policy "annals keiser update" on annals for update using (is_keiser());

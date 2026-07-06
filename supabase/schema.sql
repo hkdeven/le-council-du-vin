@@ -47,8 +47,30 @@ create table if not exists gatherings (
   host_id uuid references members(id) on delete set null,
   gather_date date,
   status text not null default 'upcoming' check (status in ('upcoming','scoring','revealed')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Denormalised fields the app reads/writes directly (column names match the
+  -- Gathering type). For older databases, the alters below add them in place.
+  theme_title text,
+  theme_description text,
+  host_name text,
+  gather_time text,
+  wine_count int not null default 11,
+  rules_text text,
+  threat_text text,
+  venue_instructions text,
+  reveal_photos text[],
+  attendees text[]
 );
+alter table gatherings add column if not exists theme_title text;
+alter table gatherings add column if not exists theme_description text;
+alter table gatherings add column if not exists host_name text;
+alter table gatherings add column if not exists gather_time text;
+alter table gatherings add column if not exists wine_count int not null default 11;
+alter table gatherings add column if not exists rules_text text;
+alter table gatherings add column if not exists threat_text text;
+alter table gatherings add column if not exists venue_instructions text;
+alter table gatherings add column if not exists reveal_photos text[];
+alter table gatherings add column if not exists attendees text[];
 
 -- Wines (numbered black cloths) -------------------------------------
 create table if not exists wines (
@@ -112,6 +134,50 @@ create table if not exists application_votes (
   member_id uuid references members(id) on delete cascade,
   vote text not null check (vote in ('anoint','cast_out','abstain')),
   unique (application_id, member_id)
+);
+
+-- Theme favours (one row per member per theme) ---------------------
+create table if not exists theme_favours (
+  theme_id uuid references themes(id) on delete cascade,
+  member_id uuid references members(id) on delete cascade,
+  primary key (theme_id, member_id)
+);
+
+-- Date polls (options + voters denormalised as jsonb) ---------------
+create table if not exists polls (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  status text not null default 'open',
+  options jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- Ballots: one per member per gathering, cloth-number -> 1..10 score -
+create table if not exists ballots (
+  gathering_id uuid references gatherings(id) on delete cascade,
+  member_id uuid references members(id) on delete cascade,
+  scores jsonb not null default '{}'::jsonb,
+  sealed boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (gathering_id, member_id)
+);
+
+-- Offerings: each member's private bottle registration --------------
+create table if not exists offerings (
+  gathering_id uuid references gatherings(id) on delete cascade,
+  member_id uuid references members(id) on delete cascade,
+  title text,
+  primary key (gathering_id, member_id)
+);
+
+-- Annals: committed, locked gathering results (the codex) -----------
+create table if not exists annals (
+  gathering_id uuid primary key references gatherings(id) on delete cascade,
+  number int,
+  theme text,
+  date date,
+  rows jsonb not null default '[]'::jsonb,
+  committed_at timestamptz not null default now()
 );
 
 -- Ranking view: average score per wine, ranked within a gathering ----

@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
-import { loadGatherings, saveGatherings } from "@/lib/gatherings";
+import { fetchGatherings, createGathering, updateGathering, deleteGathering } from "@/lib/gatherings";
+import { supabase } from "@/lib/supabase";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import { useWineCount } from "@/lib/useWineCount";
-import { getBottleTitle, setBottleTitle } from "@/lib/bottles";
+import { fetchOffering, saveOffering } from "@/lib/bottles";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
 import type { Gathering, Member } from "@/lib/types";
@@ -28,20 +29,24 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    const saved = getBottleTitle(gatheringId, meId);
-    setTitle(saved || "");
-    setSealed(!!saved);
-    setEditing(false);
+    let active = true;
+    fetchOffering(gatheringId, meId).then((saved) => {
+      if (!active) return;
+      setTitle(saved || "");
+      setSealed(!!saved);
+      setEditing(false);
+    });
+    return () => { active = false; };
   }, [gatheringId, meId]);
 
   const seal = () => {
     if (!title.trim()) return;
-    setBottleTitle(gatheringId, meId, title);
+    saveOffering(gatheringId, meId, title).catch((e) => alert(`Could not seal your offering: ${e.message}`));
     setSealed(true);
     setEditing(false);
   };
   const erase = () => {
-    setBottleTitle(gatheringId, meId, "");
+    saveOffering(gatheringId, meId, "").catch(() => {});
     setTitle("");
     setSealed(false);
     setEditing(false);
@@ -365,53 +370,67 @@ function FutureCard({ m, isKeiser, meId, members, onUpdate, onDelete }: { m: Gat
 }
 
 export default function Convene() {
-  const { role } = useAuth();
+  const { mode, role, member } = useAuth();
   const isKeiser = role === "keiser";
-  const meId = role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
+  // Live: act as the real signed-in member. Demo: the role-mapped stand-in.
+  const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
 
   const [meetings, setMeetings] = useState<Gathering[]>([]);
-  const [members, setMembers] = useState(seedMembers);
+  const [members, setMembers] = useState<Member[]>(seedMembers);
+  const [newHost, setNewHost] = useState("");
+  const [hostOpen, setHostOpen] = useState(false);
+
   useEffect(() => {
-    setMeetings(loadGatherings());
-    setMembers(loadMembers());
-  }, []);
+    fetchGatherings().then(setMeetings);
+    if (mode === "live" && supabase) {
+      supabase.from("members").select("*").order("role").then(({ data, error }) => {
+        if (error) console.error("Could not load members:", error.message);
+        else if (data) { setMembers(data as Member[]); setNewHost((h) => h || (data[0] as Member)?.id || ""); }
+      });
+    } else {
+      const list = loadMembers();
+      setMembers(list);
+      setNewHost((h) => h || list[0]?.id || "");
+    }
+  }, [mode]);
+
   const current = meetings[0] ?? null;
   const future = current ? meetings.slice(1) : [];
   const [count, setCount] = useWineCount(current?.id ?? "none", current?.wine_count ?? 11);
 
   const [newTheme, setNewTheme] = useState("");
   const [newDate, setNewDate] = useState("");
-  const [newHost, setNewHost] = useState(seedMembers[0].id);
-  const [hostOpen, setHostOpen] = useState(false);
 
-  // Every change is persisted so the rite and reveal see the same meetings.
-  const apply = (next: Gathering[]) => {
-    const sorted = [...next].sort((a, b) => a.gather_date.localeCompare(b.gather_date));
-    setMeetings(sorted);
-    saveGatherings(sorted);
+  const updateMeeting = (id: string, patch: Partial<Gathering>) => {
+    setMeetings((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    updateGathering(id, patch).catch((e) => alert(`Could not save the meeting: ${e.message}`));
   };
 
-  const updateMeeting = (id: string, patch: Partial<Gathering>) =>
-    apply(meetings.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  const deleteMeeting = (id: string) => {
+    setMeetings((ms) => ms.filter((m) => m.id !== id));
+    deleteGathering(id).catch((e) => alert(`Could not cancel the meeting: ${e.message}`));
+  };
 
-  const deleteMeeting = (id: string) => apply(meetings.filter((m) => m.id !== id));
-
-  const addMeeting = () => {
+  const addMeeting = async () => {
     const title = newTheme.trim();
     if (!title || !newDate) return;
     const host = members.find((m) => m.id === newHost);
     const nextNum = Math.max(0, ...meetings.map((m) => m.number)) + 1;
-    const g: Gathering = {
+    const draft: Gathering = {
       id: `g-${Date.now()}`, number: nextNum, moon_label: "A moon to come",
       theme_title: title, theme_description: null,
-      host_id: newHost, host_name: host?.cult_name || "", gather_date: newDate, gather_time: "19:00",
+      host_id: host?.id || null, host_name: host?.cult_name || "", gather_date: newDate, gather_time: "19:00",
       status: "upcoming", wine_count: 11,
       rules_text: DEFAULT_RULES, threat_text: DEFAULT_THREAT,
       venue_instructions: host?.venue_instructions || null, attendees: [],
     };
-    apply([...meetings, g]);
-    setNewTheme(""); setNewDate("");
-    // Once live: insert into gatherings.
+    try {
+      const saved = await createGathering(draft);
+      setMeetings((ms) => [...ms, saved].sort((a, b) => a.gather_date.localeCompare(b.gather_date)));
+      setNewTheme(""); setNewDate("");
+    } catch (e) {
+      alert(`Could not summon the gathering: ${(e as Error).message}`);
+    }
   };
 
   return (

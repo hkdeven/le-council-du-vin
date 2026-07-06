@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toRoman } from "@/lib/util";
-import { loadAnnals, loadDqCounts, DQ_THRESHOLD, AnnalEntry } from "@/lib/annals";
+import { fetchAnnals, fetchDqCounts, DQ_THRESHOLD, AnnalEntry } from "@/lib/annals";
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -44,8 +44,8 @@ export default function Codex() {
   const [dq, setDq] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    setAnnals(loadAnnals());
-    setDq(loadDqCounts());
+    fetchAnnals().then(setAnnals);
+    fetchDqCounts().then(setDq);
   }, []);
 
   const dqList = Object.entries(dq).sort((a, b) => b[1] - a[1]);

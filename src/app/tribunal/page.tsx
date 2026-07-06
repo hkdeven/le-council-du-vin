@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { loadDqCounts, DQ_THRESHOLD } from "@/lib/annals";
+import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { loadApplications, updateApplication } from "@/lib/applications";
 import { addMember } from "@/lib/members";
 import { sunSign } from "@/lib/astrology";
@@ -78,7 +78,7 @@ export default function Tribunal() {
   const [dq, setDq] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    setDq(loadDqCounts());
+    fetchDqCounts().then(setDq);
     // Live: petitions live in Supabase (submitted from anyone's browser).
     // Demo: they live in this browser's localStorage.
     if (mode === "live" && supabase) {
