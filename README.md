@@ -45,7 +45,7 @@ emblem.
 | **Oracle** | Forecasting the moons ahead: a **date-voting poll** (replaces the WhatsApp poll), the theme idea-pool (propose with an optional supporting line + favour; the Keiser can delete themes), and the hosting wheel. |
 | **Tribunal** | Keiser-only. Applicants + the Council's non-binding tally + the final decree. |
 | **Codex** | Historical stats and data visualisations. |
-| **Profile** | Your identity (name, role, star, element, venue instructions). Reached via the header chip; in open mode it also hosts the "view as" tier switcher, in enforced mode the sign-out. |
+| **Profile** | Editable identity — click the avatar circle to upload + crop a portrait, click the name to rename, edit venue instructions, and set date + time of birth. From birth, a set of **read-only, tooltipped** fields is derived (`src/lib/astrology.ts`): western element + sun sign, moon sign (Schlyter lunar longitude), ascendant/rising (approx), and Chinese Shengxiao (animal) + Wu Xing (five-element, with a per-result tooltip). Reached via the header chip; in open mode it also hosts the "view as" tier switcher, in enforced mode the sign-out. |
 
 ## Roles
 
@@ -127,7 +127,7 @@ handles the Next build.
 - Invite screen (theme, date, host venue instructions, full details) + "Share invite to WhatsApp" for non-members.
 - Automated invite + reminders — email **two weeks prior**, reminder **two days prior**. Needs: an email provider (e.g. Resend), a scheduler (Supabase `pg_cron` + edge function), and — for automated WhatsApp — the WhatsApp Business API. Manual share links cover the interim.
 - Member voting UI on applications; anointing an applicant creates their `members` row.
-- Host-facing editor for venue instructions; member profiles; richer Codex charts.
+- Richer Codex charts.
 - Reveal-photo uploads: currently added client-side (session-only object URLs) — wire to Supabase Storage so photos persist and are shared.
 
 _The `MEMORY`/notes for this project live in the assistant's memory, not the repo._

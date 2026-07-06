@@ -13,7 +13,7 @@ export default function Codex() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 16 }}>
         <Metric value="47" label="gatherings" />
         <Metric value="517" label="bottles judged" />
-        <Metric value="Mara" label="reigning champion" />
+        <Metric value="Larissa" label="reigning champion" />
       </div>
 
       <div className="card">

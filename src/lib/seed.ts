@@ -11,19 +11,23 @@ import type {
 // mode (before Supabase is wired). Once live, the data layer reads real rows.
 
 export const seedMembers: Member[] = [
-  { id: "m-mara", email: "mara@nightvine.com", cult_name: "Sister Mara", short_name: "MR", role: "member", zodiac: "Pisces", element: "Water", last_hosted: "2026-03-28", venue_instructions: "Buzzer 4B, second courtyard. Park on Vine Lane, not the drive. Dog is friendly but loud.", active: true },
-  { id: "m-silas", email: "silas@nightvine.com", cult_name: "Brother Silas", short_name: "SV", role: "member", zodiac: "Capricorn", element: "Earth", last_hosted: "2026-07-25", venue_instructions: "Gate code 1893. Cellar entrance around the back — follow the lanterns.", active: true },
-  { id: "m-thorne", email: "thorne@nightvine.com", cult_name: "Elder Thorne", short_name: "EL", role: "member", zodiac: "Leo", element: "Fire", last_hosted: "2026-03-01", venue_instructions: "Third floor, no lift. Bring a coat — the terrace gets cold after dusk.", active: true },
-  { id: "m-keiser", email: "hkdeven@gmail.com", cult_name: "The Keiser", short_name: "KE", role: "keiser", zodiac: "Scorpio", element: "Fire", last_hosted: "2026-05-30", venue_instructions: "Ring twice. Street parking after 18:00 is free.", active: true },
+  { id: "m-larissa", email: "larissa@nightvine.com", cult_name: "Sister Larissa", short_name: "LA", role: "member", last_hosted: "2026-01-31", active: true },
+  { id: "m-dominik", email: "dominik@nightvine.com", cult_name: "Brother Dominik", short_name: "DK", role: "member", last_hosted: "2026-02-28", active: true },
+  { id: "m-james", email: "james@nightvine.com", cult_name: "Brother James", short_name: "JM", role: "member", last_hosted: "2026-03-28", active: true },
+  { id: "m-martin", email: "martin@nightvine.com", cult_name: "Brother Martin", short_name: "MN", role: "member", last_hosted: "2026-04-25", active: true },
+  { id: "m-wernardt", email: "wernardt@nightvine.com", cult_name: "Brother Wernardt", short_name: "WT", role: "member", last_hosted: "2026-06-27", active: true },
+  { id: "m-scott", email: "scott@nightvine.com", cult_name: "Brother Scott", short_name: "SC", role: "member", last_hosted: "2026-07-04", active: true },
+  { id: "m-matthew", email: "matthew@nightvine.com", cult_name: "Brother Matthew", short_name: "MW", role: "member", last_hosted: "2026-07-25", venue_instructions: "Estate gate on Rosmead — code 4471. Follow the lanterns to the cellar.", active: true },
+  { id: "m-keiser", email: "hkdeven@gmail.com", cult_name: "The Keiser", short_name: "KE", role: "keiser", zodiac: "Scorpio", element: "Water", date_of_birth: "1988-11-05", time_of_birth: "03:30", last_hosted: "2026-05-30", venue_instructions: "Ring twice. Street parking after 18:00 is free.", active: true },
 ];
 
 // Candidate dates for the next gathering — members vote for every date they can
 // make; the winner is the date the most souls can attend (replaces the WhatsApp poll).
 export const seedDateOptions: DateOption[] = [
-  { id: "d-1", date: "2026-08-21", voters: ["m-mara", "m-silas", "m-thorne"] },
-  { id: "d-2", date: "2026-08-22", voters: ["m-mara", "m-silas", "m-thorne", "m-keiser"] },
-  { id: "d-3", date: "2026-08-28", voters: ["m-silas", "m-keiser"] },
-  { id: "d-4", date: "2026-08-29", voters: ["m-mara", "m-keiser"] },
+  { id: "d-1", date: "2026-08-21", voters: ["m-larissa", "m-dominik", "m-james", "m-scott"] },
+  { id: "d-2", date: "2026-08-22", voters: ["m-larissa", "m-dominik", "m-james", "m-martin", "m-keiser", "m-matthew"] },
+  { id: "d-3", date: "2026-08-28", voters: ["m-dominik", "m-keiser", "m-wernardt"] },
+  { id: "d-4", date: "2026-08-29", voters: ["m-larissa", "m-keiser", "m-scott"] },
 ];
 
 export const seedThemes: Theme[] = [
@@ -52,8 +56,8 @@ export const seedGathering: Gathering = {
   moon_label: "The waning moon",
   theme_title: "Orange wines of the old world",
   theme_description: "Skin-contact, amber, and untamed. Bring what unsettles.",
-  host_id: "m-silas",
-  host_name: "Brother Silas",
+  host_id: "m-matthew",
+  host_name: "Brother Matthew",
   gather_date: "2026-07-25",
   status: "scoring",
   wine_count: 11,
@@ -61,10 +65,10 @@ export const seedGathering: Gathering = {
 };
 
 export const seedWines: Wine[] = [
-  { id: "w-7", gathering_id: "g-47", cloth_number: 7, producer: "Radikon Jakot", vintage: "2019", region: "Friuli", brought_by_name: "Sister Mara", revealed: true, avg_score: 9.1, rank: 1 },
-  { id: "w-3", gathering_id: "g-47", cloth_number: 3, producer: "Movia Rebula", vintage: "2018", region: "Brda", brought_by_name: "Brother Silas", revealed: true, avg_score: 8.8, rank: 2 },
-  { id: "w-9", gathering_id: "g-47", cloth_number: 9, producer: "Gravner Ribolla", vintage: "2015", region: "Friuli", brought_by_name: "Cassian Vale", revealed: true, avg_score: 8.4, rank: 3 },
-  { id: "w-1", gathering_id: "g-47", cloth_number: 1, producer: "COS Pithos", vintage: "2020", region: "Sicily", brought_by_name: "Elder Thorne", revealed: true, avg_score: 7.8, rank: 4 },
+  { id: "w-7", gathering_id: "g-47", cloth_number: 7, producer: "Radikon Jakot", vintage: "2019", region: "Friuli", brought_by_name: "Sister Larissa", revealed: true, avg_score: 9.1, rank: 1 },
+  { id: "w-3", gathering_id: "g-47", cloth_number: 3, producer: "Movia Rebula", vintage: "2018", region: "Brda", brought_by_name: "Brother Dominik", revealed: true, avg_score: 8.8, rank: 2 },
+  { id: "w-9", gathering_id: "g-47", cloth_number: 9, producer: "Gravner Ribolla", vintage: "2015", region: "Friuli", brought_by_name: "Brother James", revealed: true, avg_score: 8.4, rank: 3 },
+  { id: "w-1", gathering_id: "g-47", cloth_number: 1, producer: "COS Pithos", vintage: "2020", region: "Sicily", brought_by_name: "Brother Wernardt", revealed: true, avg_score: 7.8, rank: 4 },
   { id: "w-4", gathering_id: "g-47", cloth_number: 4, producer: null, vintage: null, region: null, brought_by_name: null, revealed: false, avg_score: null, rank: null },
   { id: "w-2", gathering_id: "g-47", cloth_number: 2, producer: "the shamed vintage", vintage: null, region: null, brought_by_name: "unnamed, mercifully", revealed: true, avg_score: 4.6, rank: 11 },
 ];
@@ -87,11 +91,11 @@ export const seedApplications: Application[] = [
 ];
 
 export const seedVictories = [
-  { name: "Sister Mara", wins: 9 },
-  { name: "Brother Silas", wins: 7 },
-  { name: "Elder Thorne", wins: 5 },
+  { name: "Sister Larissa", wins: 9 },
+  { name: "Brother Scott", wins: 7 },
+  { name: "Brother Matthew", wins: 5 },
   { name: "The Keiser", wins: 3 },
-  { name: "Cassian Vale", wins: 2 },
+  { name: "Brother Martin", wins: 2 },
 ];
 
 export const aromaLexicon = [

@@ -19,7 +19,7 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
 const PUBLIC = ["/", "/initiation"];
 const DEMO_NAMES: Record<Role, string> = {
   initiate: "Cassian Vale",
-  member: "Sister Mara",
+  member: "Sister Larissa",
   keiser: "The Keiser",
 };
 

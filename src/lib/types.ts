@@ -8,6 +8,8 @@ export interface Member {
   role: Role;
   zodiac?: string | null;
   element?: string | null;
+  date_of_birth?: string | null;
+  time_of_birth?: string | null;
   avatar_url?: string | null;
   last_hosted?: string | null;
   venue_instructions?: string | null;

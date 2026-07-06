@@ -13,7 +13,10 @@ create table if not exists members (
   role text not null default 'initiate' check (role in ('initiate','member','keiser')),
   zodiac text,
   element text,
+  date_of_birth date,
+  time_of_birth time,
   avatar_url text,
+  venue_instructions text,
   last_hosted date,
   active boolean not null default true,
   created_at timestamptz not null default now()

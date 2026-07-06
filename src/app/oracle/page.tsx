@@ -174,7 +174,7 @@ export default function Oracle() {
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 10 }}>The hosting wheel</div>
         {wheel.map((m, i) => {
-          const hostingNow = m.id === "m-silas";
+          const hostingNow = m.id === "m-matthew";
           const upNext = i === 0 && !hostingNow;
           const when = m.last_hosted
             ? new Date(m.last_hosted).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
