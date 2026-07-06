@@ -144,6 +144,29 @@ select option {
   background: #0e0d0c;
 }
 
+/* Date + time of birth pair, kept side by side at every width. */
+.birth-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+.birth-fields > div {
+  min-width: 0;
+}
+/* Native date/time inputs otherwise keep their intrinsic width and spill into
+   the next column; min-width:0 lets them obey their grid cell instead. And on a
+   dark page Chrome renders them in light mode by default — so the yyyy/mm/dd
+   placeholder text and picker icon come out dark-on-dark (invisible). color-
+   scheme:dark makes the native text and icon light, and the smaller font keeps
+   the content comfortably inside a half-width field. */
+.birth-fields input {
+  min-width: 0;
+  color-scheme: dark;
+  font-size: 14px;
+  padding-left: 9px;
+  padding-right: 6px;
+}
+
 /* Pills ------------------------------------------------------------- */
 .pills {
   display: flex;

@@ -311,12 +311,12 @@ export default function Profile() {
         <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>
           Give your birth and the chart is drawn — everything below is read from it, not set by hand.
         </p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 140px" }}>
+        <div className="birth-fields">
+          <div>
             <label className="field" style={{ marginTop: 8 }}>Date of birth</label>
             <input type="date" value={dob} onChange={(e) => { setDob(e.target.value); touch(); }} />
           </div>
-          <div style={{ flex: "1 1 140px" }}>
+          <div>
             <label className="field" style={{ marginTop: 8 }}>Time of birth</label>
             <input type="time" value={tob} onChange={(e) => { setTob(e.target.value); touch(); }} />
           </div>

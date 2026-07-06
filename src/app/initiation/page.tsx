@@ -89,17 +89,17 @@ export default function Initiation() {
 
       <div className="card">
         <label className="field">The name you offer</label>
-        <input value={cultName} onChange={(e) => setCultName(e.target.value)} placeholder="Cassian Vale" />
+        <input value={cultName} onChange={(e) => setCultName(e.target.value)} placeholder="Priestess Larissa" />
 
         <label className="field">A sigil to reach you by</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@vessel.com" />
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 140px" }}>
+        <div className="birth-fields">
+          <div>
             <label className="field">Date of birth</label>
             <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
           </div>
-          <div style={{ flex: "1 1 140px" }}>
+          <div>
             <label className="field">Time of birth</label>
             <input type="time" value={tob} onChange={(e) => setTob(e.target.value)} />
           </div>
