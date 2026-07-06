@@ -98,7 +98,7 @@ export default function Reveal() {
   const gid = g?.id ?? "none";
   const attendees = g?.attendees || [];
 
-  const [wineCount] = useWineCount(gid, g?.wine_count ?? 11);
+  const [wineCount] = useWineCount(g);
 
   // Load every ballot + offering, and any committed annal, for this gathering.
   useEffect(() => {

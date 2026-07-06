@@ -396,7 +396,7 @@ export default function Convene() {
 
   const current = meetings[0] ?? null;
   const future = current ? meetings.slice(1) : [];
-  const [count, setCount] = useWineCount(current?.id ?? "none", current?.wine_count ?? 11);
+  const [count, setCount] = useWineCount(current);
 
   const [newTheme, setNewTheme] = useState("");
   const [newDate, setNewDate] = useState("");

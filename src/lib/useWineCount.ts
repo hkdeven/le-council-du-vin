@@ -1,25 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Gathering } from "./types";
+import { updateGathering } from "./gatherings";
 
-// The number of wines for a gathering. The Keiser sets it at the start and can
-// adjust it during scoring. Persisted to localStorage per gathering so it's
-// shared between Convene and the Rite in demo; once live this maps to
-// `gatherings.wine_count`.
-export function useWineCount(gatheringId: string, fallback: number) {
-  const key = `lcv_wine_count_${gatheringId}`;
-  const [count, setCount] = useState(fallback);
+// The number of wines for a gathering, sourced from the gathering itself
+// (gatherings.wine_count) so Convene, the Rite and the Reveal always agree and
+// every member sees the same count. The Keiser's changes persist through the
+// gatherings layer (Supabase when live, localStorage in demo).
+export function useWineCount(g: Gathering | null) {
+  const [count, setCount] = useState(g?.wine_count ?? 11);
 
+  // Re-sync whenever the gathering (or its stored count) arrives/changes —
+  // this is the fix for the count defaulting to 11 while the gathering loaded.
   useEffect(() => {
-    const v = typeof window !== "undefined" ? localStorage.getItem(key) : null;
-    if (v) setCount(parseInt(v, 10));
-  }, [key]);
+    if (g) setCount(g.wine_count ?? 11);
+  }, [g?.id, g?.wine_count]);
 
   const update = (n: number) => {
     const clamped = Math.max(1, Math.min(30, Math.round(n)));
     setCount(clamped);
-    if (typeof window !== "undefined") localStorage.setItem(key, String(clamped));
-    // Once live: also persist to gatherings.wine_count for this gathering.
+    if (g) updateGathering(g.id, { wine_count: clamped }).catch(() => {});
   };
 
   return [count, update] as const;

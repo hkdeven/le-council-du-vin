@@ -25,7 +25,7 @@ export default function Rite() {
   }, []);
   const gid = g?.id ?? "none";
 
-  const [total, setTotal] = useWineCount(gid, g?.wine_count ?? 11);
+  const [total, setTotal] = useWineCount(g);
   const wines = Array.from({ length: total }, (_, i) => i + 1);
 
   const [current, setCurrent] = useState(1);
