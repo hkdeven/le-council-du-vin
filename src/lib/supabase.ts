@@ -10,3 +10,8 @@ export const supabase: SupabaseClient | null =
   url && anon ? createClient(url, anon) : null;
 
 export const isLive = Boolean(supabase);
+
+// The login wall is a separate switch from "is Supabase connected". With Supabase
+// wired but this off, the app stays open (navigable, role switcher) while still
+// able to read/write data. Set NEXT_PUBLIC_ENFORCE_LOGIN=true to turn the wall on.
+export const enforceLogin = process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "true";

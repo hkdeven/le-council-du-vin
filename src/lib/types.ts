@@ -10,7 +10,14 @@ export interface Member {
   element?: string | null;
   avatar_url?: string | null;
   last_hosted?: string | null;
+  venue_instructions?: string | null;
   active: boolean;
+}
+
+export interface DateOption {
+  id: string;
+  date: string;
+  voters: string[];
 }
 
 export interface Theme {
@@ -34,6 +41,7 @@ export interface Gathering {
   gather_date: string;
   status: "upcoming" | "scoring" | "revealed";
   wine_count: number;
+  reveal_photos?: string[] | null;
 }
 
 export interface Wine {

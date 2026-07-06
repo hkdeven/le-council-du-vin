@@ -1,5 +1,6 @@
 import { seedWines, seedGathering } from "@/lib/seed";
 import { toRoman } from "@/lib/util";
+import BottleReveal from "@/components/BottleReveal";
 
 export default function Reveal() {
   const ranked = seedWines
@@ -52,6 +53,8 @@ export default function Reveal() {
           </div>
         );
       })}
+
+      <BottleReveal photos={seedGathering.reveal_photos || []} />
     </section>
   );
 }

@@ -4,16 +4,26 @@ import type {
   Gathering,
   Wine,
   Application,
+  DateOption,
 } from "./types";
 
 // Seed content mirrors the approved mockup so the app is fully viewable in demo
 // mode (before Supabase is wired). Once live, the data layer reads real rows.
 
 export const seedMembers: Member[] = [
-  { id: "m-mara", email: "mara@nightvine.com", cult_name: "Sister Mara", short_name: "MR", role: "member", zodiac: "Pisces", element: "Water", last_hosted: "2026-03-28", active: true },
-  { id: "m-silas", email: "silas@nightvine.com", cult_name: "Brother Silas", short_name: "SV", role: "member", zodiac: "Capricorn", element: "Earth", last_hosted: "2026-07-25", active: true },
-  { id: "m-thorne", email: "thorne@nightvine.com", cult_name: "Elder Thorne", short_name: "EL", role: "member", zodiac: "Leo", element: "Fire", last_hosted: "2026-03-01", active: true },
-  { id: "m-keiser", email: "hkdeven@gmail.com", cult_name: "The Keiser", short_name: "KE", role: "keiser", zodiac: "Scorpio", element: "Fire", last_hosted: "2026-05-30", active: true },
+  { id: "m-mara", email: "mara@nightvine.com", cult_name: "Sister Mara", short_name: "MR", role: "member", zodiac: "Pisces", element: "Water", last_hosted: "2026-03-28", venue_instructions: "Buzzer 4B, second courtyard. Park on Vine Lane, not the drive. Dog is friendly but loud.", active: true },
+  { id: "m-silas", email: "silas@nightvine.com", cult_name: "Brother Silas", short_name: "SV", role: "member", zodiac: "Capricorn", element: "Earth", last_hosted: "2026-07-25", venue_instructions: "Gate code 1893. Cellar entrance around the back — follow the lanterns.", active: true },
+  { id: "m-thorne", email: "thorne@nightvine.com", cult_name: "Elder Thorne", short_name: "EL", role: "member", zodiac: "Leo", element: "Fire", last_hosted: "2026-03-01", venue_instructions: "Third floor, no lift. Bring a coat — the terrace gets cold after dusk.", active: true },
+  { id: "m-keiser", email: "hkdeven@gmail.com", cult_name: "The Keiser", short_name: "KE", role: "keiser", zodiac: "Scorpio", element: "Fire", last_hosted: "2026-05-30", venue_instructions: "Ring twice. Street parking after 18:00 is free.", active: true },
+];
+
+// Candidate dates for the next gathering — members vote for every date they can
+// make; the winner is the date the most souls can attend (replaces the WhatsApp poll).
+export const seedDateOptions: DateOption[] = [
+  { id: "d-1", date: "2026-08-21", voters: ["m-mara", "m-silas", "m-thorne"] },
+  { id: "d-2", date: "2026-08-22", voters: ["m-mara", "m-silas", "m-thorne", "m-keiser"] },
+  { id: "d-3", date: "2026-08-28", voters: ["m-silas", "m-keiser"] },
+  { id: "d-4", date: "2026-08-29", voters: ["m-mara", "m-keiser"] },
 ];
 
 export const seedThemes: Theme[] = [
@@ -21,6 +31,19 @@ export const seedThemes: Theme[] = [
   { id: "t-2", title: "Older than the youngest member", description: "Nothing younger than our newest soul. Bring provenance.", status: "pool", favours: 5, created_at: "2026-06-04" },
   { id: "t-3", title: "Bottles under a €15 tithe", description: "The cheap and the cheerful. Humility before the vine.", status: "pool", favours: 4, created_at: "2026-06-10" },
   { id: "t-4", title: "Orange wines of the old world", description: "Skin-contact, amber, and untamed. Bring what unsettles.", status: "scheduled", favours: 6, created_at: "2026-05-20" },
+  { id: "t-5", title: "Screw-top reds", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-6", title: "Durbanville whites", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-7", title: "Italian reds", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-8", title: "Whites · R150–200", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-9", title: "Favourite white", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-10", title: "Favourite red", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-11", title: "Must contain a set varietal — white", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-12", title: "Must contain a set varietal — red", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-13", title: "Black-owned wine farm", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-14", title: "Women winemakers", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-15", title: "Rhône blends", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-16", title: "Double bubbles", status: "pool", favours: 0, created_at: "2026-07-06" },
+  { id: "t-17", title: "Rosé", status: "pool", favours: 0, created_at: "2026-07-06" },
 ];
 
 export const seedGathering: Gathering = {
@@ -34,6 +57,7 @@ export const seedGathering: Gathering = {
   gather_date: "2026-07-25",
   status: "scoring",
   wine_count: 11,
+  reveal_photos: ["/reveals/g-47.webp"],
 };
 
 export const seedWines: Wine[] = [
@@ -71,6 +95,5 @@ export const seedVictories = [
 ];
 
 export const aromaLexicon = [
-  "apricot", "incense", "honey", "petrol", "dried flower", "walnut",
-  "orange peel", "beeswax", "black tea", "smoke", "quince", "salt",
+  "apricot", "honey", "petrol", "orange peel", "beeswax", "black tea", "smoke", "salt",
 ];

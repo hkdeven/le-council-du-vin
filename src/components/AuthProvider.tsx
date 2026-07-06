@@ -8,8 +8,12 @@ import {
   useCallback,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, isLive } from "@/lib/supabase";
+import { supabase, isLive, enforceLogin } from "@/lib/supabase";
 import type { Member, Role } from "@/lib/types";
+
+// The login wall is only active when Supabase is connected AND enforcement is on.
+// Otherwise the app runs open (demo behaviour) so it stays navigable.
+const gated = isLive && enforceLogin;
 
 export const ROLE_RANK: Record<Role, number> = {
   initiate: 0,
@@ -65,17 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [demoRole, setDemoRole] = useState<Role>("keiser");
   const [session, setSession] = useState<Session | null>(null);
   const [member, setMember] = useState<Member | null>(null);
-  const [loading, setLoading] = useState(isLive);
+  const [loading, setLoading] = useState(gated);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isLive) return;
+    if (gated) return;
     const saved = localStorage.getItem("lcv_role") as Role | null;
     if (saved) setDemoRole(saved);
   }, []);
 
   useEffect(() => {
-    if (!isLive || !supabase) return;
+    if (!gated || !supabase) return;
     let active = true;
     const resolve = async (sess: Session | null) => {
       if (!active) return;
@@ -154,10 +158,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMember(null);
   }, []);
 
-  const signedIn = isLive ? !!session : true;
-  const hasAccess = isLive ? !!member : true;
-  const role: Role = isLive ? member?.role ?? "initiate" : demoRole;
-  const status: Status = isLive
+  const signedIn = gated ? !!session : true;
+  const hasAccess = gated ? !!member : true;
+  const role: Role = gated ? member?.role ?? "initiate" : demoRole;
+  const status: Status = gated
     ? loading
       ? "loading"
       : !session
@@ -170,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        mode: isLive ? "live" : "demo",
+        mode: gated ? "live" : "demo",
         status,
         loading,
         signedIn,
