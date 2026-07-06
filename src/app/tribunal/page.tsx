@@ -6,6 +6,7 @@ import { loadDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { loadApplications, updateApplication } from "@/lib/applications";
 import { addMember } from "@/lib/members";
 import { sunSign } from "@/lib/astrology";
+import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import type { Application, Member } from "@/lib/types";
 
@@ -72,13 +73,27 @@ function ExpulsionCard({ name, count }: { name: string; count: number }) {
 const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
 export default function Tribunal() {
+  const { mode } = useAuth();
   const [apps, setApps] = useState<Application[]>([]);
   const [dq, setDq] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    setApps(loadApplications());
     setDq(loadDqCounts());
-  }, []);
+    // Live: petitions live in Supabase (submitted from anyone's browser).
+    // Demo: they live in this browser's localStorage.
+    if (mode === "live" && supabase) {
+      supabase
+        .from("applications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .then(({ data, error }) => {
+          if (error) console.error("Could not load petitions:", error.message);
+          else if (data) setApps(data as Application[]);
+        });
+    } else {
+      setApps(loadApplications());
+    }
+  }, [mode]);
 
   const decree = async (a: Application, status: "anointed" | "cast_out") => {
     // Anointing grants limited access: a new initiate joins the roster, whom the

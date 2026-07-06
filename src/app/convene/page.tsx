@@ -206,7 +206,17 @@ function MeetingBody({
             <label className="field">Supporting line</label>
             <textarea value={m.theme_description || ""} onChange={(e) => onUpdate({ theme_description: e.target.value })} placeholder="A line beneath the theme…" style={{ minHeight: 60 }} />
             <label className="field">Host</label>
-            <HostPicker value={m.host_id || ""} members={members} onChange={(id) => onUpdate({ host_id: id, host_name: members.find((x) => x.id === id)?.cult_name || "" })} />
+            {/* Choosing a host loads that host's own venue instructions (from
+                their profile) into this meeting — editable here without syncing
+                back. Switching hosts replaces the venue with the new host's. */}
+            <HostPicker
+              value={m.host_id || ""}
+              members={members}
+              onChange={(id) => {
+                const h = members.find((x) => x.id === id);
+                onUpdate({ host_id: id, host_name: h?.cult_name || "", venue_instructions: h?.venue_instructions || null });
+              }}
+            />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
               <div style={{ flex: "1 1 140px" }}>
                 <label className="field" style={{ marginTop: 0 }}>Date</label>
@@ -397,7 +407,7 @@ export default function Convene() {
       host_id: newHost, host_name: host?.cult_name || "", gather_date: newDate, gather_time: "19:00",
       status: "upcoming", wine_count: 11,
       rules_text: DEFAULT_RULES, threat_text: DEFAULT_THREAT,
-      venue_instructions: null, attendees: [],
+      venue_instructions: host?.venue_instructions || null, attendees: [],
     };
     apply([...meetings, g]);
     setNewTheme(""); setNewDate("");

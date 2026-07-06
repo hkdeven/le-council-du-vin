@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { addApplication } from "@/lib/applications";
+import { useAuth } from "@/components/AuthProvider";
 
 /* eslint-disable-next-line @next/next/no-img-element */
 const Mark = ({ size }: { size: number }) => (
@@ -12,6 +13,7 @@ const Mark = ({ size }: { size: number }) => (
 );
 
 export default function Initiation() {
+  const { mode } = useAuth();
   const [cultName, setCultName] = useState("");
   const [email, setEmail] = useState("");
   const [dob, setDob] = useState("");
@@ -22,9 +24,11 @@ export default function Initiation() {
   const [oath, setOath] = useState(true);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     setBusy(true);
+    setError(null);
     const record = {
       cult_name: cultName,
       email,
@@ -35,10 +39,20 @@ export default function Initiation() {
       wine_sin: wineSin,
       oath,
     };
-    // Demo: persist so the petition reaches the Keiser's tribunal.
-    addApplication({ id: `app-${Date.now()}`, status: "pending", created_at: new Date().toISOString(), ...record });
-    if (supabase) await supabase.from("applications").insert(record);
-    setBusy(false);
+    if (mode === "live" && supabase) {
+      // Live: the petition must actually land in Supabase. Surface any failure
+      // instead of faking success (a silent insert error hid earlier petitions).
+      const { error: dbError } = await supabase.from("applications").insert(record);
+      setBusy(false);
+      if (dbError) {
+        setError(`Your petition could not be sealed: ${dbError.message}. Tell the Keiser.`);
+        return;
+      }
+    } else {
+      // Demo: persist locally so the petition reaches this browser's tribunal.
+      addApplication({ id: `app-${Date.now()}`, status: "pending", created_at: new Date().toISOString(), ...record });
+      setBusy(false);
+    }
     setSent(true);
   };
 
@@ -123,9 +137,12 @@ export default function Initiation() {
           <span className={`pill${!oath ? " on" : ""}`} onClick={() => setOath(false)}>I dare not</span>
         </div>
 
+        {error && (
+          <p style={{ color: "#c98", fontSize: 13, margin: "14px 0 0" }}>{error}</p>
+        )}
         <button
           className="btn gold"
-          style={{ marginTop: 18 }}
+          style={{ marginTop: error ? 10 : 18 }}
           disabled={busy || !cultName || !email}
           onClick={submit}
         >

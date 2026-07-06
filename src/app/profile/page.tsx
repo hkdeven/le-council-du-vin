@@ -71,10 +71,27 @@ const ALL_ROLES: Role[] = ["initiate", "member", "keiser"];
 
 // Keiser-only: the full roster, every account editable in place.
 function RosterEditor() {
+  const { mode } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  useEffect(() => setMembers(loadMembers()), []);
+  useEffect(() => {
+    // Live: the roster is the Supabase members table (so anointed initiates
+    // appear here to be elevated). Demo: the local seed + overrides. (Supabase
+    // may be connected with the login wall off — that still counts as demo.)
+    if (mode === "live" && supabase) {
+      supabase
+        .from("members")
+        .select("*")
+        .order("role")
+        .then(({ data, error }) => {
+          if (error) console.error("Could not load roster:", error.message);
+          else if (data) setMembers(data as Member[]);
+        });
+    } else {
+      setMembers(loadMembers());
+    }
+  }, [mode]);
 
   const edit = (id: string, patch: Partial<Member>) => {
     saveMember(id, patch);
