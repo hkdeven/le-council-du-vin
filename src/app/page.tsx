@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function Gate() {
   const { mode, status, signedIn, hasAccess, signOut } = useAuth();
   const authed = mode === "demo" || (signedIn && hasAccess);
   const [showLogin, setShowLogin] = useState(false);
+  const router = useRouter();
+
+  // After a real login (SSO / magic link / password) Supabase returns to the
+  // gate. Once the member is resolved, carry them straight inside instead of
+  // making them click "Enter the council" again. Demo mode keeps the gate as a
+  // landing page (no forced forward).
+  useEffect(() => {
+    if (mode === "live" && status === "member") router.replace("/convene");
+  }, [mode, status, router]);
 
   return (
     <section style={{ textAlign: "center", padding: "40px 0 20px" }}>

@@ -2,7 +2,7 @@
 
 > _in vino veritas_
 
-[![Netlify](https://img.shields.io/badge/Netlify-not%20yet%20connected-lightgrey?logo=netlify&logoColor=white)](https://app.netlify.com)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/b91ca720-46e1-481e-ba82-17fc682cdd9e/deploy-status)](https://app.netlify.com/projects/le-council-du-vin/deploys)
 &nbsp;
 ![Supabase](https://img.shields.io/badge/Supabase-project%20live-3ECF8E?logo=supabase&logoColor=white)
 &nbsp;
@@ -14,15 +14,13 @@
 
 <!--
   STATUS BADGES — keep these current.
-  • Netlify: once the site is connected, swap the grey badge for the live deploy
-    status badge:
-      [![Netlify Status](https://api.netlify.com/api/v1/badges/<SITE_ID>/deploy-status)](https://app.netlify.com/projects/<SITE_NAME>/deploys)
-    Find <SITE_ID> under Netlify → Site configuration → Site details → Site ID.
+  • Netlify: live deploy-status badge for site le-council-du-vin (site id
+    b91ca720-46e1-481e-ba82-17fc682cdd9e).
   • Supabase: project is provisioned and the schema is applied. There is no
     per-project status badge; platform health lives at https://status.supabase.com
-  • Access: the login wall (Google / magic link / password) is built but is not
-    yet switched on in production (see Project status). Update this badge when it
-    goes live.
+  • Access: the login wall (Google / magic link / password) is built. It goes
+    live only when NEXT_PUBLIC_ENFORCE_LOGIN=true is set in Netlify (with the
+    Supabase env present). Flip the Access badge to "live" when that is done.
 -->
 
 A private web app for a monthly blind wine-tasting society. Each moon, 10–12 members

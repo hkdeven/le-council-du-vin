@@ -8,6 +8,7 @@ import type { Member } from "./types";
 
 const OVERRIDES_KEY = "lcv_member_overrides"; // { [id]: Partial<Member> }
 const ADDED_KEY = "lcv_members_added"; // Member[]
+const REMOVED_KEY = "lcv_members_removed"; // string[] of member ids cast out
 
 type Overrides = Record<string, Partial<Member>>;
 
@@ -29,9 +30,19 @@ function readAdded(): Member[] {
   }
 }
 
+function readRemoved(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(REMOVED_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
 export function loadMembers(): Member[] {
   const overrides = readOverrides();
-  const base = [...seedMembers, ...readAdded()];
+  const removed = new Set(readRemoved());
+  const base = [...seedMembers, ...readAdded()].filter((m) => !removed.has(m.id));
   return base.map((m) => (overrides[m.id] ? { ...m, ...overrides[m.id] } : m));
 }
 
@@ -52,7 +63,30 @@ export function addMember(member: Member) {
   const added = readAdded();
   if (added.some((m) => m.id === member.id) || seedMembers.some((m) => m.id === member.id)) return;
   try {
+    // Clear any prior removal so a re-anointed soul reappears.
+    const removed = readRemoved().filter((id) => id !== member.id);
+    localStorage.setItem(REMOVED_KEY, JSON.stringify(removed));
     localStorage.setItem(ADDED_KEY, JSON.stringify([...added, member]));
+    window.dispatchEvent(new Event("lcv-members"));
+  } catch {}
+}
+
+// Cast a member from the roster entirely. Works for both seeded and anointed
+// members: added members are dropped from the added list; seeded ones are
+// recorded in the removed set so loadMembers() filters them out.
+export function removeMember(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const added = readAdded().filter((m) => m.id !== id);
+    localStorage.setItem(ADDED_KEY, JSON.stringify(added));
+    const removed = readRemoved();
+    if (!removed.includes(id)) localStorage.setItem(REMOVED_KEY, JSON.stringify([...removed, id]));
+    // Tidy up any stale overrides for the departed soul.
+    const overrides = readOverrides();
+    if (overrides[id]) {
+      delete overrides[id];
+      localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+    }
     window.dispatchEvent(new Event("lcv-members"));
   } catch {}
 }

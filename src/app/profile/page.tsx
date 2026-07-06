@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
-import { loadMembers, saveMember } from "@/lib/members";
+import { loadMembers, saveMember, removeMember } from "@/lib/members";
 import { supabase } from "@/lib/supabase";
 import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
 import AvatarCropper from "@/components/AvatarCropper";
@@ -82,6 +82,14 @@ function RosterEditor() {
     if (supabase) supabase.from("members").update(patch).eq("id", id);
   };
 
+  const remove = (m: Member) => {
+    if (!window.confirm(`Cast ${m.cult_name} from the Council? This erases their account.`)) return;
+    removeMember(m.id);
+    setMembers((ms) => ms.filter((x) => x.id !== m.id));
+    setOpenId(null);
+    if (supabase) supabase.from("members").delete().eq("id", m.id);
+  };
+
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="eyebrow" style={{ marginBottom: 4 }}>The council roster</div>
@@ -144,6 +152,17 @@ function RosterEditor() {
                   <input type="checkbox" checked={m.active} onChange={(e) => edit(m.id, { active: e.target.checked })} style={{ width: "auto" }} />
                   Active in the Council
                 </label>
+                <div style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 10 }}>
+                  {m.role === "keiser" ? (
+                    <p className="whisper" style={{ margin: 0, fontSize: 13 }}>
+                      A Keiser cannot be erased. Demote them to member first, then cast them out.
+                    </p>
+                  ) : (
+                    <button className="btn danger" style={{ width: "auto", padding: "8px 16px" }} onClick={() => remove(m)}>
+                      <i className="ti ti-trash" style={{ fontSize: 14, marginRight: 6 }} />Cast from the Council
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
