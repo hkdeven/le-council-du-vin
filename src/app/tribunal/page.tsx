@@ -109,16 +109,30 @@ export default function Tribunal() {
         time_of_birth: a.time_of_birth || null,
         active: true,
       };
-      addMember(member);
-      if (supabase) {
-        await supabase.from("members").upsert(
+      if (mode === "live" && supabase) {
+        const { error } = await supabase.from("members").upsert(
           { email: member.email, cult_name: member.cult_name, short_name: member.short_name, role: "initiate", date_of_birth: member.date_of_birth, time_of_birth: member.time_of_birth, active: true },
           { onConflict: "email" }
         );
+        // Surface the real reason instead of silently failing (e.g. an RLS
+        // policy that won't let the Keiser create the member row).
+        if (error) {
+          alert(`Could not anoint ${a.cult_name}: ${error.message}`);
+          return;
+        }
+      } else {
+        addMember(member);
       }
     }
-    updateApplication(a.id, { status });
-    if (supabase) await supabase.from("applications").update({ status }).eq("id", a.id);
+    if (mode === "live" && supabase) {
+      const { error } = await supabase.from("applications").update({ status }).eq("id", a.id);
+      if (error) {
+        alert(`Could not record the decree: ${error.message}`);
+        return;
+      }
+    } else {
+      updateApplication(a.id, { status });
+    }
     setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status } : x)));
   };
 

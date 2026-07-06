@@ -93,18 +93,26 @@ function RosterEditor() {
     }
   }, [mode]);
 
-  const edit = (id: string, patch: Partial<Member>) => {
-    saveMember(id, patch);
+  const edit = async (id: string, patch: Partial<Member>) => {
+    if (mode === "live" && supabase) {
+      const { error } = await supabase.from("members").update(patch).eq("id", id);
+      if (error) { alert(`Could not save the change: ${error.message}`); return; }
+    } else {
+      saveMember(id, patch);
+    }
     setMembers((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
-    if (supabase) supabase.from("members").update(patch).eq("id", id);
   };
 
-  const remove = (m: Member) => {
+  const remove = async (m: Member) => {
     if (!window.confirm(`Cast ${m.cult_name} from the Council? This erases their account.`)) return;
-    removeMember(m.id);
+    if (mode === "live" && supabase) {
+      const { error } = await supabase.from("members").delete().eq("id", m.id);
+      if (error) { alert(`Could not cast ${m.cult_name} out: ${error.message}`); return; }
+    } else {
+      removeMember(m.id);
+    }
     setMembers((ms) => ms.filter((x) => x.id !== m.id));
     setOpenId(null);
-    if (supabase) supabase.from("members").delete().eq("id", m.id);
   };
 
   return (
@@ -206,17 +214,21 @@ export default function Profile() {
   const storeKey = `lcv_profile_${mode === "demo" ? role : email || "me"}`;
 
   useEffect(() => {
-    let base = {
+    const base = {
       name: mode === "demo" ? DEMO_NAMES[role] : self?.cult_name || email || "",
       dob: self?.date_of_birth || "",
       tob: self?.time_of_birth || "",
       venue: self?.venue_instructions || "",
       avatar: (self?.avatar_url as string | null) || null,
     };
-    try {
-      const raw = localStorage.getItem(storeKey);
-      if (raw) base = { ...base, ...JSON.parse(raw) };
-    } catch {}
+    // Live: the Supabase member row is the source of truth. Demo: local storage.
+    // (Overlaying local over the DB row was wiping saved details on reload.)
+    if (mode === "demo") {
+      try {
+        const raw = localStorage.getItem(storeKey);
+        if (raw) Object.assign(base, JSON.parse(raw));
+      } catch {}
+    }
     setName(base.name);
     setDob(base.dob);
     setTob(base.tob);
@@ -225,7 +237,7 @@ export default function Profile() {
     setSaved(false);
     setEditingName(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, mode]);
+  }, [role, mode, self]);
 
   const sun = dob ? sunSign(dob) : null;
   const element = sun?.element ?? null;
@@ -247,12 +259,10 @@ export default function Profile() {
   };
 
   const save = async () => {
-    try {
-      localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, venue, avatar }));
-      window.dispatchEvent(new Event("lcv-profile"));
-    } catch {}
-    if (supabase && email) {
-      await supabase.from("members").update({
+    if (mode === "live" && supabase && email) {
+      // Live: persist to the members row and surface any failure instead of
+      // faking success (a swallowed error is why details kept vanishing).
+      const { error } = await supabase.from("members").update({
         cult_name: name,
         date_of_birth: dob || null,
         time_of_birth: tob || null,
@@ -261,7 +271,13 @@ export default function Profile() {
         venue_instructions: venue || null,
         avatar_url: avatar,
       }).eq("email", email);
+      if (error) { alert(`Could not save your profile: ${error.message}`); return; }
+    } else {
+      try {
+        localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, venue, avatar }));
+      } catch {}
     }
+    window.dispatchEvent(new Event("lcv-profile"));
     setSaved(true);
   };
 
