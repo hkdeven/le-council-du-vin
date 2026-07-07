@@ -9,12 +9,12 @@ import { updateGathering } from "./gatherings";
 // every member sees the same count. The Keiser's changes persist through the
 // gatherings layer (Supabase when live, localStorage in demo).
 export function useWineCount(g: Gathering | null) {
-  const [count, setCount] = useState(g?.wine_count ?? 11);
+  const [count, setCount] = useState(g?.wine_count ?? 6);
 
   // Re-sync whenever the gathering (or its stored count) arrives/changes —
   // this is the fix for the count defaulting to 11 while the gathering loaded.
   useEffect(() => {
-    if (g) setCount(g.wine_count ?? 11);
+    if (g) setCount(g.wine_count ?? 6);
   }, [g?.id, g?.wine_count]);
 
   const update = (n: number) => {

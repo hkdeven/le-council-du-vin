@@ -93,29 +93,6 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
   );
 }
 
-// A block of copy that the permitted user can edit inline.
-function EditableText({ value, canEdit, onChange, muted }: { value: string; canEdit: boolean; onChange: (v: string) => void; muted?: boolean }) {
-  const [editing, setEditing] = useState(false);
-  if (editing) {
-    return (
-      <div>
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} autoFocus style={{ minHeight: 90 }} />
-        <button className="btn" style={{ width: "auto", padding: "6px 14px", marginTop: 6 }} onClick={() => setEditing(false)}>Done</button>
-      </div>
-    );
-  }
-  return (
-    <div style={{ position: "relative" }}>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: muted ? "var(--dim)" : "var(--parch)" }}>{value}</p>
-      {canEdit && (
-        <button onClick={() => setEditing(true)} aria-label="Edit" style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>
-          <i className="ti ti-pencil" style={{ fontSize: 12, marginRight: 4 }} />edit
-        </button>
-      )}
-    </div>
-  );
-}
-
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -157,9 +134,7 @@ function MeetingBody({
 }) {
   const [showGuests, setShowGuests] = useState(false);
   const [editing, setEditing] = useState(false);
-  const host = members.find((x) => x.id === m.host_id);
   const attendees = m.attendees || [];
-  const isHost = meId === m.host_id;
   const date = fmtDate(m.gather_date);
   const time = m.gather_time || "19:00";
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -254,24 +229,32 @@ function MeetingBody({
           </>
         )}
 
+        {/* These three blocks become editable together when the Keiser toggles
+            the pencil at the top of the card — no per-block edit buttons. */}
         <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
           <div className="eyebrow" style={{ marginBottom: 6 }}>The observances</div>
-          <EditableText value={m.rules_text || DEFAULT_RULES} canEdit={isKeiser} onChange={(v) => onUpdate({ rules_text: v })} />
+          {editing ? (
+            <textarea value={m.rules_text ?? DEFAULT_RULES} onChange={(e) => onUpdate({ rules_text: e.target.value })} style={{ minHeight: 90 }} />
+          ) : (
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--parch)" }}>{m.rules_text || DEFAULT_RULES}</p>
+          )}
         </div>
 
         <div style={{ marginTop: 12 }}>
           <div className="eyebrow" style={{ marginBottom: 6, color: "var(--wine)" }}>By decree of the Keiser</div>
-          <EditableText value={m.threat_text || DEFAULT_THREAT} canEdit={isKeiser} onChange={(v) => onUpdate({ threat_text: v })} muted />
+          {editing ? (
+            <textarea value={m.threat_text ?? DEFAULT_THREAT} onChange={(e) => onUpdate({ threat_text: e.target.value })} style={{ minHeight: 90 }} />
+          ) : (
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--dim)" }}>{m.threat_text || DEFAULT_THREAT}</p>
+          )}
         </div>
 
         <div style={{ marginTop: 12 }}>
           <div className="eyebrow" style={{ marginBottom: 6 }}>Finding the host</div>
-          {m.venue_instructions ? (
-            <EditableText value={m.venue_instructions} canEdit={isKeiser || isHost} onChange={(v) => onUpdate({ venue_instructions: v })} />
-          ) : (isKeiser || isHost) ? (
-            <button className="btn" style={{ width: "auto", padding: "8px 16px" }} onClick={() => onUpdate({ venue_instructions: host?.venue_instructions || "Add the venue details…" })}>
-              Add venue details
-            </button>
+          {editing ? (
+            <textarea value={m.venue_instructions ?? ""} onChange={(e) => onUpdate({ venue_instructions: e.target.value || null })} placeholder="Gate codes, parking, the way in…" style={{ minHeight: 70 }} />
+          ) : m.venue_instructions ? (
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--parch)" }}>{m.venue_instructions}</p>
           ) : (
             <p className="whisper" style={{ margin: 0, fontSize: 14 }}>The host has not yet marked the way.</p>
           )}
@@ -427,7 +410,7 @@ export default function Convene() {
       id: `g-${Date.now()}`, number: nextNum, moon_label: "A moon to come",
       theme_title: title, theme_description: null,
       host_id: host?.id || null, host_name: host?.cult_name || "", gather_date: newDate, gather_time: "19:00",
-      status: "upcoming", wine_count: 11,
+      status: "upcoming", wine_count: 6,
       rules_text: DEFAULT_RULES, threat_text: DEFAULT_THREAT,
       venue_instructions: host?.venue_instructions || null, attendees: [],
     };

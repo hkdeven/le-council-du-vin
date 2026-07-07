@@ -134,6 +134,7 @@ export default function Tribunal() {
       updateApplication(a.id, { status });
     }
     setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status } : x)));
+    window.dispatchEvent(new Event("lcv-applications")); // refresh the nav badge
   };
 
   const pending = apps.filter((a) => a.status === "pending");

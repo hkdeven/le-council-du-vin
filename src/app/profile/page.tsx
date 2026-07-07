@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers, saveMember, removeMember } from "@/lib/members";
+import { deleteApplicationsByEmail } from "@/lib/applications";
 import { supabase } from "@/lib/supabase";
 import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
 import AvatarCropper from "@/components/AvatarCropper";
@@ -111,6 +112,8 @@ function RosterEditor() {
     } else {
       removeMember(m.id);
     }
+    // Also drop their petition so they don't linger on the tribunal's list.
+    if (m.email) deleteApplicationsByEmail(m.email).catch(() => {});
     setMembers((ms) => ms.filter((x) => x.id !== m.id));
     setOpenId(null);
   };

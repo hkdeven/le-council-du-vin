@@ -49,7 +49,7 @@ function fromRow(r: Record<string, any>): Gathering {
     gather_date: r.gather_date,
     gather_time: r.gather_time ?? "19:00",
     status: r.status || "upcoming",
-    wine_count: r.wine_count ?? 11,
+    wine_count: r.wine_count ?? 6,
     reveal_photos: r.reveal_photos ?? null,
     rules_text: r.rules_text ?? null,
     threat_text: r.threat_text ?? null,

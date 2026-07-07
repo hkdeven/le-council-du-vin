@@ -54,7 +54,7 @@ create table if not exists gatherings (
   theme_description text,
   host_name text,
   gather_time text,
-  wine_count int not null default 11,
+  wine_count int not null default 6,
   rules_text text,
   threat_text text,
   venue_instructions text,
@@ -65,7 +65,7 @@ alter table gatherings add column if not exists theme_title text;
 alter table gatherings add column if not exists theme_description text;
 alter table gatherings add column if not exists host_name text;
 alter table gatherings add column if not exists gather_time text;
-alter table gatherings add column if not exists wine_count int not null default 11;
+alter table gatherings add column if not exists wine_count int not null default 6;
 alter table gatherings add column if not exists rules_text text;
 alter table gatherings add column if not exists threat_text text;
 alter table gatherings add column if not exists venue_instructions text;

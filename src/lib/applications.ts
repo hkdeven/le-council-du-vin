@@ -1,4 +1,6 @@
 import type { Application } from "./types";
+import { supabase } from "./supabase";
+import { gatheringsLive } from "./gatherings";
 
 // Petitions for initiation. Persisted per-browser in demo so a submitted rite
 // shows up in the Keiser's tribunal; maps to the `applications` table when live.
@@ -29,4 +31,23 @@ export function addApplication(app: Application) {
 
 export function updateApplication(id: string, patch: Partial<Application>) {
   writeAll(loadApplications().map((a) => (a.id === id ? { ...a, ...patch } : a)));
+}
+
+// When a member is cast from the Council, drop their petition too so they no
+// longer linger on the tribunal's decided list.
+export async function deleteApplicationsByEmail(email: string): Promise<void> {
+  if (gatheringsLive()) {
+    await supabase!.from("applications").delete().eq("email", email);
+    return;
+  }
+  writeAll(loadApplications().filter((a) => a.email !== email));
+}
+
+// Count of petitions still awaiting the Keiser's decree (for the nav badge).
+export async function fetchPendingCount(): Promise<number> {
+  if (gatheringsLive()) {
+    const { count } = await supabase!.from("applications").select("*", { count: "exact", head: true }).eq("status", "pending");
+    return count || 0;
+  }
+  return loadApplications().filter((a) => a.status === "pending").length;
 }

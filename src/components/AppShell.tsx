@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Emblem from "./Emblem";
 import Avatar from "./Avatar";
 import { useAuth, ROLE_RANK } from "./AuthProvider";
+import { fetchPendingCount } from "@/lib/applications";
 import type { Role } from "@/lib/types";
 
 const NAV: { href: string; label: string; icon: string; min: Role }[] = [
@@ -41,6 +42,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/");
     }
   }, [mode, loading, bare, signedIn, router]);
+
+  // Pending petitions → a badge on the Tribunal tab so the Keiser sees new
+  // initiates on login. Refreshes as they move around and on submit/decree.
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    if (role !== "keiser") { setPending(0); return; }
+    const refresh = () => fetchPendingCount().then(setPending).catch(() => {});
+    refresh();
+    window.addEventListener("lcv-applications", refresh);
+    return () => window.removeEventListener("lcv-applications", refresh);
+  }, [role, pathname]);
 
   if (bare) {
     return (
@@ -152,6 +164,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <i className={`ti ${n.icon}`} aria-hidden="true" />
               {n.label}
+              {n.href === "/tribunal" && pending > 0 && (
+                <span
+                  aria-label={`${pending} petition${pending === 1 ? "" : "s"} awaiting`}
+                  style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--wine)", color: "#fff", fontFamily: "'EB Garamond', serif", fontSize: 11, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 1 }}
+                >
+                  {pending}
+                </span>
+              )}
             </Link>
           );
         })}
