@@ -5,11 +5,18 @@ import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers, saveMember, removeMember } from "@/lib/members";
 import { deleteApplicationsByEmail } from "@/lib/applications";
+import { fetchCurrentGathering } from "@/lib/gatherings";
+import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
+import { sendEmail } from "@/lib/sendEmail";
 import { supabase } from "@/lib/supabase";
 import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
+import { toRoman } from "@/lib/util";
 import AvatarCropper from "@/components/AvatarCropper";
 import MemberCard from "@/components/MemberCard";
-import type { Role, Member } from "@/lib/types";
+import type { Role, Member, Gathering } from "@/lib/types";
+
+const fmtGDate = (d: string) =>
+  d ? new Date(d).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) : "";
 
 const DEMO_NAMES: Record<Role, string> = {
   initiate: "Cassian Vale",
@@ -96,6 +103,7 @@ function RosterEditor() {
   }, [mode]);
 
   const edit = async (id: string, patch: Partial<Member>) => {
+    const before = members.find((m) => m.id === id);
     if (mode === "live" && supabase) {
       const { error } = await supabase.from("members").update(patch).eq("id", id);
       if (error) { alert(`Could not save the change: ${error.message}`); return; }
@@ -103,6 +111,10 @@ function RosterEditor() {
       saveMember(id, patch);
     }
     setMembers((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    // Email on a genuine elevation (initiate → member). No-ops until Resend set.
+    if (patch.role === "member" && before?.role === "initiate" && before.email) {
+      sendEmail("elevate", [before.email], { name: before.cult_name }).catch(() => {});
+    }
   };
 
   const remove = async (m: Member) => {
@@ -197,6 +209,131 @@ function RosterEditor() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// An editable list of recipient emails — chips you can delete, plus an add box.
+function RecipientChips({ list, onRemove, addValue, onAddChange, onAdd }: {
+  list: string[]; onRemove: (e: string) => void; addValue: string; onAddChange: (v: string) => void; onAdd: () => void;
+}) {
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+        {list.length === 0 && <span className="whisper" style={{ fontSize: 13 }}>No recipients.</span>}
+        {list.map((e) => (
+          <span key={e} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#080706", border: "1px solid var(--line2)", borderRadius: 14, padding: "3px 6px 3px 10px", fontSize: 13, color: "var(--parch)" }}>
+            {e}
+            <button onClick={() => onRemove(e)} aria-label={`Remove ${e}`} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, display: "flex" }}>
+              <i className="ti ti-x" style={{ fontSize: 12 }} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input type="email" value={addValue} onChange={(e) => onAddChange(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), onAdd())} placeholder="add an email…" style={{ flex: 1 }} />
+        <button className="btn" style={{ width: "auto", padding: "0 14px" }} onClick={onAdd} disabled={!addValue.trim()}>Add</button>
+      </div>
+    </div>
+  );
+}
+
+// Keiser-only: manually send the invite (a new gathering) and the tribunal
+// summons. Nothing here fires automatically; recipients are editable per send.
+function HeraldsEditor() {
+  const { mode } = useAuth();
+  const [members, setMembers] = useState<Member[]>([]);
+  const [gathering, setGathering] = useState<Gathering | null>(null);
+  const [dq, setDq] = useState<Record<string, number>>({});
+  const [inviteTo, setInviteTo] = useState<string[]>([]);
+  const [inviteAdd, setInviteAdd] = useState("");
+  const [expelPick, setExpelPick] = useState<string>("");
+  const [expelTo, setExpelTo] = useState<string[]>([]);
+  const [expelAdd, setExpelAdd] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const mem = mode === "live" && supabase ? ((await supabase.from("members").select("*")).data as Member[] || []) : loadMembers();
+      setMembers(mem);
+      setInviteTo(mem.filter((m) => m.active !== false).map((m) => m.email).filter(Boolean));
+      setGathering(await fetchCurrentGathering());
+      setDq(await fetchDqCounts());
+    })();
+  }, [mode]);
+
+  const add = (list: string[], value: string, setList: (v: string[]) => void, clear: () => void) => {
+    const v = value.trim().toLowerCase();
+    if (v && !list.includes(v)) setList([...list, v]);
+    clear();
+  };
+
+  const summonedMembers = members.filter((m) => (dq[m.cult_name] || 0) >= DQ_THRESHOLD);
+  const pickExpel = (id: string) => {
+    setExpelPick(id);
+    const m = members.find((x) => x.id === id);
+    setExpelTo(m?.email ? [m.email] : []);
+  };
+
+  const inviteParams = gathering ? {
+    number: toRoman(gathering.number),
+    theme: gathering.theme_title,
+    date: fmtGDate(gathering.gather_date),
+    time: gathering.gather_time || "19:00",
+    host: gathering.host_name || "",
+    venue: gathering.venue_instructions || null,
+  } : {};
+
+  const send = async (kind: string, type: "invite" | "expulsion", to: string[], params: Record<string, unknown>) => {
+    if (!to.length) { setMsg("Add at least one recipient."); return; }
+    if (!window.confirm(`Send to ${to.length} recipient${to.length === 1 ? "" : "s"}?`)) return;
+    setBusy(kind); setMsg(null);
+    const res = await sendEmail(type, to, params);
+    setBusy(null);
+    if (res.skipped) setMsg("Email isn't configured yet — set RESEND_API_KEY + NOTIFY_FROM in Netlify.");
+    else if (res.ok) setMsg(`Sent to ${res.sent}.`);
+    else setMsg(res.error || `Sent ${res.sent || 0}; ${res.failed || 0} failed.`);
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="eyebrow" style={{ marginBottom: 4 }}>Heralds</div>
+      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>Send the Council&rsquo;s branded emails by hand — nothing here fires automatically.</p>
+
+      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+        <div className="scr" style={{ fontSize: 16 }}>Summon the Council</div>
+        <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>
+          {gathering ? `The invite for Gathering ${toRoman(gathering.number)} — ${gathering.theme_title}.` : "No gathering scheduled — summon one on Convene first."}
+        </p>
+        <RecipientChips list={inviteTo} onRemove={(e) => setInviteTo(inviteTo.filter((x) => x !== e))} addValue={inviteAdd} onAddChange={setInviteAdd} onAdd={() => add(inviteTo, inviteAdd, setInviteTo, () => setInviteAdd(""))} />
+        <button className="btn gold" style={{ marginTop: 10, width: "auto", padding: "10px 20px" }} disabled={!gathering || busy !== null} onClick={() => send("invite", "invite", inviteTo, inviteParams)}>
+          {busy === "invite" ? "Sending…" : "Send the summons"}
+        </button>
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
+        <div className="scr" style={{ fontSize: 16, color: "var(--wine)" }}>Call before the Tribunal</div>
+        <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>Summon a member who has reached {DQ_THRESHOLD} disqualifications.</p>
+        {summonedMembers.length === 0 ? (
+          <p className="whisper" style={{ margin: 0, fontSize: 13 }}>No souls have reached the threshold.</p>
+        ) : (
+          <>
+            <div className="pills" style={{ marginBottom: 8 }}>
+              {summonedMembers.map((m) => (
+                <span key={m.id} className={`pill${expelPick === m.id ? " on" : ""}`} onClick={() => pickExpel(m.id)}>{m.cult_name}</span>
+              ))}
+            </div>
+            <RecipientChips list={expelTo} onRemove={(e) => setExpelTo(expelTo.filter((x) => x !== e))} addValue={expelAdd} onAddChange={setExpelAdd} onAdd={() => add(expelTo, expelAdd, setExpelTo, () => setExpelAdd(""))} />
+            <button className="btn danger" style={{ marginTop: 10, width: "auto", padding: "10px 20px" }} disabled={!expelPick || busy !== null}
+              onClick={() => { const m = members.find((x) => x.id === expelPick); send("expel", "expulsion", expelTo, { name: m?.cult_name, count: dq[m?.cult_name || ""] }); }}>
+              {busy === "expel" ? "Sending…" : "Send the summons"}
+            </button>
+          </>
+        )}
+      </div>
+
+      {msg && <p className="scr" style={{ marginTop: 12, fontSize: 15 }}>{msg}</p>}
     </div>
   );
 }
@@ -383,6 +520,7 @@ export default function Profile() {
       </div>
 
       {role === "keiser" && <RosterEditor />}
+      {role === "keiser" && <HeraldsEditor />}
 
       {mode === "demo" ? (
         <div className="card">

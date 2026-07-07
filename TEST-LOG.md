@@ -7,6 +7,22 @@ Changes I've made that **you have not yet confirmed in production.** I demo-test
 
 ---
 
+## 2026-07-07 — branded transactional emails (Resend) — NOT yet committed
+
+Templates + previews at `public/email-previews/*.html` (view live at `/email-previews/1-anoint.html` etc.). All branded, mobile-first (`src/lib/emailTemplates.ts`).
+
+| # | Email | Trigger | Demo | Live |
+|---|-------|---------|------|------|
+| 1 | Petition **anointed** → initiate | Auto, when Keiser anoints in Tribunal | route ✓ (no-ops w/o key) | [ ] |
+| 2 | **Elevated** to member | Auto, when Keiser sets initiate→member in roster | route ✓ | [ ] |
+| 3 | **Invite** (new gathering) → members | **Manual** — Profile → Heralds → "Summon the Council"; recipients editable (add/delete) | UI ✓, send ✓ | [ ] |
+| 4 | **Summons** before the Tribunal | **Manual** — Profile → Heralds → pick a summoned member; recipients editable | UI ✓, send ✓ | [ ] |
+| 5 | **Magic link** (branded) | Supabase auth (paste `5-magiclink-for-supabase.html` into Supabase template) | preview ✓ | [ ] |
+
+_Send endpoint `/api/send-email` is Keiser-gated (verifies the Supabase token). Needs Netlify env: `RESEND_API_KEY`, `NOTIFY_FROM` (verified sender), plus `NOTIFY_EMAIL` for petition alerts. Domain must be verified in Resend. All no-op safely until configured._
+
+---
+
 ## 2026-07-07 — Keiser petition-notification email — NOT yet committed
 
 | # | Change | How to verify live | Demo | Live |

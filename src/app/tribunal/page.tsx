@@ -6,6 +6,7 @@ import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { loadApplications, updateApplication } from "@/lib/applications";
 import { addMember, loadMembers } from "@/lib/members";
 import { sunSign } from "@/lib/astrology";
+import { sendEmail } from "@/lib/sendEmail";
 import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import MemberCard from "@/components/MemberCard";
@@ -141,6 +142,10 @@ export default function Tribunal() {
     }
     setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status } : x)));
     window.dispatchEvent(new Event("lcv-applications")); // refresh the nav badge
+    // Welcome the newly anointed by email (no-ops until Resend is configured).
+    if (status === "anointed" && a.email) {
+      sendEmail("anoint", [a.email], { name: a.cult_name }).catch(() => {});
+    }
   };
 
   const pending = apps.filter((a) => a.status === "pending");
