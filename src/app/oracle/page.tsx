@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
+import MemberCard from "@/components/MemberCard";
 import type { Poll, Member } from "@/lib/types";
 
 const THEME_ICONS = ["ti-flame", "ti-hourglass", "ti-coin", "ti-grape", "ti-skull", "ti-star"];
@@ -97,7 +98,7 @@ function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
                     const mem = members.find((x) => x.id === id);
                     return (
                       <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: "var(--parch)" }}>
-                        <Avatar src={mem?.avatar_url} initials={mem?.short_name || (mem ? initialsOf(mem.cult_name) : "?")} size={22} />
+                        {mem ? <MemberCard member={mem} size={22} /> : <Avatar initials="?" size={22} />}
                         {mem?.cult_name || id}
                       </span>
                     );
@@ -279,7 +280,7 @@ export default function Oracle() {
           const when = m.last_hosted ? new Date(m.last_hosted).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "never";
           return (
             <div key={m.id} className="rk" style={{ opacity: hostingNow || upNext ? 1 : 0.6 }}>
-              <Avatar src={m.avatar_url} initials={m.short_name || ""} size={30} />
+              <MemberCard member={m} size={30} />
               <div style={{ flex: 1 }}>
                 {m.cult_name}{" "}
                 {hostingNow && <span className="tag" style={{ color: "var(--gold2)", borderColor: "var(--line2)" }}>hosting now</span>}

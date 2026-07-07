@@ -13,6 +13,7 @@ import { useWineCount } from "@/lib/useWineCount";
 import { fetchOffering, saveOffering } from "@/lib/bottles";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
+import MemberCard from "@/components/MemberCard";
 import type { Gathering, Member } from "@/lib/types";
 
 const fmtDate = (d: string) =>
@@ -276,7 +277,7 @@ function MeetingBody({
           {attendees.map((id) => {
             const mem = members.find((x) => x.id === id);
             if (!mem) return null;
-            return <Avatar key={id} src={mem.avatar_url} initials={mem.short_name || initialsOf(mem.cult_name)} size={30} />;
+            return <MemberCard key={id} member={mem} size={30} />;
           })}
         </div>
         {isKeiser && (
@@ -292,7 +293,7 @@ function MeetingBody({
                       style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: attendees.includes(mem.id) ? "var(--gold2)" : "var(--faint)", fontSize: 18, display: "flex" }}>
                       <i className={attendees.includes(mem.id) ? "ti ti-square-check" : "ti ti-square"} />
                     </button>
-                    <Avatar src={mem.avatar_url} initials={mem.short_name || initialsOf(mem.cult_name)} size={26} />
+                    <MemberCard member={mem} size={26} />
                     <span style={{ flex: 1 }}>{mem.cult_name}</span>
                   </div>
                 ))}

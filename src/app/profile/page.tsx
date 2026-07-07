@@ -8,6 +8,7 @@ import { deleteApplicationsByEmail } from "@/lib/applications";
 import { supabase } from "@/lib/supabase";
 import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
 import AvatarCropper from "@/components/AvatarCropper";
+import MemberCard from "@/components/MemberCard";
 import type { Role, Member } from "@/lib/types";
 
 const DEMO_NAMES: Record<Role, string> = {
@@ -129,16 +130,16 @@ function RosterEditor() {
         return (
           <div key={m.id} style={{ borderTop: "1px solid var(--line)", padding: "9px 0" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <MemberCard member={m} size={30} />
               <button
                 onClick={() => setOpenId(open ? null : m.id)}
                 style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
               >
-                <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)" }} />
-                <span className="av" style={{ width: 30, height: 30, fontSize: 11, flex: "none" }}>{m.short_name}</span>
                 <span style={{ flex: 1 }}>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: "var(--gold2)" }}>{m.cult_name}</span>
                   <span className="whisper" style={{ fontSize: 12, display: "block" }}>{m.email}</span>
                 </span>
+                <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
               </button>
               {m.role === "initiate" && (
                 <button onClick={() => edit(m.id, { role: "member" })} title="Elevate to full member"
