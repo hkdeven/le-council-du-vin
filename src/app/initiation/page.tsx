@@ -53,6 +53,13 @@ export default function Initiation() {
       addApplication({ id: `app-${Date.now()}`, status: "pending", created_at: new Date().toISOString(), ...record });
       setBusy(false);
     }
+    // Notify the Keiser by email (no-ops until Resend is configured). Fire and
+    // forget — never block the petitioner's confirmation on it.
+    fetch("/api/notify-petition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cult_name: cultName, email }),
+    }).catch(() => {});
     setSent(true);
   };
 

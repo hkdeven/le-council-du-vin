@@ -5,7 +5,17 @@ import { createPortal } from "react-dom";
 import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
 import { fetchAnnals } from "@/lib/annals";
 import Avatar from "./Avatar";
-import type { Member } from "@/lib/types";
+
+// A card can be shown for a full member OR a lighter subject (e.g. a tribunal
+// petitioner or a name-only summoned soul). Only cult_name is required.
+export interface CardMember {
+  cult_name: string;
+  short_name?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  date_of_birth?: string | null;
+  time_of_birth?: string | null;
+}
 
 const SUN_TIP = 'Core identity, ego, and life purpose (what most call their "star sign").';
 const MOON_TIP = "Inner emotions, subconscious, and private self.";
@@ -43,7 +53,7 @@ function Row({ label, tip, value }: { label: string; tip: string; value: string 
 }
 
 // The tarot-style stats card for a member, opened by clicking their avatar.
-function CardModal({ member, chalices, shown, onClose }: { member: Member; chalices: number; shown: boolean; onClose: () => void }) {
+function CardModal({ member, chalices, shown, onClose }: { member: CardMember; chalices: number; shown: boolean; onClose: () => void }) {
   const dob = member.date_of_birth || "";
   const tob = member.time_of_birth || "";
   const sun = dob ? sunSign(dob) : null;
@@ -73,7 +83,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: Member; chali
           <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={72} />
         </div>
         <div className="disp" style={{ fontSize: 19 }}>{member.cult_name}</div>
-        <div style={{ marginTop: 4 }}><span className="tag">{member.role}</span></div>
+        {member.role && <div style={{ marginTop: 4 }}><span className="tag">{member.role}</span></div>}
 
         <div style={{ borderTop: "1px solid var(--line)", margin: "16px 0 6px" }} />
 
@@ -110,7 +120,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: Member; chali
 
 // A member's avatar that opens their tarot-style stats card on click. Drop-in
 // replacement wherever a member circle-icon appears.
-export default function MemberCard({ member, size = 30 }: { member: Member; size?: number }) {
+export default function MemberCard({ member, size = 30 }: { member: CardMember; size?: number }) {
   const [open, setOpen] = useState(false);   // mounted (kept during the exit animation)
   const [shown, setShown] = useState(false); // drives the fade + zoom
   const [chalices, setChalices] = useState(0);
@@ -131,7 +141,7 @@ export default function MemberCard({ member, size = 30 }: { member: Member; size
   useEffect(() => {
     if (!open) return;
     fetchAnnals().then((annals) => {
-      const wins = annals.filter((a) => a.rows.find((r) => r.rank === 1)?.owner === member.cult_name).length;
+      const wins = annals.filter((a) => a.rows.some((r) => r.rank === 1 && r.owner === member.cult_name)).length;
       setChalices(wins);
     });
   }, [open, member.cult_name]);

@@ -51,6 +51,19 @@ emblem.
 - **Member** — sees everything.
 - **Keiser** — super-admin. Final say on membership regardless of the vote, elevates initiates → members from the profile roster, plus hosting and historical edits.
 
+### Keiser-only powers
+
+Everything below is visible/actionable **only to the Keiser** — other members either don't see it at all, or see it read-only. (Enforced in the UI via `isKeiser`, and in the database via the `is_keiser()` RLS helper.)
+
+- **Tribunal (entire screen)** — hidden from the nav for everyone else. Review petitions and **anoint** (→ initiate) or **cast out**; run **expulsion hearings** for members who reach five disqualifications and decree mercy or expulsion. A **petition-count badge** on the Tribunal tab flags new initiates on login.
+- **Profile → the council roster** — view **every** member's account and edit it in place (cult name, email, initials, **rank**, venue instructions, active flag); **elevate** an initiate to full member; **cast a member out** of the Council (which also removes their petition record).
+- **Convene** — **summon** a new gathering and **cancel** one; **edit** the meeting (theme, supporting line, host, date, time, the observances, the Keiser's decree, and venue) via the top pencil; set/adjust the **wine count**; and **RSVP on anyone's behalf**.
+- **The rite** — add or remove wines mid-tasting (the **wine-count** stepper). Everyone else sees the count but can't change it.
+- **Reveal** — **disqualify / restore** off-theme wines; **"Commit it to the Annals"** (all members see the button, but only the Keiser can commit); once committed, **only the Keiser may amend** the locked result.
+- **Oracle** — **edit** or **cast out** themes from the pool. (Proposing themes, casting favour, and creating/voting on date polls are open to all members.)
+
+For contrast, any **member** can: RSVP, log a private offering, score in the rite, claim and name their bottle on the reveal, propose and favour themes, create and vote on polls, and read the codex.
+
 ## Notable features
 
 - **Tarot per night** — deterministic draw from the Major Arcana keyed on `(gathering, member)`, so a member's card is fixed for a gathering but re-dealt each event (`src/lib/tarot.ts`).

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickCurrent } from "@/lib/gatherings";
+import { useRiteOpen } from "@/lib/useRiteOpen";
 import { supabase } from "@/lib/supabase";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
@@ -138,8 +139,10 @@ function MeetingBody({
   const attendees = m.attendees || [];
   const date = fmtDate(m.gather_date);
   const time = m.gather_time || "19:00";
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const showRite = isCurrent && (m.status === "scoring" || todayISO === m.gather_date);
+  // The rite opens 30 minutes after the scheduled start — not before. The hook
+  // re-renders the moment it opens, so the button appears without a refresh.
+  const riteOpen = useRiteOpen(m);
+  const showRite = isCurrent && riteOpen;
 
   // Refetch-before-write so two people RSVPing at once don't clobber each other.
   const toggleRsvp = (id: string) =>
@@ -443,7 +446,7 @@ export default function Convene() {
       {isKeiser && (
         <>
           <MoonDivider />
-          <div className="eyebrow" style={{ margin: "0 0 10px" }}>Gatherings to come</div>
+          <div className="eyebrow" style={{ margin: "0 0 10px", fontSize: 14 }}>Gatherings to come</div>
           {future.map((m) => (
             <FutureCard key={m.id} m={m} isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(m.id, p)} onAttendees={(next) => setAttendeesLocal(m.id, next)} onDelete={() => deleteMeeting(m.id)} />
           ))}

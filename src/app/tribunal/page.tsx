@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { loadApplications, updateApplication } from "@/lib/applications";
-import { addMember } from "@/lib/members";
+import { addMember, loadMembers } from "@/lib/members";
 import { sunSign } from "@/lib/astrology";
 import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
+import MemberCard from "@/components/MemberCard";
 import type { Application, Member } from "@/lib/types";
 
 const fmtDate = (d: string) =>
@@ -32,9 +33,7 @@ function ExpulsionCard({ name, count }: { name: string; count: number }) {
   return (
     <div className="card" style={{ marginBottom: 14, borderColor: "var(--wine)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-        <div className="av" style={{ width: 40, height: 40 }}>
-          {name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
-        </div>
+        <MemberCard member={{ cult_name: name }} size={40} />
         <div>
           <div className="disp" style={{ fontSize: 16 }}>{name}</div>
           <div className="whisper" style={{ fontSize: 14, color: "var(--wine)" }}>
@@ -76,6 +75,9 @@ export default function Tribunal() {
   const { mode } = useAuth();
   const [apps, setApps] = useState<Application[]>([]);
   const [dq, setDq] = useState<Record<string, number>>({});
+  // Emails of members who still exist, so an anointed petition whose member has
+  // since been cast from the Council no longer lingers on the decided list.
+  const [memberEmails, setMemberEmails] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchDqCounts().then(setDq);
@@ -90,8 +92,12 @@ export default function Tribunal() {
           if (error) console.error("Could not load petitions:", error.message);
           else if (data) setApps(data as Application[]);
         });
+      supabase.from("members").select("email").then(({ data }) => {
+        if (data) setMemberEmails(new Set(data.map((m) => (m.email as string).toLowerCase())));
+      });
     } else {
       setApps(loadApplications());
+      setMemberEmails(new Set(loadMembers().map((m) => m.email.toLowerCase())));
     }
   }, [mode]);
 
@@ -155,9 +161,7 @@ export default function Tribunal() {
       {pending.map((a) => (
         <div key={a.id} className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div className="av" style={{ width: 40, height: 40 }}>
-              {a.cult_name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
-            </div>
+            <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth }} size={40} />
             <div>
               <div className="disp" style={{ fontSize: 16 }}>{a.cult_name}</div>
               <div className="whisper" style={{ fontSize: 14 }}>
@@ -203,9 +207,13 @@ export default function Tribunal() {
         </div>
       ))}
 
-      {apps.filter((a) => a.status !== "pending").map((a) => (
+      {apps
+        .filter((a) => a.status !== "pending")
+        // Keep cast-out records; drop anointed ones whose member was later deleted.
+        .filter((a) => a.status === "cast_out" || memberEmails.has(a.email.toLowerCase()))
+        .map((a) => (
         <div key={a.id} className="rk">
-          <div className="av">{a.cult_name.split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
+          <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth }} size={34} />
           <div style={{ flex: 1 }}>{a.cult_name}</div>
           <span className="tag" style={{ color: a.status === "anointed" ? "var(--gold2)" : "var(--wine)", borderColor: a.status === "anointed" ? "var(--line2)" : "var(--wine)" }}>
             {a.status === "anointed" ? "anointed" : "cast out"}

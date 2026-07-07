@@ -85,6 +85,18 @@ export async function fetchCurrentGathering(): Promise<Gathering | null> {
   return pickCurrent(await fetchGatherings());
 }
 
+// The rite of judgement opens 30 minutes after the scheduled start — time for
+// souls to gather and pour before scoring. Before then no one may enter.
+const RITE_DELAY_MS = 30 * 60 * 1000;
+export function riteOpensAt(g: Gathering): Date {
+  return new Date(new Date(`${g.gather_date}T${g.gather_time || "19:00"}`).getTime() + RITE_DELAY_MS);
+}
+export function isRiteOpen(g: Gathering | null): boolean {
+  if (!g) return false;
+  const t = riteOpensAt(g).getTime();
+  return !Number.isNaN(t) && Date.now() >= t;
+}
+
 // Insert. In live the DB assigns the uuid id, so we return the stored row.
 export async function createGathering(g: Gathering): Promise<Gathering> {
   if (gatheringsLive()) {

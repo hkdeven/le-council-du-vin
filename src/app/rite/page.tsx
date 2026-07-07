@@ -7,7 +7,8 @@ import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
 import { fetchBallot, saveBallot } from "@/lib/ballots";
-import { fetchCurrentGathering } from "@/lib/gatherings";
+import { fetchCurrentGathering, riteOpensAt } from "@/lib/gatherings";
+import { useRiteOpen } from "@/lib/useRiteOpen";
 import type { Gathering } from "@/lib/types";
 
 export default function Rite() {
@@ -24,6 +25,8 @@ export default function Rite() {
     });
   }, []);
   const gid = g?.id ?? "none";
+  // Re-renders the moment the rite opens, so the gate below lifts without a refresh.
+  const riteOpen = useRiteOpen(g);
 
   const [total, setTotal] = useWineCount(g);
   const wines = Array.from({ length: total }, (_, i) => i + 1);
@@ -119,6 +122,22 @@ export default function Rite() {
         <i className="ti ti-glass-full" style={{ fontSize: 30, color: "var(--gold)" }} aria-hidden="true" />
         <p className="whisper" style={{ fontSize: 16, marginTop: 12 }}>
           No gathering is scheduled. The convening comes first.
+        </p>
+      </section>
+    );
+  }
+
+  // The rite is sealed until 30 minutes after the gathering's scheduled start.
+  if (ready && g && !riteOpen) {
+    const opens = riteOpensAt(g);
+    const opensStr = opens.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    return (
+      <section style={{ textAlign: "center", padding: "70px 0" }}>
+        <i className="ti ti-lock-clock" style={{ fontSize: 32, color: "var(--gold)" }} aria-hidden="true" />
+        <h1 className="disp" style={{ fontSize: 18, fontWeight: 500, marginTop: 12 }}>The rite is not yet open</h1>
+        <p className="whisper" style={{ fontSize: 16, maxWidth: 380, margin: "10px auto 0" }}>
+          Judgement begins half an hour after the gathering convenes. Return at{" "}
+          <span className="scr" style={{ color: "var(--gold2)" }}>{opensStr}</span>.
         </p>
       </section>
     );

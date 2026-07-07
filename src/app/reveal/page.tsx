@@ -147,12 +147,14 @@ export default function Reveal() {
     return () => clearInterval(iv);
   }, [g, committed, locked, wineCount]);
 
-  // Ranking is computed, never stored: qualified bottles by score, the
-  // disqualified banished to the bottom without a rank.
+  // Ranking is computed, never stored. Ties share a rank (competition style:
+  // two 2nds → next is 4th), and a tie for the top score crowns co-champions.
   const qualified = [...rows].filter((r) => !r.dq).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
   const dqRows = rows.filter((r) => r.dq);
-  const champion = qualified[0] ?? null;
-  const rest = [...qualified.slice(1), ...dqRows];
+  const rankOf = (row: RevealRow) => 1 + qualified.filter((x) => x.score > row.score).length;
+  const topScore = qualified[0]?.score ?? 0;
+  const champions = topScore > 0 ? qualified.filter((r) => r.score === topScore) : [];
+  const rest = [...qualified.filter((r) => !champions.includes(r)), ...dqRows];
   const canAct = !committed || isKeiser; // once in the Annals, only the Keiser may touch it
 
   useEffect(() => {
@@ -168,7 +170,9 @@ export default function Reveal() {
   };
 
   const writeAnnal = async (data: RevealRow[]) => {
-    const q = [...data].filter((r) => !r.dq).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
+    const q = data.filter((r) => !r.dq);
+    // Shared ranking, so co-champions both record rank 1 (each earns a chalice).
+    const rank = (r: RevealRow) => 1 + q.filter((x) => x.score > r.score).length;
     await commitAnnal({
       gatheringId: g!.id,
       number: g!.number,
@@ -177,7 +181,7 @@ export default function Reveal() {
       committed_at: new Date().toISOString(),
       rows: data.map((r): AnnalRow => ({
         cloth: r.cloth, owner: r.owner, title: r.title, score: r.score, votes: r.votes,
-        dq: r.dq, rank: r.dq ? null : q.findIndex((x) => x.cloth === r.cloth) + 1,
+        dq: r.dq, rank: r.dq ? null : rank(r),
       })),
     });
   };
@@ -234,7 +238,7 @@ export default function Reveal() {
     );
   }
 
-  if (!champion) {
+  if (champions.length === 0 && dqRows.length === 0) {
     return (
       <section style={{ textAlign: "center", padding: "70px 0" }}>
         <p className="whisper" style={{ fontSize: 16 }}>No verdicts have been cast. The rite must come first.</p>
@@ -288,7 +292,7 @@ export default function Reveal() {
         {committed ? "sealed in the Annals" : "every ballot sealed · the cloths may lift"}
       </p>
 
-      <div className={`flip${flipped ? " on" : ""}`} style={{ height: 300, margin: "14px 0" }}>
+      <div className={`flip${flipped ? " on" : ""}`} style={{ height: champions.length > 1 ? 340 : 300, margin: "14px 0" }}>
         <div className="flip-inner">
           <button
             className="flip-face"
@@ -297,23 +301,35 @@ export default function Reveal() {
             style={{ width: "100%", background: "#000 url(/reveal-back.webp) center / contain no-repeat", border: "none", cursor: "pointer" }}
           />
 
-          <div className="flip-face flip-front" style={{ background: "var(--ink2)", border: "1px solid var(--line2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16 }}>
-            <span className="tag">Champion of the moon</span>
-            <div className="disp" style={{ fontSize: 19, margin: "8px 0 2px" }}>Bottle {toRoman(champion.cloth)}</div>
-            <div style={{ color: "var(--parch)", fontSize: 14 }}>
-              <OwnerSlot owner={champion.owner} mine={champion.owner === myName && !!myName} canClaim={!!meId && !myClaim} canAct={canAct}
-                onClaim={() => claim(champion.cloth)} onRelease={() => release(champion.cloth)}
-                style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 16, color: "var(--gold2)" }} />
-            </div>
-            <div style={{ marginTop: 4, fontSize: 14 }}>
-              <Inline value={champion.title} placeholder="name the wine…" canEdit={canAct} onChange={(v) => patch(champion.cloth, { title: v })} />
-            </div>
-            <div className="disp" style={{ fontSize: 26, marginTop: 6 }}>{fmtScore(champion)}</div>
+          <div className="flip-face flip-front" style={{ background: "var(--ink2)", border: "1px solid var(--line2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16, overflowY: "auto" }}>
+            <span className="tag">{champions.length > 1 ? `Champions of the moon · tied` : "Champion of the moon"}</span>
+            {champions.length === 0 ? (
+              <div className="whisper" style={{ marginTop: 10, fontSize: 15 }}>No champion this moon.</div>
+            ) : champions.map((champ, idx) => (
+              <div key={champ.cloth} style={{ marginTop: idx === 0 ? 8 : 10, ...(idx > 0 ? { borderTop: "1px solid var(--line)", paddingTop: 10, width: "100%" } : {}) }}>
+                <div className="disp" style={{ fontSize: champions.length > 1 ? 17 : 19, margin: "0 0 2px" }}>Bottle {toRoman(champ.cloth)}</div>
+                <div style={{ color: "var(--parch)", fontSize: 14 }}>
+                  <OwnerSlot owner={champ.owner} mine={champ.owner === myName && !!myName} canClaim={!!meId && !myClaim} canAct={canAct}
+                    onClaim={() => claim(champ.cloth)} onRelease={() => release(champ.cloth)}
+                    style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 16, color: "var(--gold2)" }} />
+                </div>
+                <div style={{ marginTop: 4, fontSize: 14 }}>
+                  <Inline value={champ.title} placeholder="name the wine…" canEdit={canAct} onChange={(v) => patch(champ.cloth, { title: v })} />
+                </div>
+                <div className="disp" style={{ fontSize: champions.length > 1 ? 22 : 26, marginTop: 4 }}>{fmtScore(champ)}</div>
+                {isKeiser && canAct && (
+                  <button onClick={() => patch(champ.cloth, { dq: true })} title="Disqualify — off theme" aria-label="Disqualify this wine"
+                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                    <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {flipped && rest.slice(0, shown).map((w) => renderRow(w, w.dq ? null : qualified.findIndex((x) => x.cloth === w.cloth) + 1))}
+      {flipped && rest.slice(0, shown).map((w) => renderRow(w, w.dq ? null : rankOf(w)))}
 
       {flipped && shown >= rest.length && (
         <>

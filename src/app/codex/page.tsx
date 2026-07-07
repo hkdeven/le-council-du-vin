@@ -9,7 +9,8 @@ const fmtDate = (d: string) =>
 
 function AnnalCard({ a }: { a: AnnalEntry }) {
   const [open, setOpen] = useState(false);
-  const champ = a.rows.find((r) => r.rank === 1);
+  const champs = a.rows.filter((r) => r.rank === 1);
+  const crowned = champs.map((c) => c.owner || `Bottle ${toRoman(c.cloth)}`).join(" & ");
   return (
     <div style={{ borderBottom: "1px solid var(--line)", padding: "10px 0" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}>
@@ -17,7 +18,7 @@ function AnnalCard({ a }: { a: AnnalEntry }) {
         <div style={{ flex: 1 }}>
           <div className="disp" style={{ fontSize: 15 }}>Gathering {toRoman(a.number)} — {a.theme}</div>
           <div className="whisper" style={{ fontSize: 13 }}>
-            {fmtDate(a.date)}{champ ? ` · crowned: ${champ.owner || `Bottle ${toRoman(champ.cloth)}`}` : ""}
+            {fmtDate(a.date)}{crowned ? ` · crowned: ${crowned}` : ""}
           </div>
         </div>
       </button>
@@ -55,8 +56,10 @@ export default function Codex() {
   const bottlesJudged = annals.reduce((n, a) => n + a.rows.length, 0);
   const victories: Record<string, number> = {};
   for (const a of annals) {
-    const champ = a.rows.find((r) => r.rank === 1);
-    if (champ?.owner) victories[champ.owner] = (victories[champ.owner] || 0) + 1;
+    // Co-champions each count as a victory.
+    for (const champ of a.rows.filter((r) => r.rank === 1)) {
+      if (champ.owner) victories[champ.owner] = (victories[champ.owner] || 0) + 1;
+    }
   }
   const victoryList = Object.entries(victories).sort((a, b) => b[1] - a[1]);
   const winsMax = Math.max(1, ...victoryList.map(([, n]) => n));
