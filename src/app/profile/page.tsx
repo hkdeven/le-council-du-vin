@@ -83,6 +83,20 @@ function RosterEditor() {
   const { mode } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Keiser editing a member's portrait: pick a file for a member, then crop it.
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [pickId, setPickId] = useState<string | null>(null);
+  const [cropId, setCropId] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f || !pickId) return;
+    const reader = new FileReader();
+    reader.onload = () => { setCropSrc(reader.result as string); setCropId(pickId); };
+    reader.readAsDataURL(f);
+    e.target.value = "";
+  };
 
   useEffect(() => {
     // Live: the roster is the Supabase members table (so anointed initiates
@@ -137,6 +151,7 @@ function RosterEditor() {
       <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
         Every soul&rsquo;s account. Yours to amend — the Keiser alone sees this.
       </p>
+      <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickPhoto} />
       {members.map((m) => {
         const open = openId === m.id;
         return (
@@ -163,6 +178,34 @@ function RosterEditor() {
             </div>
             {open && (
               <div style={{ paddingLeft: 40, marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                {cropId === m.id && cropSrc ? (
+                  <div>
+                    <label className="field" style={{ marginTop: 0 }}>Frame their portrait</label>
+                    <AvatarCropper
+                      src={cropSrc}
+                      onSave={(url) => { edit(m.id, { avatar_url: url }); setCropSrc(null); setCropId(null); }}
+                      onCancel={() => { setCropSrc(null); setCropId(null); }}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="field" style={{ marginTop: 0 }}>Portrait</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {m.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.avatar_url} alt="" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--line2)", flex: "none" }} />
+                      ) : (
+                        <span className="av" style={{ width: 48, height: 48, fontSize: 15, flex: "none" }}>{m.short_name || (m.cult_name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</span>
+                      )}
+                      <button className="btn" style={{ width: "auto", padding: "6px 14px" }} onClick={() => { setPickId(m.id); photoRef.current?.click(); }}>
+                        <i className="ti ti-camera" style={{ fontSize: 13, marginRight: 6 }} />{m.avatar_url ? "Change photo" : "Add photo"}
+                      </button>
+                      {m.avatar_url && (
+                        <button className="btn" style={{ width: "auto", padding: "6px 12px", color: "var(--wine)" }} onClick={() => edit(m.id, { avatar_url: null })}>Remove</button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="field" style={{ marginTop: 0 }}>Cult name</label>
                   <input value={m.cult_name} onChange={(e) => edit(m.id, { cult_name: e.target.value })} />

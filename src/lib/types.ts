@@ -93,5 +93,6 @@ export interface Application {
   oath: boolean;
   status: "pending" | "anointed" | "cast_out";
   created_at: string;
+  anointed_at?: string | null; // set when the Keiser anoints the petitioner
   tally?: { anoint: number; cast_out: number; abstain: number };
 }

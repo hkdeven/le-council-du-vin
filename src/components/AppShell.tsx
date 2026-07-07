@@ -101,17 +101,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const initials = profileName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto" }}>
+    <div>
       <header
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "14px 18px",
           borderBottom: "1px solid var(--line)",
           background: "#0a0908",
         }}
       >
+        <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
         <Link href="/" aria-label="The gate" style={{ display: "flex", flex: "none" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/site-mark.png" alt="" width={34} height={34} style={{ display: "block" }} />
@@ -129,18 +126,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="eyebrow" style={{ fontSize: 9 }}>{role}</span>
           <Avatar src={avatar} initials={initials} size={34} />
         </Link>
+        </div>
       </header>
 
       <nav
         style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 2,
-          padding: "8px 12px",
           borderBottom: "1px solid var(--line)",
           background: "#080706",
         }}
       >
+        <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 2, padding: "8px 12px" }}>
         {NAV.filter((n) => ROLE_RANK[role] >= ROLE_RANK[n.min]).map((n) => {
           const on = pathname.startsWith(n.href);
           return (
@@ -175,9 +170,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+        </div>
       </nav>
 
-      <main style={{ padding: 22, minHeight: 440 }}>
+      <main>
+        <div style={{ maxWidth: 820, margin: "0 auto", padding: 22, minHeight: 440 }}>
         {allowed ? (
           children
         ) : (
@@ -188,6 +185,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
         )}
+        </div>
       </main>
     </div>
   );

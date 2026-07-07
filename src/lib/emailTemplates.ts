@@ -107,6 +107,21 @@ export function elevateEmail(name: string): Email {
   };
 }
 
+// Petition alert to the Keiser when a new soul applies. (auto)
+export function petitionEmail(name: string, email?: string): Email {
+  return {
+    subject: `A new petition: ${name}`,
+    html: layout(
+      moons() +
+      heading("New Petition") +
+      p(`<strong style="color:#cbbd93;">${name}</strong> stands at the gate and petitions the Council${email ? ` <span style="color:#8a7f66;">(${email})</span>` : ""}.`) +
+      p(`Weigh the soul, and pass your decree.`) +
+      button(`${SITE}/tribunal`, "Judge in the Tribunal"),
+      `${name} has petitioned the Council.`
+    ),
+  };
+}
+
 export interface InviteParams {
   number?: string; // roman numeral, e.g. "XLVII"
   theme?: string;

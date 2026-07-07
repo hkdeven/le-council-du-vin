@@ -43,11 +43,11 @@ function Tip({ text }: { text: string }) {
   );
 }
 
-function Row({ label, tip, value }: { label: string; tip: string; value: string }) {
+function Row({ label, tip, value, valueTip }: { label: string; tip: string; value: string; valueTip?: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "5px 0" }}>
       <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center" }}>{label}<Tip text={tip} /></span>
-      <span style={{ color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 16 }}>{value}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 16 }}>{value}{valueTip && <Tip text={valueTip} />}</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             <Row label="Moon sign" tip={MOON_TIP} value={moon ? `${moon.symbol} ${moon.name}` : "—"} />
             <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : "unknown hour"} />
             <Row label="Shengxiao" tip={SX_TIP} value={animal ? `${animal.symbol} ${animal.name}` : "—"} />
-            <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} />
+            <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} valueTip={wx?.meaning} />
           </div>
         ) : (
           <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made them are unrecorded.</p>

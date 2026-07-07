@@ -144,11 +144,19 @@ select option {
   background: #0e0d0c;
 }
 
-/* Date + time of birth pair, kept side by side at every width. */
+/* Date + time of birth pair. Native date/time inputs on iOS Safari keep a
+   minimum intrinsic width that min-width:0 can't shrink, so forcing them
+   side by side on a phone makes them overflow and collide. Mobile-first:
+   stack them, and only pair them once there's room (>=480px). */
 .birth-fields {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .birth-fields {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .birth-fields > div {
   min-width: 0;

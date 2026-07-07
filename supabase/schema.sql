@@ -122,11 +122,13 @@ create table if not exists applications (
   wine_sin text,
   oath boolean not null default false,
   status text not null default 'pending' check (status in ('pending','anointed','cast_out')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  anointed_at timestamptz
 );
 -- For databases created before birth details replaced star sign/element:
 alter table applications add column if not exists date_of_birth date;
 alter table applications add column if not exists time_of_birth time;
+alter table applications add column if not exists anointed_at timestamptz;
 
 create table if not exists application_votes (
   id uuid primary key default gen_random_uuid(),

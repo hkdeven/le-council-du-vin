@@ -7,7 +7,17 @@ Changes I've made that **you have not yet confirmed in production.** I demo-test
 
 ---
 
-## 2026-07-07 — branded transactional emails (Resend) — NOT yet committed
+## 2026-07-07 — DOB/time-of-birth collision fix — NOT yet committed
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Birth date + time fields stack on mobile, pair on wider screens | On a phone, the petition (and Profile edit) show Date of birth and Time of birth on separate full-width rows, no overlap; on desktop they sit side by side | ✓ (375px stacked, desktop paired) | [ ] |
+
+_Root cause: native iOS date/time inputs keep a minimum intrinsic width that `min-width:0` can't shrink, so the forced `1fr 1fr` grid overflowed on phones. Now mobile-first: single column, `1fr 1fr` only at >=480px. Affects `.birth-fields` (initiation + profile)._
+
+---
+
+## 2026-07-07 — branded transactional emails (Resend) — pushed 9febf78
 
 Templates + previews at `public/email-previews/*.html` (view live at `/email-previews/1-anoint.html` etc.). All branded, mobile-first (`src/lib/emailTemplates.ts`).
 
@@ -111,7 +121,7 @@ _Wired in: Convene (RSVP list + behalf list), Oracle (poll voters + hosting whee
 
 ## To re-check on next deploy (deferred)
 
-- **Birth date/time fields on prod** — user reports they still don't render correctly on production, but the current code renders fine in local testing (grid `1fr 1fr`, equal widths, 12px gap, `color-scheme: dark`, font 14px). Likely a stale browser cache OR a failed/older Netlify deploy. On next deploy: hard-refresh (Cmd+Shift+R), confirm deploy Published at latest commit, then screenshot if still wrong (note browser + device + which page).
+- ~~Birth date/time fields collide on prod~~ — RESOLVED (see top entry): the forced side-by-side grid overflowed on iOS; now stacked on mobile. Awaiting live check after deploy.
 
 ## Known gaps (not yet built/fixed)
 

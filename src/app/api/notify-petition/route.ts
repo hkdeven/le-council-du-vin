@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { petitionEmail } from "@/lib/emailTemplates";
 
 // Emails the Keiser when a new petition is submitted. Sends via Resend when
 // configured; otherwise it quietly no-ops (safe to ship before Resend is set up).
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
   const name = String(body.cult_name || "A new soul").slice(0, 200);
   const email = String(body.email || "").slice(0, 200);
 
+  const mail = petitionEmail(name, email);
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -27,10 +29,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         from,
         to: [to],
-        subject: `A new petition — ${name}`,
-        html:
-          `<p><strong>${name}</strong> petitions the Council${email ? ` &middot; ${email}` : ""}.</p>` +
-          `<p>Judge them in the Tribunal: <a href="https://lecouncilduvin.co.za/tribunal">lecouncilduvin.co.za/tribunal</a></p>`,
+        subject: mail.subject,
+        html: mail.html,
       }),
     });
     if (!res.ok) return NextResponse.json({ ok: false, error: await res.text() }, { status: 502 });

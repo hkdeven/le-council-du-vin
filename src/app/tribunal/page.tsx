@@ -72,6 +72,30 @@ function ExpulsionCard({ name, count }: { name: string; count: number }) {
 
 const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
+// The answers a petitioner gave at the gate — shown on the pending card and,
+// once decided, when their row is expanded.
+function PetitionAnswers({ a }: { a: Application }) {
+  return (
+    <>
+      {a.wine_sin && (
+        <p style={{ margin: "0 0 4px" }}>
+          <span className="scr">Gravest wine sin:</span> &ldquo;{a.wine_sin}&rdquo;
+        </p>
+      )}
+      {a.if_wine && (
+        <p style={{ margin: 0 }}>
+          <span className="scr">If a wine:</span> &ldquo;{a.if_wine}&rdquo;
+        </p>
+      )}
+      {a.draw_reason && (
+        <p style={{ margin: "4px 0 0" }}>
+          <span className="scr">What draws them:</span> &ldquo;{a.draw_reason}&rdquo;
+        </p>
+      )}
+    </>
+  );
+}
+
 export default function Tribunal() {
   const { mode } = useAuth();
   const [apps, setApps] = useState<Application[]>([]);
@@ -79,6 +103,8 @@ export default function Tribunal() {
   // Emails of members who still exist, so an anointed petition whose member has
   // since been cast from the Council no longer lingers on the decided list.
   const [memberEmails, setMemberEmails] = useState<Set<string>>(new Set());
+  // Which decided petitioner's original answers are expanded.
+  const [openDecided, setOpenDecided] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDqCounts().then(setDq);
@@ -131,21 +157,42 @@ export default function Tribunal() {
         addMember(member);
       }
     }
+    // Stamp the moment of anointment so the record shows when they were raised.
+    const patch: Partial<Application> = { status };
+    if (status === "anointed") patch.anointed_at = new Date().toISOString();
     if (mode === "live" && supabase) {
-      const { error } = await supabase.from("applications").update({ status }).eq("id", a.id);
+      const { error } = await supabase.from("applications").update(patch).eq("id", a.id);
       if (error) {
         alert(`Could not record the decree: ${error.message}`);
         return;
       }
     } else {
-      updateApplication(a.id, { status });
+      updateApplication(a.id, patch);
     }
-    setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status } : x)));
+    setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, ...patch } : x)));
+    // The decided list filters anointed rows to current members; add the new
+    // initiate's email locally so they appear at once, without a refresh.
+    if (status === "anointed" && a.email) {
+      setMemberEmails((prev) => new Set(prev).add(a.email.toLowerCase()));
+    }
     window.dispatchEvent(new Event("lcv-applications")); // refresh the nav badge
     // Welcome the newly anointed by email (no-ops until Resend is configured).
     if (status === "anointed" && a.email) {
       sendEmail("anoint", [a.email], { name: a.cult_name }).catch(() => {});
     }
+  };
+
+  // Set or amend an anointment date (e.g. backfill records anointed before it
+  // was captured). Empty clears it.
+  const setAnointDate = async (a: Application, dateStr: string) => {
+    const anointed_at = dateStr || null;
+    if (mode === "live" && supabase) {
+      const { error } = await supabase.from("applications").update({ anointed_at }).eq("id", a.id);
+      if (error) { alert(`Could not save the date: ${error.message}`); return; }
+    } else {
+      updateApplication(a.id, { anointed_at });
+    }
+    setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, anointed_at } : x)));
   };
 
   const pending = apps.filter((a) => a.status === "pending");
@@ -175,21 +222,7 @@ export default function Tribunal() {
             </div>
           </div>
 
-          {a.wine_sin && (
-            <p style={{ margin: "0 0 4px" }}>
-              <span className="scr">Gravest wine sin —</span> &ldquo;{a.wine_sin}&rdquo;
-            </p>
-          )}
-          {a.if_wine && (
-            <p style={{ margin: 0 }}>
-              <span className="scr">If a wine —</span> &ldquo;{a.if_wine}&rdquo;
-            </p>
-          )}
-          {a.draw_reason && (
-            <p style={{ margin: "4px 0 0" }}>
-              <span className="scr">What draws them —</span> &ldquo;{a.draw_reason}&rdquo;
-            </p>
-          )}
+          <PetitionAnswers a={a} />
 
           {a.tally && (
             <div style={{ display: "flex", gap: 16, margin: "16px 0", padding: "12px 0", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
@@ -216,15 +249,55 @@ export default function Tribunal() {
         .filter((a) => a.status !== "pending")
         // Keep cast-out records; drop anointed ones whose member was later deleted.
         .filter((a) => a.status === "cast_out" || memberEmails.has(a.email.toLowerCase()))
-        .map((a) => (
-        <div key={a.id} className="rk">
-          <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth }} size={34} />
-          <div style={{ flex: 1 }}>{a.cult_name}</div>
-          <span className="tag" style={{ color: a.status === "anointed" ? "var(--gold2)" : "var(--wine)", borderColor: a.status === "anointed" ? "var(--line2)" : "var(--wine)" }}>
-            {a.status === "anointed" ? "anointed" : "cast out"}
-          </span>
-        </div>
-      ))}
+        .map((a) => {
+          const openD = openDecided === a.id;
+          return (
+            <div key={a.id} style={{ borderBottom: "1px solid var(--line)" }}>
+              <div className="rk" style={{ borderBottom: "none" }}>
+                <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth }} size={34} />
+                <button
+                  onClick={() => setOpenDecided(openD ? null : a.id)}
+                  style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0, color: "inherit" }}
+                >
+                  <span style={{ flex: 1 }}>{a.cult_name}</span>
+                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flex: "none" }}>
+                    <span className="tag" style={{ color: a.status === "anointed" ? "var(--gold2)" : "var(--wine)", borderColor: a.status === "anointed" ? "var(--line2)" : "var(--wine)" }}>
+                      {a.status === "anointed" ? "anointed" : "cast out"}
+                    </span>
+                    {a.status === "anointed" && a.anointed_at && (
+                      <span className="whisper" style={{ fontSize: 11 }}>{fmtDate(a.anointed_at)}</span>
+                    )}
+                  </span>
+                  <i className={`ti ti-chevron-${openD ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+                </button>
+              </div>
+              {openD && (
+                <div style={{ paddingLeft: 46, paddingBottom: 12 }}>
+                  {a.status === "anointed" && (
+                    <div style={{ marginBottom: 8 }}>
+                      <label className="field" style={{ marginTop: 0 }}>Date of anointment</label>
+                      <input
+                        type="date"
+                        value={(a.anointed_at || "").slice(0, 10)}
+                        onChange={(e) => setAnointDate(a, e.target.value)}
+                        style={{ colorScheme: "dark", maxWidth: 220 }}
+                      />
+                    </div>
+                  )}
+                  <div className="whisper" style={{ fontSize: 13, marginBottom: 6 }}>
+                    {a.date_of_birth ? (() => { const s = sunSign(a.date_of_birth!); return `Born ${fmtDate(a.date_of_birth!)}${s ? ` · ${s.symbol} ${s.name}` : ""}`; })() : null}
+                    {a.email ? `${a.date_of_birth ? " · " : ""}${a.email}` : ""}
+                  </div>
+                  {(a.wine_sin || a.if_wine || a.draw_reason) ? (
+                    <PetitionAnswers a={a} />
+                  ) : (
+                    <p className="whisper" style={{ margin: 0, fontSize: 14 }}>No answers were recorded with this petition.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
       {summoned.length > 0 && (
         <>

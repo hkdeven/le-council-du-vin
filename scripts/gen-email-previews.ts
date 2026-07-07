@@ -1,5 +1,5 @@
 import { writeFileSync, mkdirSync, readFileSync } from "fs";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, magicLinkHtml } from "../src/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, magicLinkHtml, petitionEmail } from "../src/lib/emailTemplates";
 
 mkdirSync("public/email-previews", { recursive: true });
 
@@ -20,6 +20,7 @@ write("1-anoint.html", anointEmail("Priestess Larissa").html);
 write("2-elevate.html", elevateEmail("Magus Dominik").html);
 write("3-invite.html", inviteEmail({ number: "XLVIII", theme: "Rhône blends of the old world", date: "Saturday 26 July", time: "19:00", host: "Seer Matthew" }).html);
 write("4-expulsion.html", expulsionEmail("Scribe Scott", 5).html);
+write("6-petition.html", petitionEmail("Neophyte Testerson", "tester@vessel.com").html);
 write("5-magiclink.html", magicLinkHtml("https://lecouncilduvin.co.za/#example-link"));
 
 // The file to paste into Supabase keeps the hosted image URLs and the real variable.
