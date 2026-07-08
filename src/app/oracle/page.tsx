@@ -142,8 +142,9 @@ export default function Oracle() {
       supabase.from("members").select("*").order("role").then(({ data }) => { if (data) setMembers(data as Member[]); });
     } else {
       setMembers(loadMembers());
-    fetchGatherings().then(setAllGatherings).catch(() => {});
     }
+    // The hosting wheel needs gatherings in live mode too (it was demo-only).
+    fetchGatherings().then(setAllGatherings).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, meId]);
 

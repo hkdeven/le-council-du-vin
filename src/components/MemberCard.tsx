@@ -135,11 +135,15 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
     return () => { active = false; };
   }, [member.id, member.cult_name, member.last_hosted]);
 
+  // Their portrait, enlarged in a small lightbox above the card (Escape closes
+  // the photo first, then the card).
+  const [photoOpen, setPhotoOpen] = useState(false);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && (photoOpen ? setPhotoOpen(false) : onClose());
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, photoOpen]);
 
   return (
     // The OVERLAY scrolls, not the card: the card keeps its natural height and
@@ -157,7 +161,14 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         </div>
 
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-          <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={72} />
+          {member.avatar_url ? (
+            <button onClick={() => setPhotoOpen(true)} aria-label="Enlarge their portrait"
+              style={{ width: "auto", background: "none", border: "none", padding: 0, cursor: "zoom-in", display: "flex" }}>
+              <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={72} />
+            </button>
+          ) : (
+            <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={72} />
+          )}
         </div>
         <div className="disp" style={{ fontSize: 19 }}>{member.cult_name}</div>
         {phase && (
@@ -264,6 +275,16 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         {showChart && <NatalChartModal member={member} isSelf={isSelf} onClose={() => setShowChart(false)} onLeave={() => { setShowChart(false); onClose(); }} />}
         {showFore && <ForetellingModal member={member} isSelf={isSelf} onClose={() => setShowFore(false)} onLeave={() => { setShowFore(false); onClose(); }} />}
       </div>
+      {/* Portrait lightbox: sibling of the card, NOT inside it — the card's
+          transform would otherwise become the containing block for fixed. */}
+      {photoOpen && member.avatar_url && (
+        <div onClick={(e) => { e.stopPropagation(); setPhotoOpen(false); }}
+          style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={member.avatar_url} alt={`${member.cult_name}'s portrait`}
+            style={{ width: "min(78vw, 340px)", height: "min(78vw, 340px)", objectFit: "cover", borderRadius: 16, border: "1px solid var(--gold)", boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 24px 70px rgba(0,0,0,0.8)" }} />
+        </div>
+      )}
     </div>
   );
 }

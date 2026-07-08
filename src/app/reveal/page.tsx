@@ -7,6 +7,7 @@ import { fetchAllOfferings } from "@/lib/bottles";
 import { fetchAllBallots, tallyFromBallots, sealedAmong, MemberBallot } from "@/lib/ballots";
 import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
 import { fetchCurrentGathering, updateGathering } from "@/lib/gatherings";
+import { useRiteOpen } from "@/lib/useRiteOpen";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
 import BottleReveal from "@/components/BottleReveal";
@@ -127,9 +128,11 @@ export default function Reveal() {
     return () => { active = false; };
   }, [g, wineCount]);
 
-  // The reveal opens only when every attendee has sealed — or once committed.
+  // The reveal opens only when the rite itself is open AND every attendee has
+  // sealed — or once committed. Before the rite there is nothing to reveal.
+  const riteOpen = useRiteOpen(g);
   const sealedCount = sealedAmong(ballots, attendees);
-  const locked = !committed && (attendees.length === 0 || sealedCount < attendees.length);
+  const locked = !committed && (!riteOpen || attendees.length === 0 || sealedCount < attendees.length);
 
   // While still sealed, poll for newly-sealed ballots so the reveal unlocks and
   // tallies live — no refresh needed. Stops the moment it opens (so it never
@@ -230,7 +233,9 @@ export default function Reveal() {
         <i className="ti ti-lock" style={{ fontSize: 34, color: "var(--gold)" }} aria-hidden="true" />
         <h1 className="disp" style={{ fontSize: 18, fontWeight: 500, marginTop: 12 }}>The reckoning stays sealed</h1>
         <p className="whisper" style={{ fontSize: 16, maxWidth: 380, margin: "10px auto 0" }}>
-          {attendees.length === 0
+          {!riteOpen
+            ? "The rite has not yet begun. The cloths stay on until every soul has judged."
+            : attendees.length === 0
             ? "No souls have answered the call. RSVP on the convening, then judge in the rite."
             : `${sealedCount} of ${attendees.length} ballots have been sealed. The cloths are not lifted until every soul has judged.`}
         </p>

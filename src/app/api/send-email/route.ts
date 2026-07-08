@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, featureRequestEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -9,20 +9,24 @@ import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail
 
 export const dynamic = "force-dynamic";
 
-async function callerIdentity(req: Request): Promise<{ email: string | null; keiser: boolean }> {
+async function callerIdentity(req: Request): Promise<{ email: string | null; name: string | null; isMember: boolean; keiser: boolean; keiserEmail: string | null }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
-  if (!url || !anon || !token) return { email: null, keiser: false };
+  const none = { email: null, name: null, isMember: false, keiser: false, keiserEmail: null };
+  if (!url || !anon || !token) return none;
   try {
     const sb = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const { data: u } = await sb.auth.getUser();
     const email = u?.user?.email || null;
-    if (!email) return { email: null, keiser: false };
-    const { data: m } = await sb.from("members").select("role").eq("email", email).maybeSingle();
-    return { email, keiser: m?.role === "keiser" };
+    if (!email) return none;
+    const { data: m } = await sb.from("members").select("role,cult_name").eq("email", email).maybeSingle();
+    // Feature requests go to the Keiser; his address is looked up with the
+    // caller's own token (the roster-read policy covers every member).
+    const { data: k } = await sb.from("members").select("email").eq("role", "keiser").maybeSingle();
+    return { email, name: m?.cult_name || null, isMember: !!m, keiser: m?.role === "keiser", keiserEmail: (k?.email as string) || null };
   } catch {
-    return { email: null, keiser: false };
+    return none;
   }
 }
 
@@ -35,13 +39,21 @@ export async function POST(req: Request) {
 
   const { type, to, params } = (await req.json().catch(() => ({}))) as {
     type?: string; to?: string | string[];
-    params?: ({ name?: string; count?: number } & InviteParams & NatalEmailParams & ForetellingEmailParams);
+    params?: ({ name?: string; count?: number; text?: string } & InviteParams & NatalEmailParams & ForetellingEmailParams);
   };
-  const recipients = Array.from(new Set((Array.isArray(to) ? to : [to]).filter(Boolean) as string[])).slice(0, 200);
-  if (!recipients.length) return NextResponse.json({ ok: false, error: "No recipients." }, { status: 400 });
+  let recipients = Array.from(new Set((Array.isArray(to) ? to : [to]).filter(Boolean) as string[])).slice(0, 200);
 
   const caller = await callerIdentity(req);
-  if (SELF_TYPES.has(type || "")) {
+  if (type === "feature") {
+    // Any actual member may petition; the recipient is ALWAYS the Keiser —
+    // whatever the client sent as `to` is ignored.
+    if (!caller.isMember) return NextResponse.json({ ok: false, error: "Only members may petition." }, { status: 403 });
+    if (!caller.keiserEmail) return NextResponse.json({ ok: false, error: "The Keiser's inbox could not be found." }, { status: 500 });
+    const text = (params?.text || "").trim();
+    if (!text) return NextResponse.json({ ok: false, error: "The petition is empty." }, { status: 400 });
+    if (text.length > 2000) return NextResponse.json({ ok: false, error: "The petition is too long (2000 characters at most)." }, { status: 400 });
+    recipients = [caller.keiserEmail];
+  } else if (SELF_TYPES.has(type || "")) {
     // Self-send: any signed-in member, but strictly to their own address.
     const own = caller.email?.toLowerCase();
     if (!own || recipients.length !== 1 || recipients[0].toLowerCase() !== own) {
@@ -50,6 +62,7 @@ export async function POST(req: Request) {
   } else if (!caller.keiser) {
     return NextResponse.json({ ok: false, error: "Only the Keiser may send this." }, { status: 403 });
   }
+  if (!recipients.length) return NextResponse.json({ ok: false, error: "No recipients." }, { status: 400 });
 
   let email: Email;
   switch (type) {
@@ -59,6 +72,7 @@ export async function POST(req: Request) {
     case "expulsion": email = expulsionEmail(params?.name || "", params?.count); break;
     case "natal": email = natalChartEmail(params || {}); break;
     case "foretelling": email = foretellingEmail(params || {}); break;
+    case "feature": email = featureRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     default: return NextResponse.json({ ok: false, error: "Unknown email type." }, { status: 400 });
   }
 

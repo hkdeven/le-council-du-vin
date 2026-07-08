@@ -7,7 +7,9 @@ import Emblem from "./Emblem";
 import Avatar from "./Avatar";
 import { useAuth, ROLE_RANK } from "./AuthProvider";
 import { fetchPendingCount } from "@/lib/applications";
-import type { Role } from "@/lib/types";
+import { fetchCurrentGathering } from "@/lib/gatherings";
+import { useRiteOpen } from "@/lib/useRiteOpen";
+import type { Gathering, Role } from "@/lib/types";
 
 const NAV: { href: string; label: string; icon: string; min: Role }[] = [
   { href: "/convene", label: "Convene", icon: "ti-moon", min: "initiate" },
@@ -42,6 +44,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/");
     }
   }, [mode, loading, bare, signedIn, router]);
+
+  // The rite tab only appears once the rite opens (same clock as the
+  // "Enter the rite" button); useRiteOpen re-renders the moment it does.
+  const [gathering, setGathering] = useState<Gathering | null>(null);
+  useEffect(() => {
+    if (bare) return;
+    fetchCurrentGathering().then(setGathering).catch(() => {});
+  }, [mode, bare]);
+  const riteOpen = useRiteOpen(gathering);
 
   // Pending petitions → a badge on the Tribunal tab so the Keiser sees new
   // initiates on login. Refreshes as they move around and on submit/decree.
@@ -136,7 +147,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 2, padding: "8px 12px" }}>
-        {NAV.filter((n) => ROLE_RANK[role] >= ROLE_RANK[n.min]).map((n) => {
+        {NAV.filter((n) => ROLE_RANK[role] >= ROLE_RANK[n.min])
+          .filter((n) => (n.href !== "/rite" && n.href !== "/reveal") || riteOpen)
+          .map((n) => {
           const on = pathname.startsWith(n.href);
           return (
             <Link

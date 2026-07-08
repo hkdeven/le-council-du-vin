@@ -142,3 +142,22 @@ drop policy if exists "annals keiser insert" on annals;
 create policy "annals keiser insert" on annals for insert with check (is_keiser());
 drop policy if exists "annals keiser update" on annals;
 create policy "annals keiser update" on annals for update using (is_keiser());
+
+-- ── Fix (2026-07-08): members could not see each other ──────────────────────
+-- "members self read" only exposed a member's own row, so every other soul's
+-- poll votes, RSVPs, avatars and cards showed as raw ids to non-Keiser users.
+-- Any actual member (a row in members matches their JWT email) may read the
+-- whole roster. Strangers who merely signed in with Google still see nothing.
+create or replace function is_member() returns boolean
+  language sql security definer stable
+  set search_path = public
+as $$
+  select exists (
+    select 1 from members
+    where email = (auth.jwt() ->> 'email')
+  );
+$$;
+
+drop policy if exists "members roster read" on members;
+create policy "members roster read" on members
+  for select using (is_member());

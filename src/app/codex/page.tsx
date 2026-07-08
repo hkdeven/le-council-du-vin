@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toRoman } from "@/lib/util";
 import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, AnnalRow } from "@/lib/annals";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
 import { loadMembers } from "@/lib/members";
+import { uploadRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import type { Gathering, Member } from "@/lib/types";
@@ -149,16 +150,33 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
   );
 }
 
-function AnnalCard({ a, g, isKeiser, members, onSave, onErase }: {
+function AnnalCard({ a, g, isKeiser, members, myName, onSave, onErase, onClaim, onAddPhoto }: {
   a: AnnalEntry;
   g?: Gathering;
   isKeiser: boolean;
   members: Pick<Member, "id" | "cult_name">[];
+  myName: string;
   onSave: (d: Draft) => Promise<void>;
   onErase: (gatheringId: string) => Promise<void>;
+  onClaim: (a: AnnalEntry, cloth: number) => Promise<void>;
+  onAddPhoto: (g: Gathering, file: File) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [viewPhoto, setViewPhoto] = useState<string | null>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  // One bottle per soul per night: no claiming if a wine is already yours here.
+  const canClaim = !!myName && !a.rows.some((r) => r.owner === myName);
+  const photos = g?.reveal_photos || [];
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !g) return;
+    setUploading(true);
+    try { await onAddPhoto(g, f); } catch (err) { alert(`The image would not take: ${(err as Error).message}`); }
+    setUploading(false);
+  };
   const host = g ? [g.host_name, g.host2_name].filter(Boolean).join(" & ") : null;
   const champs = a.rows.filter((r) => r.rank === 1);
   const crowned = champs.map((c) => c.owner || `Bottle ${toRoman(c.cloth)}`).join(" & ");
@@ -197,16 +215,51 @@ function AnnalCard({ a, g, isKeiser, members, onSave, onErase }: {
             <span className="whisper" style={{ fontSize: 13 }}><span className="eyebrow" style={{ marginRight: 6 }}>Host</span>{host || "unrecorded"}</span>
           </div>
           {[...a.rows].sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99)).map((r) => (
-            <div key={r.cloth} style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)" }}>
+            <div key={r.cloth} style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)", alignItems: "center" }}>
               <span className="disp" style={{ width: 24, fontSize: 11 }}>{r.dq ? "✕" : toRoman(r.rank || 0)}</span>
               <span style={{ flex: 1 }}>
                 <span className="scr" style={{ fontSize: 14 }}>{r.title || `Bottle ${toRoman(r.cloth)}`}</span>
                 {r.owner ? <span style={{ color: "var(--dim)" }}> — {r.owner}</span> : null}
+                {!r.owner && canClaim && (
+                  <button
+                    onClick={() => { if (window.confirm(`Claim ${r.title || `Bottle ${toRoman(r.cloth)}`} as your own pour?`)) onClaim(a, r.cloth).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
+                    style={{ width: "auto", marginLeft: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "1px 10px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+                    <i className="ti ti-hand-grab" style={{ fontSize: 11, marginRight: 4 }} />claim it
+                  </button>
+                )}
+                {!r.owner && !canClaim && <span className="whisper" style={{ fontSize: 12 }}> — unclaimed</span>}
                 {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--wine)" }}> · disqualified</span>}
               </span>
               <span className="disp" style={{ fontSize: 12 }}>{r.votes > 0 ? r.score.toFixed(1) : "—"}</span>
             </div>
           ))}
+
+          {g && (photos.length > 0 || !!myName) && (
+            <div style={{ marginTop: 12 }}>
+              <div className="eyebrow" style={{ fontSize: 11, marginBottom: 6 }}>Look upon the wine</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                {photos.map((url) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={url} src={url} alt="A bottle from this night" onClick={() => setViewPhoto(url)}
+                    style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+                ))}
+                {!!myName && (
+                  <button onClick={() => photoRef.current?.click()} disabled={uploading} aria-label="Add a photo of this night"
+                    style={{ width: 64, height: 64, background: "none", border: "1px dashed var(--line2)", borderRadius: 8, color: "var(--gold2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <i className={`ti ti-${uploading ? "loader-2" : "camera-plus"}`} style={{ fontSize: 18 }} />
+                  </button>
+                )}
+              </div>
+              <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={pickPhoto} />
+            </div>
+          )}
+          {viewPhoto && (
+            <div onClick={() => setViewPhoto(null)}
+              style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out", padding: 20 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={viewPhoto} alt="A bottle from this night" style={{ maxWidth: "90vw", maxHeight: "82vh", borderRadius: 12, border: "1px solid var(--gold)", boxShadow: "0 24px 70px rgba(0,0,0,0.8)" }} />
+            </div>
+          )}
         </div>
       ) : null}
     </div>
@@ -214,8 +267,12 @@ function AnnalCard({ a, g, isKeiser, members, onSave, onErase }: {
 }
 
 export default function Codex() {
-  const { role, mode } = useAuth();
+  const { role, mode, member } = useAuth();
   const isKeiser = role === "keiser";
+  // Who is looking: claims and photos are open to every signed-in soul.
+  const myName = mode === "live"
+    ? member?.cult_name || ""
+    : role === "keiser" ? "The Keiser" : role === "member" ? "Priestess Larissa" : "";
   const [annals, setAnnals] = useState<AnnalEntry[]>([]);
   const [dq, setDq] = useState<Record<string, number>>({});
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
@@ -277,6 +334,22 @@ export default function Codex() {
   const eraseGathering = async (gatheringId: string) => {
     await deleteAnnal(gatheringId);
     if (gatherings.some((g) => g.id === gatheringId)) await deleteGathering(gatheringId).catch(() => {});
+    await refresh();
+  };
+
+  // Claim an unowned bottle as your own (one per soul per night; the
+  // AnnalCard hides the button once a wine that night is already yours).
+  const claimWine = async (a: AnnalEntry, cloth: number) => {
+    if (!myName || a.rows.some((r) => r.owner === myName)) return;
+    const rows = a.rows.map((r) => (r.cloth === cloth && !r.owner ? { ...r, owner: myName } : r));
+    await commitAnnal({ ...a, rows });
+    await refresh();
+  };
+
+  // Any soul may add a photo of the night to the gathering's gallery.
+  const addPhoto = async (g: Gathering, file: File) => {
+    const url = await uploadRevealPhoto(g.id, file);
+    await updateGathering(g.id, { reveal_photos: [...(g.reveal_photos || []), url] });
     await refresh();
   };
 
@@ -389,8 +462,11 @@ export default function Codex() {
                 g={gatherings.find((gg) => gg.id === a.gatheringId)}
                 isKeiser={isKeiser}
                 members={members}
+                myName={myName}
                 onSave={saveDraft}
                 onErase={eraseGathering}
+                onClaim={claimWine}
+                onAddPhoto={addPhoto}
               />
             ))
         )}

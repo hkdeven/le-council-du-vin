@@ -94,6 +94,21 @@ export function anointEmail(name: string): Email {
   };
 }
 
+// A member's feature request, relayed to the Keiser's inbox.
+export function featureRequestEmail(fromName: string, fromEmail: string, text: string): Email {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return {
+    subject: `A wish from ${fromName || fromEmail || "a member"}`,
+    html: layout(
+      moons() +
+      heading("A member petitions the builders") +
+      p(`<strong style="color:#cbbd93;">${esc(fromName || "Unknown soul")}</strong> (${esc(fromEmail)}) wishes the Council could:`) +
+      p(`<em>&ldquo;${esc(text)}&rdquo;</em>`),
+      "A feature request from the Council."
+    ),
+  };
+}
+
 // 2. Initiate elevated → full member. (auto)
 export function elevateEmail(name: string): Email {
   return {

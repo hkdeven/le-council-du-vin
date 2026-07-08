@@ -1,6 +1,26 @@
 # Le Council — Test Log
 
-## 2026-07-08 — tooltips, gold sky buttons, Codex past gatherings, notes pipeline — NOT yet committed
+## 2026-07-08 (evening) — roster for all, RLS fix, codex photos + claims, rite/reveal gating, feature requests, history import — pushed
+
+**New SQL for the live DB (run any time, fixes Scott's raw-id bug immediately):** see the "members roster read" block at the bottom of supabase/policies.sql — is_member() + roster-wide select policy.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | RLS: any actual member may read the whole members table ("members roster read" + is_member()). Fixes poll voters / RSVPs / cards / avatars showing raw ids to non-Keiser users | As Scott: poll voters show names + avatars | n/a (SQL) | [ ] |
+| 2 | The council roster on the profile is now visible to members AND initiates, read-only: portraits (open cards), cult names, rank tags. Emails, row editing, and Elevate stay Keiser-only | Open profile as a member: roster listed, no emails, no Elevate | ✓ (all 3 roles) | [ ] |
+| 3 | Fix: Oracle never loaded gatherings in live mode, so the hosting wheel's "moons since hosting" order ran on an empty list | Oracle hosting wheel order matches hosting history | ✓ | [ ] |
+| 4 | Member-card portraits enlarge on click: a small centred lightbox (min(78vw, 340px), gold frame) above the card, not a full-screen takeover; click anywhere or Escape closes the photo first, the card stays; members without a photo keep a plain avatar (nothing to enlarge) | Open a card with a portrait, tap the photo | ✓ (open, close-on-backdrop, card survives) | [ ] |
+| 5 | Codex: every past gathering carries a **Look upon the wine** gallery — ANY signed-in soul may add photos (reveal-photos bucket; thumbnails, tap to enlarge); reveal-night photos and codex photos share the same gallery | Expand a night, add a photo as a member | ✓ (upload + thumbnail + stored on gathering) | [ ] |
+| 6 | Codex: unowned wines show **claim it** to any member; claiming writes their cult name into the annal; one bottle per soul per night (buttons vanish once a wine that night is yours); confirm prompt | Expand an imported night, claim an unowned bottle | ✓ (claimed, buttons vanished after) | [ ] |
+| 7 | THE RITE nav tab hidden until the rite opens (30 min after the gathering convenes, same clock as the Enter-the-rite button); direct URL still hits the existing lock screen | Nav before/after a gathering's start | ✓ (hidden pre-open, appears when open) | [ ] |
+| 8 | Reveal one-claim-per-soul confirmed already enforced (claim button hides once you own a bottle; handler guards too) | Try claiming twice on the reveal | ✓ (existing logic) | n/a |
+| 9 | **scripts/import-annals.ts** built: 16 nights (Elgin Whites slots in by date), venue prepended ("La Plage II - Viognier"), 1-5 nights remapped 1→1/2→3/3→6/4→8/5→10, departed souls + German become inactive initiates silently, unregistered voters' ballots HELD until they register (averages still count them; only Dominik remains), Vin Iconnu → unowned/claimable, Julia + Mickey credited by name only, comments → ballots.notes, app-era gatherings renumbered after 16. Dry-run default; `--write` to apply; `--parse` for offline check | Run dry-run with service key, review, then --write | ✓ (--parse: all 16 nights shaped) | [ ] |
+| 10 | Profile: **Wish upon the Council** — any member submits a feature request from a textarea; the server relays it to the Keiser's inbox (recipient forced server-side, member-only, 2000-char cap, text HTML-escaped); branded "A wish from…" email | Send a wish as a member, check the Keiser's inbox | ✓ (card + graceful skip without Resend key) | [ ] |
+| 11 | Reveal locked until the rite is open too: page shows "The rite has not yet begun" pre-rite even if ballots would otherwise pass, and the REVEAL nav tab hides alongside THE RITE until the rite opens | Before a gathering starts: no Reveal tab, direct URL locked | ✓ (nav hidden + lock message) | [ ] |
+
+---
+
+## 2026-07-08 — tooltips, gold sky buttons, Codex past gatherings + Keiser editing, Nose sources + filler filter, notes pipeline — pushed db11c15
 
 **New SQL for the live DB before this deploys:**
 ```sql

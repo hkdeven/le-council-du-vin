@@ -106,9 +106,11 @@ function Row({ label, tip, value, valueTip, hint }: { label: string; tip?: strin
 
 const ALL_ROLES: Role[] = ["initiate", "member", "keiser"];
 
-// Keiser-only: the full roster, every account editable in place.
+// The full roster. Every soul sees the roll (avatars open their cards);
+// only the Keiser may expand a row to amend the account, or elevate.
 function RosterEditor() {
-  const { mode } = useAuth();
+  const { mode, role } = useAuth();
+  const isKeiser = role === "keiser";
   const [members, setMembers] = useState<Member[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   // Keiser editing a member's portrait: pick a file for a member, then crop it.
@@ -177,7 +179,9 @@ function RosterEditor() {
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="eyebrow" style={{ marginBottom: 4 }}>The council roster</div>
       <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-        Every soul&rsquo;s account. Yours to amend — the Keiser alone sees this.
+        {isKeiser
+          ? "Every soul's account. Yours to amend, Keiser."
+          : "Every soul of the Council. Touch a portrait to know them."}
       </p>
       <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickPhoto} />
       {members.map((m) => {
@@ -187,16 +191,16 @@ function RosterEditor() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <MemberCard member={m} size={30} />
               <button
-                onClick={() => setOpenId(open ? null : m.id)}
-                style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+                onClick={() => isKeiser && setOpenId(open ? null : m.id)}
+                style={{ flex: 1, background: "none", border: "none", cursor: isKeiser ? "pointer" : "default", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
               >
                 <span style={{ flex: 1 }}>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: "var(--gold2)" }}>{m.cult_name}</span>
-                  <span className="whisper" style={{ fontSize: 12, display: "block" }}>{m.email}</span>
+                  {isKeiser && <span className="whisper" style={{ fontSize: 12, display: "block" }}>{m.email}</span>}
                 </span>
-                <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+                {isKeiser && <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />}
               </button>
-              {m.role === "initiate" && (
+              {isKeiser && m.role === "initiate" && (
                 <button onClick={() => edit(m.id, { role: "member" })} title="Elevate to full member"
                   style={{ width: "auto", flex: "none", background: "none", border: "1px solid var(--line2)", borderRadius: 14, color: "var(--gold2)", padding: "4px 12px", cursor: "pointer", fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                   <i className="ti ti-arrow-big-up-lines" style={{ fontSize: 12, marginRight: 4 }} />Elevate
@@ -204,7 +208,7 @@ function RosterEditor() {
               )}
               <span className="tag" style={{ opacity: m.active ? 1 : 0.4, flex: "none" }}>{m.role}</span>
             </div>
-            {open && (
+            {isKeiser && open && (
               <div style={{ paddingLeft: 40, marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 {cropId === m.id && cropSrc ? (
                   <div>
@@ -657,13 +661,15 @@ export default function Profile() {
         {saved && <span className="scr" style={{ fontSize: 15 }}>Your record is kept.</span>}
       </div>
 
-      {role === "keiser" && <RosterEditor />}
+      <RosterEditor />
       {role === "keiser" && <HeraldsEditor />}
 
       <YourSky
         self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
         email={email}
       />
+
+      <FeatureWish />
 
       {mode === "demo" ? (
         <div className="card">
@@ -716,6 +722,42 @@ async function wheelPngUrl(chart: NonNullable<ReturnType<typeof fullChart>>): Pr
 
 // The two doors to your own sky, each with an envelope that emails it to
 // your own inbox. The send route only ever accepts your own address.
+// Ask the builders: a member's feature wish, relayed to the Keiser's inbox.
+function FeatureWish() {
+  const [text, setText] = useState("");
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const submit = async () => {
+    const t = text.trim();
+    if (!t || state === "sending") return;
+    setState("sending");
+    const res = await sendEmail("feature", ["keiser"], { text: t });
+    if (res.ok) { setState("sent"); setText(""); }
+    else { setState("failed"); alert(`The wish would not carry: ${res.error || res.skipped || "unknown"}`); }
+  };
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="eyebrow" style={{ marginBottom: 4, fontSize: 14 }}>Feature request</div>
+      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+        Something the Council should be able to do? Whisper it here and it is carried to the Keiser.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => { setText(e.target.value); if (state === "sent") setState("idle"); }}
+        placeholder="I wish the Council could…"
+        maxLength={2000}
+        rows={3}
+        style={{ width: "100%", resize: "vertical" }}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+        <button className="btn gold" style={{ width: "auto", padding: "10px 22px" }} onClick={submit} disabled={!text.trim() || state === "sending"}>
+          {state === "sending" ? "Carrying…" : "Send the wish"}
+        </button>
+        {state === "sent" && <span className="scr" style={{ fontSize: 15 }}>The Keiser will hear of it.</span>}
+      </div>
+    </div>
+  );
+}
+
 function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
   const [showChart, setShowChart] = useState(false);
   const [showFore, setShowFore] = useState(false);
