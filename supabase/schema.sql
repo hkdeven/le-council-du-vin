@@ -173,10 +173,12 @@ create table if not exists ballots (
   scores jsonb not null default '{}'::jsonb,
   sealed boolean not null default false,
   aromas jsonb not null default '{}'::jsonb, -- cloth -> aromas (feeds the Nose)
+  notes jsonb not null default '{}'::jsonb, -- cloth -> whispered notes
   updated_at timestamptz not null default now(),
   primary key (gathering_id, member_id)
 );
 alter table ballots add column if not exists aromas jsonb not null default '{}'::jsonb;
+alter table ballots add column if not exists notes jsonb not null default '{}'::jsonb;
 
 -- Offerings: each member's private bottle registration --------------
 create table if not exists offerings (

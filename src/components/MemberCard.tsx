@@ -45,6 +45,18 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 function Tip({ text, align = "right" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const tipRef = useRef<HTMLSpanElement>(null);
+  // Only one tooltip open anywhere: opening one announces itself and every
+  // other tooltip closes (they used to pile up until closed by hand).
+  const me = useRef({});
+  useEffect(() => {
+    if (!open) return;
+    window.dispatchEvent(new CustomEvent("lcv-tip-open", { detail: me.current }));
+    const onOther = (e: Event) => {
+      if ((e as CustomEvent).detail !== me.current) setOpen(false);
+    };
+    window.addEventListener("lcv-tip-open", onOther);
+    return () => window.removeEventListener("lcv-tip-open", onOther);
+  }, [open]);
   // Hover-open only where hover exists. On touch, mouseenter fires WITH the
   // tap and the click-toggle then closed it again — the "tooltips don't open"
   // bug. Touch devices get a clean tap-to-toggle.

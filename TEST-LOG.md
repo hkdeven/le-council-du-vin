@@ -1,5 +1,28 @@
 # Le Council — Test Log
 
+## 2026-07-08 — tooltips, gold sky buttons, Codex past gatherings, notes pipeline — NOT yet committed
+
+**New SQL for the live DB before this deploys:**
+```sql
+alter table ballots add column if not exists notes jsonb not null default '{}'::jsonb;
+```
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Only one tooltip open at a time, everywhere (opening one closes the last) | Tap several ⓘ in a row on a card | ✓ | [ ] |
+| 2 | Profile "Your sky" buttons now gold (like Summon the Council) | Profile bottom | ✓ | [ ] |
+| 3 | Codex: **Past gatherings** section at the bottom — every committed night, newest first, expands to Theme / Date / Host(s) / wines (title — owner · score, DQs marked) | Codex after a commit; co-hosts show "A & B" | ✓ (seeded run-through) | [ ] |
+| 4 | Whispered notes now persist with the ballot (restore on return; saved on type-blur, score, aroma, seal) | Write a note in the rite, reload | ✓ | [ ] |
+| 5 | The Nose cloud now draws from ALL THREE sources: marked aroma pills, typed custom aromas, and whispered notes mined in full — bank phrases matched whole-word first ("black cherry", no "rose"-inside-"rosemary"), then every remaining meaningful word. Filler words (articles, pronouns, hedges, bare opinions like "nice", wine-noise like "smells") never reach the cloud, and the same filter cleans the rite's custom-aroma input ("a hint of black cherry" → "black cherry"). Imported history's comments land in notes, so they get the same treatment automatically | Write "Too smooth, no tannins, a bit smokey" in a note, seal, open your card: smooth/tannins/smokey only | ✓ (unit-tested computeDossier: leather deduped vs marked, black cherry as phrase, zero fillers) | [ ] |
+| 6 | Codex, Keiser only: **amend any past gathering** (pencil on an expanded night) — theme, number, date, host + co-host selects, every wine's title / owner / score / off-theme flag, add or remove wines; ranks re-reckoned from scores on seal (ties share the crown, DQs unranked, vote counts kept) | Open a past night as Keiser, tap the pencil, change a score so the crown moves, seal | ✓ (crown moved, victories + theme averages followed) | [ ] |
+| 7 | Codex, Keiser only: **Record a past gathering** button at the bottom — full manual entry; owners are free text with a member-name datalist so departed souls can be credited; gathering number auto-suggests next; creates the gathering (revealed) + annal together | Add a night, check it lands in date order with metrics updated | ✓ (added, ranked, then erased) | [ ] |
+| 8 | Codex, Keiser only: **erase** a gathering from within the editor (confirm prompt; removes annal + gathering) | Trash icon next to Seal/Cancel | ✓ | [ ] |
+| 9 | Fix: co-host was never persisted in live mode (`host2_id`/`host2_name` missing from the gatherings row mapping) — co-hosts now save and load | Set a co-host on convene, reload | ✓ (demo) | [ ] needs live check |
+| 10 | Fix: hosts recorded as a bare name (no member id, as imported history will be) stay selected in the editor instead of resetting to "Unrecorded" and being wiped on seal | Edit an imported night's host select | ✓ | [ ] |
+| 11 | Gathering numbers stay in sequence with history: Codex "Record a past gathering" now suggests max across annals AND gatherings + 1 (was annals only, could collide with the upcoming meeting's number); Convene already numbers new summons max+1. The history importer will number the 15 past nights 1-15 and renumber app-era gatherings to continue from 16 | Add a past night while an upcoming gathering exists; the suggested number continues past it | ✓ (seeded no. 20 → suggested 21) | [ ] |
+
+---
+
 ## 2026-07-08 — post-astral fixes from Keiser's live testing — NOT yet committed
 
 | # | Change | How to verify live | Demo | Live |

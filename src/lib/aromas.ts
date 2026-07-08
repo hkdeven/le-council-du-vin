@@ -33,6 +33,58 @@ export const AROMAS: string[] = [
   "leather", "cured meat", "black olive", "honey",
 ];
 
+// Filler words that must never reach the Nose cloud — articles, pronouns,
+// auxiliaries, hedges — plus wine-context noise that says nothing about scent
+// (every note mentions "wine", "nose", "smells"). Applied wherever free text
+// becomes aroma words: the rite's custom-aroma field, whispered notes, and
+// imported history's comments.
+const STOP = new Set([
+  // articles / conjunctions / prepositions / pronouns
+  "a", "an", "the", "and", "or", "but", "nor", "of", "in", "on", "at", "to",
+  "for", "with", "without", "from", "by", "as", "than", "then", "into", "over",
+  "under", "out", "off", "up", "down", "after", "before", "between", "because",
+  "though", "although", "if", "when", "while", "what", "which", "who", "how",
+  "it", "its", "this", "that", "these", "those", "there", "here", "their",
+  "they", "them", "he", "she", "his", "her", "hers", "we", "us", "our", "ours",
+  "you", "your", "yours", "i", "me", "my", "mine",
+  // being / doing / hedging
+  "is", "was", "were", "are", "be", "been", "being", "am", "isnt", "wasnt",
+  "have", "has", "had", "do", "does", "did", "done", "doesnt", "dont", "didnt",
+  "get", "gets", "got", "can", "cant", "cannot", "could", "couldnt", "will",
+  "wont", "would", "wouldnt", "should", "shouldnt", "must", "might", "may",
+  "think", "thought", "need", "needs", "needed", "seems", "seemed", "maybe",
+  "perhaps", "probably", "prob", "approx", "approximately", "about", "around",
+  "like", "likes", "liked", "im", "ive", "id", "youre", "hes", "shes", "theyre",
+  // quantity / degree filler
+  "so", "too", "very", "quite", "just", "bit", "really", "rather", "some",
+  "any", "no", "not", "none", "more", "most", "less", "least", "much", "many",
+  "few", "lot", "lots", "also", "again", "still", "yet", "even", "ever",
+  "never", "always", "all", "both", "each", "only", "own", "same", "other",
+  "another", "slight", "slightly", "hint", "touch", "somewhat", "kind", "sort",
+  // bare-opinion words that would drown the cloud
+  "nice", "good", "bad", "fine", "ok", "okay", "well", "yes", "better", "best",
+  "worse", "worst", "wow", "meh", "hmm",
+  // wine-context noise
+  "wine", "wines", "nose", "smell", "smells", "smelled", "smelling", "taste",
+  "tastes", "tasted", "tasting", "glass", "drink", "drinking", "vintage",
+]);
+
+// Tokenise free text into cloud-worthy words: lowercase, letters only,
+// no fillers, no numbers, nothing under 3 characters.
+export function meaningfulWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-zÀ-ɏ]+/i)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 3 && !STOP.has(w));
+}
+
+// Clean a typed aroma ("a hint of black cherry" → "black cherry"). Multi-word
+// aromas survive with their fillers removed; returns "" if nothing real is left.
+export function cleanAromaText(text: string): string {
+  return meaningfulWords(text).join(" ");
+}
+
 function hash(str: string): number {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {

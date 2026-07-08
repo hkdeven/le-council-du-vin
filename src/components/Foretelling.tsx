@@ -4,7 +4,7 @@
 // member's natal chart. Two views: this moon (new moon to new moon) and the
 // year glimpsed. Computed, never invented; the passages are written by hand.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { foretellingFor, type Omen } from "@/lib/transits";
 import { AstralShell, VeiledGate, Methodology, chartReady } from "./NatalChart";
 import type { CardMember } from "./MemberCard";
@@ -28,6 +28,16 @@ export default function ForetellingModal({ member, onClose, onLeave, isSelf }: {
   const close = () => { setShown(false); setTimeout(onClose, 240); };
   const [view, setView] = useState<"moon" | "year">("moon");
   const [tipOpen, setTipOpen] = useState(false);
+  const tipMe = useRef({});
+  useEffect(() => {
+    if (!tipOpen) return;
+    window.dispatchEvent(new CustomEvent("lcv-tip-open", { detail: tipMe.current }));
+    const onOther = (e: Event) => {
+      if ((e as CustomEvent).detail !== tipMe.current) setTipOpen(false);
+    };
+    window.addEventListener("lcv-tip-open", onOther);
+    return () => window.removeEventListener("lcv-tip-open", onOther);
+  }, [tipOpen]);
 
   const ready = chartReady(member);
   const reading = useMemo(

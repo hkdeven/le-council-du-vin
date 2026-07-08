@@ -9,6 +9,7 @@ export interface Ballot {
   scores: Record<number, number>; // cloth number -> 1..10
   sealed: boolean;
   aromas?: Record<number, string[]>; // cloth number -> aromas the taster marked
+  notes?: Record<number, string>; // cloth number -> the taster's whispered notes
 }
 
 export interface MemberBallot extends Ballot {
@@ -22,11 +23,11 @@ export async function fetchBallot(gatheringId: string, memberId: string): Promis
   if (gatheringsLive()) {
     const { data } = await supabase!
       .from("ballots")
-      .select("scores,sealed,aromas")
+      .select("scores,sealed,aromas,notes")
       .eq("gathering_id", gatheringId)
       .eq("member_id", memberId)
       .maybeSingle();
-    return data ? { scores: (data.scores as Record<number, number>) || {}, sealed: !!data.sealed, aromas: (data.aromas as Record<number, string[]>) || {} } : null;
+    return data ? { scores: (data.scores as Record<number, number>) || {}, sealed: !!data.sealed, aromas: (data.aromas as Record<number, string[]>) || {}, notes: (data.notes as Record<number, string>) || {} } : null;
   }
   if (typeof window === "undefined") return null;
   try {
@@ -40,7 +41,7 @@ export async function fetchBallot(gatheringId: string, memberId: string): Promis
 export async function saveBallot(gatheringId: string, memberId: string, ballot: Ballot): Promise<void> {
   if (gatheringsLive()) {
     const { error } = await supabase!.from("ballots").upsert(
-      { gathering_id: gatheringId, member_id: memberId, scores: ballot.scores, sealed: ballot.sealed, aromas: ballot.aromas || {}, updated_at: new Date().toISOString() },
+      { gathering_id: gatheringId, member_id: memberId, scores: ballot.scores, sealed: ballot.sealed, aromas: ballot.aromas || {}, notes: ballot.notes || {}, updated_at: new Date().toISOString() },
       { onConflict: "gathering_id,member_id" }
     );
     if (error) throw new Error(error.message);
@@ -106,13 +107,14 @@ export function tallyFromBallots(ballots: MemberBallot[], wineCount: number): Re
 export interface HistoryBallot extends MemberBallot { gatheringId: string }
 export async function fetchBallotHistory(gatheringIds: string[], memberIds: string[]): Promise<HistoryBallot[]> {
   if (gatheringsLive()) {
-    const { data } = await supabase!.from("ballots").select("gathering_id,member_id,scores,sealed,aromas");
+    const { data } = await supabase!.from("ballots").select("gathering_id,member_id,scores,sealed,aromas,notes");
     return (data || []).map((r) => ({
       gatheringId: r.gathering_id as string,
       memberId: r.member_id as string,
       scores: (r.scores as Record<number, number>) || {},
       sealed: !!r.sealed,
       aromas: (r.aromas as Record<number, string[]>) || {},
+      notes: (r.notes as Record<number, string>) || {},
     }));
   }
   if (typeof window === "undefined") return [];
@@ -123,7 +125,7 @@ export async function fetchBallotHistory(gatheringIds: string[], memberIds: stri
         const raw = localStorage.getItem(key(g, m));
         if (!raw) continue;
         const b = JSON.parse(raw) as Ballot;
-        out.push({ gatheringId: g, memberId: m, scores: b.scores || {}, sealed: !!b.sealed, aromas: b.aromas || {} });
+        out.push({ gatheringId: g, memberId: m, scores: b.scores || {}, sealed: !!b.sealed, aromas: b.aromas || {}, notes: b.notes || {} });
       }
     }
   } catch {}

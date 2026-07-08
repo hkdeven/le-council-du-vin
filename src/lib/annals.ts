@@ -101,3 +101,16 @@ export function dqCountsFrom(annals: AnnalEntry[]): Record<string, number> {
 export async function fetchDqCounts(): Promise<Record<string, number>> {
   return dqCountsFrom(await fetchAnnals());
 }
+
+// Erase a committed record entirely (Keiser only; e.g. a botched manual entry).
+export async function deleteAnnal(gatheringId: string): Promise<void> {
+  if (gatheringsLive()) {
+    const { error } = await supabase!.from("annals").delete().eq("gathering_id", gatheringId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ANNALS_KEY, JSON.stringify(localAnnals().filter((a) => a.gatheringId !== gatheringId)));
+  } catch {}
+}

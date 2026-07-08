@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { aromasFor } from "@/lib/aromas";
+import { aromasFor, cleanAromaText } from "@/lib/aromas";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
@@ -47,6 +47,7 @@ export default function Rite() {
         setScores(b.scores || {});
         setSealed(!!b.sealed);
         if (b.aromas) setAromasByWine(b.aromas);
+        if (b.notes) setNotesByWine(b.notes);
       }
     });
     return () => { active = false; };
@@ -83,7 +84,7 @@ export default function Rite() {
   const setScore = (wine: number, val: number) => {
     setScores((s) => {
       const next = { ...s, [wine]: val };
-      if (meId) saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine }).catch(() => {});
+      if (meId) saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine, notes: notesByWine }).catch(() => {});
       return next;
     });
     setSealed(false);
@@ -92,7 +93,7 @@ export default function Rite() {
   const sealReckoning = async () => {
     if (meId) {
       try {
-        await saveBallot(gid, meId, { scores, sealed: true, aromas: aromasByWine });
+        await saveBallot(gid, meId, { scores, sealed: true, aromas: aromasByWine, notes: notesByWine });
       } catch (e) {
         alert(`Could not seal your reckoning: ${(e as Error).message}`);
         return;
@@ -106,12 +107,14 @@ export default function Rite() {
       const list = m[current] ?? [];
       const next = { ...m, [current]: list.includes(a) ? list.filter((x) => x !== a) : [...list, a] };
       // Aromas feed the Palate Dossier's Nose, so they persist with the ballot.
-      if (meId) saveBallot(gid, meId, { scores, sealed, aromas: next }).catch(() => {});
+      if (meId) saveBallot(gid, meId, { scores, sealed, aromas: next, notes: notesByWine }).catch(() => {});
       return next;
     });
 
   const addAroma = () => {
-    const a = newAroma.trim().toLowerCase();
+    // Fillers stripped ("a hint of black cherry" → "black cherry") so only
+    // real scent words reach the ballot and, later, the Nose cloud.
+    const a = cleanAromaText(newAroma);
     if (!a) return;
     setAromasByWine((m) => {
       const list = m[current] ?? [];
@@ -234,6 +237,7 @@ export default function Rite() {
           <textarea
             value={notes}
             onChange={(e) => setNotesByWine((m) => ({ ...m, [current]: e.target.value }))}
+            onBlur={() => { if (meId) saveBallot(gid, meId, { scores, sealed, aromas: aromasByWine, notes: notesByWine }).catch(() => {}); }}
             placeholder="What the wine confessed to you…"
           />
         </div>

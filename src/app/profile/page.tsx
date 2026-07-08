@@ -33,6 +33,17 @@ const ROLES: Role[] = ["initiate", "member", "keiser"];
 function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const tipRef = useRef<HTMLSpanElement>(null);
+  // Only one tooltip open anywhere (shared signal with the card's tooltips).
+  const me = useRef({});
+  useEffect(() => {
+    if (!open) return;
+    window.dispatchEvent(new CustomEvent("lcv-tip-open", { detail: me.current }));
+    const onOther = (e: Event) => {
+      if ((e as CustomEvent).detail !== me.current) setOpen(false);
+    };
+    window.addEventListener("lcv-tip-open", onOther);
+    return () => window.removeEventListener("lcv-tip-open", onOther);
+  }, [open]);
   // Keep the tooltip on-screen: measure once shown and nudge it back inside
   // the viewport, so tips near either edge never bleed off on mobile.
   useLayoutEffect(() => {
@@ -754,16 +765,16 @@ function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="eyebrow" style={{ marginBottom: 10, textAlign: "center", fontSize: 12 }}>Your sky</div>
       <div style={{ display: "flex", gap: 10 }}>
-        <button className="btn" style={rowStyle} onClick={() => setShowChart(true)}>
-          <i className="ti ti-chart-donut" style={{ color: "var(--gold)" }} />Behold the natal chart
+        <button className="btn gold" style={rowStyle} onClick={() => setShowChart(true)}>
+          <i className="ti ti-chart-donut" />Behold the natal chart
         </button>
         <button className="btn" aria-label="Email me the natal chart" title="Email me the natal chart" style={mailStyle} disabled={busy !== null} onClick={emailChart}>
           <i className={`ti ti-${busy === "natal" ? "loader-2" : "mail"}`} />
         </button>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-        <button className="btn" style={rowStyle} onClick={() => setShowFore(true)}>
-          <i className="ti ti-sparkles" style={{ color: "var(--gold)" }} />The Foretelling
+        <button className="btn gold" style={rowStyle} onClick={() => setShowFore(true)}>
+          <i className="ti ti-sparkles" />The Foretelling
         </button>
         <button className="btn" aria-label="Email me the foretelling" title="Email me the foretelling" style={mailStyle} disabled={busy !== null} onClick={emailFore}>
           <i className={`ti ti-${busy === "fore" ? "loader-2" : "mail"}`} />

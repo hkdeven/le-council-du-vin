@@ -9,6 +9,7 @@ import { fetchAnnals, fetchDqCounts, type AnnalEntry } from "./annals";
 import { fetchBallotHistory, type HistoryBallot } from "./ballots";
 import { loadMembers } from "./members";
 import { toRoman } from "./util";
+import { AROMAS, meaningfulWords } from "./aromas";
 import type { Gathering, Member } from "./types";
 
 export interface DossierStats {
@@ -132,11 +133,31 @@ export function computeDossier(inp: DossierInputs): DossierStats {
     wheel = moons <= 0 ? "hosting this moon" : `${moons} moon${moons === 1 ? "" : "s"} since hosting`;
   }
 
-  // The Nose: every aroma they have ever marked, tallied.
+  // The Nose: every aroma they have ever marked (pills and typed), tallied —
+  // plus their whispered notes mined in full: aroma-bank phrases first, then
+  // every remaining meaningful word (fillers stripped). Imported history's
+  // comments land in notes, so they scent the cloud the same way.
   const tally: Record<string, number> = {};
   for (const b of mine) {
     for (const list of Object.values(b.aromas || {})) {
       for (const a of list) tally[a] = (tally[a] || 0) + 1;
+    }
+    for (const [cloth, note] of Object.entries(b.notes || {})) {
+      if (!note) continue;
+      const marked = new Set((b.aromas || {})[Number(cloth)] || []);
+      let low = note.toLowerCase();
+      // Multi-word bank aromas ("black cherry") are matched as whole-word
+      // phrases and consumed, so their halves don't also count as separate
+      // words — and "rose" can't fire inside "rosemary".
+      for (const a of AROMAS) {
+        const re = new RegExp(`\\b${a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
+        if (!re.test(low)) continue;
+        low = low.replace(new RegExp(re.source, "g"), " ");
+        if (!marked.has(a)) tally[a] = (tally[a] || 0) + 1;
+      }
+      for (const w of new Set(meaningfulWords(low))) {
+        if (!marked.has(w)) tally[w] = (tally[w] || 0) + 1;
+      }
     }
   }
   const nose = Object.entries(tally)
