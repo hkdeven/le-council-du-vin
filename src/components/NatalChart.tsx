@@ -6,10 +6,26 @@
 // birth time + place there is no guessing — the veiled gate shows instead.
 
 import { useEffect, useState } from "react";
+
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { fullChart, placementText, ordinal, type Chart } from "@/lib/natal";
 import type { CardMember } from "./MemberCard";
+
+// Lock the page's scroll while any modal is open (counted, so stacked modals
+// unlock only when the last closes). Without this, iOS chains the card's
+// scroll into the page and the fixed overlay drifts, leaving black space.
+let bodyLocks = 0;
+export function useBodyLock() {
+  useEffect(() => {
+    bodyLocks++;
+    if (bodyLocks === 1) document.body.style.overflow = "hidden";
+    return () => {
+      bodyLocks--;
+      if (bodyLocks === 0) document.body.style.overflow = "";
+    };
+  }, []);
+}
 
 const VS = "︎"; // text-presentation: thin glyphs, not emoji, inside the wheel
 
@@ -63,7 +79,7 @@ export const chartReady = (m: CardMember) =>
   !!m.date_of_birth && !!m.time_of_birth && m.birth_lat != null && m.birth_lon != null;
 
 // The shared "sky is veiled" gate for chart + foretelling.
-export function VeiledGate({ member, what, onClose }: { member: CardMember; what: string; onClose: () => void }) {
+export function VeiledGate({ member, what, isSelf, onGo }: { member: CardMember; what: string; isSelf?: boolean; onGo: () => void }) {
   const missing: { icon: string; label: string }[] = [];
   if (!member.time_of_birth) missing.push({ icon: "ti-clock", label: "time of birth" });
   if (member.birth_lat == null || member.birth_lon == null) missing.push({ icon: "ti-map-pin", label: "place of birth" });
@@ -73,23 +89,30 @@ export function VeiledGate({ member, what, onClose }: { member: CardMember; what
       <div className="disp" style={{ fontSize: 20 }}>The sky is veiled</div>
       <p className="whisper" style={{ fontSize: 14, margin: "8px 0 14px" }}>{what}</p>
       <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, margin: "0 auto 6px", maxWidth: 280 }}>
-        The heavens ask {missing.length === 1 ? "one more truth" : `${missing.length === 2 ? "two" : "three"} more truths`}:
+        The heavens ask {missing.length === 1 ? "one more truth" : `${missing.length === 2 ? "two" : "three"} more truths`} of {isSelf ? "you" : "them"}:
       </p>
       <div className="pills" style={{ justifyContent: "center", margin: "10px 0 16px" }}>
         {missing.map((m2) => (
           <span key={m2.label} className="pill"><i className={`ti ${m2.icon}`} style={{ fontSize: 11, marginRight: 5 }} />{m2.label}</span>
         ))}
       </div>
-      <p className="whisper" style={{ margin: "0 0 14px", fontSize: 13 }}>give them on the profile, and the sky unveils itself</p>
-      <Link href="/profile" className="btn gold" style={{ display: "block", textDecoration: "none", textAlign: "center" }} onClick={onClose}>
-        <i className="ti ti-user" style={{ fontSize: 13, marginRight: 6 }} />Complete the record
-      </Link>
+      {isSelf ? (
+        <>
+          <p className="whisper" style={{ margin: "0 0 14px", fontSize: 13 }}>give them on your profile, and the sky unveils itself</p>
+          <Link href="/profile" className="btn gold" style={{ display: "block", textDecoration: "none", textAlign: "center" }} onClick={onGo}>
+            <i className="ti ti-user" style={{ fontSize: 13, marginRight: 6 }} />Complete your record
+          </Link>
+        </>
+      ) : (
+        <p className="whisper" style={{ margin: "0 0 6px", fontSize: 13 }}>their record awaits their own hand</p>
+      )}
     </>
   );
 }
 
 // The astral modal shell: fixed overlay above the member card.
 export function AstralShell({ shown, onClose, children }: { shown: boolean; onClose: () => void; children: React.ReactNode }) {
+  useBodyLock();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -97,8 +120,8 @@ export function AstralShell({ shown, onClose, children }: { shown: boolean; onCl
   }, [onClose]);
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 130, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 380, maxHeight: "92vh", overflowY: "auto", background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14, boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 18px 24px", textAlign: "center", transform: shown ? "scale(1)" : "scale(0.92)", transition: "transform 0.24s cubic-bezier(0.2,0.9,0.3,1)" }}>
+    <div className="modal-scroll" onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 130, background: "rgba(0,0,0,0.75)", overflowY: "auto", display: "flex", padding: 16, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 380, margin: "auto", background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14, boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 18px 24px", textAlign: "center", transform: shown ? "scale(1)" : "scale(0.92)", transition: "transform 0.24s cubic-bezier(0.2,0.9,0.3,1)" }}>
         <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
           <i className="ti ti-x" style={{ fontSize: 16 }} />
         </button>
@@ -124,7 +147,7 @@ export function Methodology({ title, children }: { title: string; children: Reac
   );
 }
 
-export default function NatalChartModal({ member, onClose }: { member: CardMember; onClose: () => void }) {
+export default function NatalChartModal({ member, onClose, onLeave, isSelf }: { member: CardMember; onClose: () => void; onLeave?: () => void; isSelf?: boolean }) {
   const [shown, setShown] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
   const [openRow, setOpenRow] = useState<string | null>(null);
@@ -136,12 +159,12 @@ export default function NatalChartModal({ member, onClose }: { member: CardMembe
   return (
     <AstralShell shown={shown} onClose={close}>
       {!ready || !chart ? (
-        <VeiledGate member={member} what="the wheel cannot be drawn" onClose={close} />
+        <VeiledGate member={member} what="the wheel cannot be drawn" isSelf={isSelf} onGo={onLeave || close} />
       ) : (
         <>
           <div className="disp" style={{ fontSize: 19 }}>{member.cult_name}</div>
           <p className="whisper" style={{ fontSize: 13, margin: "2px 0 12px" }}>
-            the sky at their first breath{member.birth_place ? ` · ${member.birth_place.split(",")[0]}` : ""}
+            the sky at {isSelf ? "your" : "their"} first breath{member.birth_place ? ` · ${member.birth_place.split(",")[0]}` : ""}
           </p>
           <div style={{ margin: "0 auto", maxWidth: 330 }} dangerouslySetInnerHTML={{ __html: wheelSvgString(chart) }} />
           <div style={{ display: "flex", justifyContent: "center", gap: 16, fontSize: 12, color: "var(--dim)", marginTop: 6 }}>

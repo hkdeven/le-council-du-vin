@@ -8,15 +8,36 @@
 
 export const DEFAULT_TZ = "Africa/Johannesburg";
 
-// Every IANA zone the runtime knows (typed around an ES2022 API the compiler
-// target predates). Fallback: at least the default.
-export function allTimezones(): string[] {
-  const intl = Intl as unknown as { supportedValuesOf?: (k: string) => string[] };
-  try {
-    const list = intl.supportedValuesOf?.("timeZone");
-    if (list && list.length) return list;
-  } catch {}
-  return [DEFAULT_TZ];
+// A curated timezone list: one major city per zone, labelled with its current
+// UTC offset — far friendlier than 400 raw IANA ids. The stored value is
+// still the IANA id, and any id set by geocoding (e.g. America/Detroit) is
+// injected at the top so it stays selectable.
+const CURATED_TZ: [string, string][] = [
+  ["Africa/Johannesburg", "Johannesburg"], ["Africa/Lagos", "Lagos"], ["Africa/Cairo", "Cairo"], ["Africa/Nairobi", "Nairobi"],
+  ["Europe/London", "London"], ["Europe/Paris", "Paris"], ["Europe/Athens", "Athens"], ["Europe/Istanbul", "Istanbul"], ["Europe/Moscow", "Moscow"],
+  ["Asia/Dubai", "Dubai"], ["Asia/Karachi", "Karachi"], ["Asia/Kolkata", "Mumbai"], ["Asia/Dhaka", "Dhaka"], ["Asia/Bangkok", "Bangkok"],
+  ["Asia/Singapore", "Singapore"], ["Asia/Hong_Kong", "Hong Kong"], ["Asia/Tokyo", "Tokyo"],
+  ["Australia/Perth", "Perth"], ["Australia/Sydney", "Sydney"], ["Pacific/Auckland", "Auckland"], ["Pacific/Honolulu", "Honolulu"],
+  ["America/Anchorage", "Anchorage"], ["America/Los_Angeles", "Los Angeles"], ["America/Denver", "Denver"], ["America/Chicago", "Chicago"],
+  ["America/New_York", "New York"], ["America/Halifax", "Halifax"], ["America/Mexico_City", "Mexico City"], ["America/Bogota", "Bogotá"],
+  ["America/Santiago", "Santiago"], ["America/Sao_Paulo", "São Paulo"], ["America/Argentina/Buenos_Aires", "Buenos Aires"],
+];
+
+export function tzOptionLabel(tz: string, city?: string): string {
+  const min = Math.round(tzOffsetMin(tz, Date.now()));
+  const sign = min < 0 ? "-" : "+";
+  const abs = Math.abs(min);
+  const h = Math.floor(abs / 60), m = abs % 60;
+  const name = city || (tz.split("/").pop() || tz).replace(/_/g, " ");
+  return `${name} (UTC${sign}${h}${m ? ":" + String(m).padStart(2, "0") : ""})`;
+}
+
+export function curatedTimezones(current?: string | null): { tz: string; label: string }[] {
+  const list = CURATED_TZ.map(([tz, city]) => ({ tz, label: tzOptionLabel(tz, city) }));
+  if (current && !CURATED_TZ.some(([tz]) => tz === current)) {
+    list.unshift({ tz: current, label: tzOptionLabel(current) });
+  }
+  return list;
 }
 
 export interface Sign {

@@ -5,6 +5,9 @@ import { createPortal } from "react-dom";
 import { sunSign, moonSign, ascendant, shengxiao, wuXing, venusSign, moonPhase, dayMaster, lifePath, birthArcana, VENUS_IN } from "@/lib/astrology";
 import { fetchAnnals } from "@/lib/annals";
 import { dossierFor, type DossierStats } from "@/lib/dossier";
+import { useAuth } from "./AuthProvider";
+import { seedMembers } from "@/lib/seed";
+import { useBodyLock } from "./NatalChart";
 import NatalChartModal from "./NatalChart";
 import ForetellingModal from "./Foretelling";
 import Avatar from "./Avatar";
@@ -42,6 +45,10 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 function Tip({ text, align = "right" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const tipRef = useRef<HTMLSpanElement>(null);
+  // Hover-open only where hover exists. On touch, mouseenter fires WITH the
+  // tap and the click-toggle then closed it again — the "tooltips don't open"
+  // bug. Touch devices get a clean tap-to-toggle.
+  const hoverable = typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
   // Keep the tooltip on-screen: measure once shown and nudge it back inside
   // the viewport (labels sit near the left edge, values near the right).
   useLayoutEffect(() => {
@@ -58,9 +65,10 @@ function Tip({ text, align = "right" }: { text: string; align?: "left" | "right"
   return (
     <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
       <button type="button" aria-label="More" onClick={() => setOpen((o) => !o)}
-        onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--dim)", display: "inline-flex", width: "auto" }}>
-        <i className="ti ti-info-circle" style={{ fontSize: 12 }} />
+        onMouseEnter={hoverable ? () => setOpen(true) : undefined}
+        onMouseLeave={hoverable ? () => setOpen(false) : undefined}
+        style={{ background: "none", border: "none", padding: 5, margin: -3, cursor: "pointer", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "auto", minWidth: 24, minHeight: 24 }}>
+        <i className="ti ti-info-circle" style={{ fontSize: 13 }} />
       </button>
       {open && (
         <span ref={tipRef} role="tooltip" style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, zIndex: 60, width: 200, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 10px", color: "var(--parch)", fontSize: 12, lineHeight: 1.5, fontFamily: "'EB Garamond', serif", fontStyle: "normal", letterSpacing: "normal", textTransform: "none", boxShadow: "0 6px 20px rgba(0,0,0,0.55)" } as React.CSSProperties}>
@@ -82,6 +90,12 @@ function Row({ label, tip, value, valueTip }: { label: string; tip: string; valu
 
 // The tarot-style stats card for a member, opened by clicking their avatar.
 function CardModal({ member, chalices, shown, onClose }: { member: CardMember; chalices: number; shown: boolean; onClose: () => void }) {
+  useBodyLock();
+  // Is the viewer looking at their own card? Pronouns bend accordingly.
+  const { member: authMember, role, mode } = useAuth();
+  const isSelf = !!member.id && (mode === "live"
+    ? member.id === authMember?.id
+    : member.id === seedMembers.find((sm) => sm.role === role)?.id);
   const dob = member.date_of_birth || "";
   const tob = member.time_of_birth || "";
   const tz = member.birth_tz || undefined;
@@ -116,8 +130,12 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   }, [onClose]);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 340, maxHeight: "90vh", overflowY: "auto", background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14, boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 20px 24px", textAlign: "center", transform: shown ? "scale(1) translateY(0)" : "scale(0.9) translateY(10px)", transition: "transform 0.26s cubic-bezier(0.2,0.9,0.3,1)", transformOrigin: "center" }}>
+    // The OVERLAY scrolls, not the card: the card keeps its natural height and
+    // margin:auto centres it when short / top-anchors it when tall. No inner
+    // scroll container means nothing to clip, drift, or leave black space on
+    // mobile browsers.
+    <div className="modal-scroll" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", overflowY: "auto", display: "flex", padding: 18, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 340, margin: "auto", background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14, boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 20px 24px", textAlign: "center", transform: shown ? "scale(1) translateY(0)" : "scale(0.9) translateY(10px)", transition: "transform 0.26s cubic-bezier(0.2,0.9,0.3,1)", transformOrigin: "center" }}>
         <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6 }}>
           <i className="ti ti-x" style={{ fontSize: 16 }} />
         </button>
@@ -153,13 +171,13 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             <Row label="Birth arcana" tip={ARC_TIP} value={arc ? arc.name : "—"} valueTip={arc?.meaning} />
           </div>
         ) : (
-          <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made them are unrecorded.</p>
+          <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made {isSelf ? "you" : "them"} are unrecorded.</p>
         )}
 
         <MoonRow />
 
         <div className="disp" style={{ fontSize: 15 }}>The Palate Dossier</div>
-        <p className="whisper" style={{ fontSize: 13, margin: "2px 0 18px" }}>what the vine has learned of them</p>
+        <p className="whisper" style={{ fontSize: 13, margin: "2px 0 18px" }}>what the vine has learned of {isSelf ? "you" : "them"}</p>
         {dossier ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -189,7 +207,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             )}
 
             <MoonRow />
-            <div className="eyebrow" style={{ fontSize: 14, marginBottom: 12 }}>Their Finest Pours</div>
+            <div className="eyebrow" style={{ fontSize: 14, marginBottom: 12 }}>{isSelf ? "Your" : "Their"} Finest Pours</div>
             {dossier.pours.length > 0 ? dossier.pours.map((pr, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i === 0 ? "none" : "1px solid var(--line)", textAlign: "left" }}>
                 <span style={{ flex: "none", width: 34, height: 34, borderRadius: "50%", border: "1px solid var(--line2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cinzel', serif", color: "var(--gold2)", fontSize: 13 }}>{["I", "II", "III"][i]}</span>
@@ -231,8 +249,8 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
           <i className="ti ti-sparkles" style={{ fontSize: 15, color: "var(--gold)" }} />The Foretelling
         </button>
 
-        {showChart && <NatalChartModal member={member} onClose={() => setShowChart(false)} />}
-        {showFore && <ForetellingModal member={member} onClose={() => setShowFore(false)} />}
+        {showChart && <NatalChartModal member={member} isSelf={isSelf} onClose={() => setShowChart(false)} onLeave={() => { setShowChart(false); onClose(); }} />}
+        {showFore && <ForetellingModal member={member} isSelf={isSelf} onClose={() => setShowFore(false)} onLeave={() => { setShowFore(false); onClose(); }} />}
       </div>
     </div>
   );

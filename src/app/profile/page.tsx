@@ -9,7 +9,7 @@ import { fetchCurrentGathering } from "@/lib/gatherings";
 import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { sendEmail } from "@/lib/sendEmail";
 import { supabase } from "@/lib/supabase";
-import { sunSign, moonSign, ascendant, shengxiao, wuXing, DEFAULT_TZ, allTimezones } from "@/lib/astrology";
+import { sunSign, DEFAULT_TZ, curatedTimezones } from "@/lib/astrology";
 import { geocodePlace, type GeoHit } from "@/lib/geo";
 import { toRoman } from "@/lib/util";
 import AvatarCropper from "@/components/AvatarCropper";
@@ -30,12 +30,6 @@ const DEMO_NAMES: Record<Role, string> = {
 };
 const ROLES: Role[] = ["initiate", "member", "keiser"];
 
-const SUN_TIP = 'Your core identity, ego, and life purpose (what most people call their "star sign").';
-const MOON_TIP = "Your inner emotions, subconscious, and private self.";
-const ASC_TIP = "The sign that was rising on the eastern horizon at your exact birth time. It represents your outward personality, first impressions, and how others perceive you.";
-const SX_TIP = "The Chinese zodiac is a 12-year cycle where each year is represented by a specific animal.";
-const WX_TIP = "The five elements govern your deeper personality traits, destiny, and how you interact with the universe.";
-
 function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const tipRef = useRef<HTMLSpanElement>(null);
@@ -52,17 +46,20 @@ function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "rig
     else if (r.right > vw - 8) dx = vw - 8 - r.right;
     if (dx) el.style.transform = `translateX(${dx}px)`;
   }, [open]);
+  // Hover-open only where hover exists; on touch the synthetic mouseenter
+  // fought the click-toggle and tooltips appeared not to open at all.
+  const hoverable = typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
   return (
     <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
       <button
         type="button"
         aria-label="More"
         onClick={() => setOpen((o) => !o)}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--dim)", display: "inline-flex", width: "auto" }}
+        onMouseEnter={hoverable ? () => setOpen(true) : undefined}
+        onMouseLeave={hoverable ? () => setOpen(false) : undefined}
+        style={{ background: "none", border: "none", padding: 5, margin: -3, cursor: "pointer", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "auto", minWidth: 24, minHeight: 24 }}
       >
-        <i className="ti ti-info-circle" style={{ fontSize: 13 }} />
+        <i className="ti ti-info-circle" style={{ fontSize: 14 }} />
       </button>
       {open && (
         <span
@@ -458,12 +455,10 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, mode, self]);
 
+  // Sun + element still computed silently: the members row keeps its zodiac
+  // and element columns fresh for anything that reads them.
   const sun = dob ? sunSign(dob, tob || undefined, tz) : null;
   const element = sun?.element ?? null;
-  const moon = dob ? moonSign(dob, tob || undefined, tz) : null;
-  const rising = dob ? ascendant(dob, tob || undefined, tz, placeLat, placeLon) : null;
-  const animal = dob ? shengxiao(dob) : null;
-  const wx = dob ? wuXing(dob) : null;
   const initials = (name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const touch = () => setSaved(false);
@@ -584,7 +579,7 @@ export default function Profile() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 4 }}>The stars that made you</div>
         <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>
-          Give your birth and the chart is drawn — everything below is read from it, not set by hand.
+          Give your birth and your chart is drawn from it, never set by hand.
         </p>
         <div className="birth-fields">
           <div>
@@ -599,8 +594,8 @@ export default function Profile() {
 
         <label className="field" style={{ marginTop: 10 }}>Timezone of birth</label>
         <select value={tz} onChange={(e) => { setTz(e.target.value); touch(); }} style={{ colorScheme: "dark" }}>
-          {allTimezones().map((z) => (
-            <option key={z} value={z}>{z.replace(/_/g, " ")}</option>
+          {curatedTimezones(tz).map((z) => (
+            <option key={z.tz} value={z.tz}>{z.label}</option>
           ))}
         </select>
 
@@ -629,18 +624,13 @@ export default function Profile() {
             ))}
           </div>
         )}
-        {placeHits && placeHits.length === 0 && (
-          <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try the nearest larger town.</p>
+        {placeHits && placeHits.length === 0 && placeLat == null && (
+          <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try adding the region, or the nearest larger town.</p>
         )}
 
-        <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12, display: "flex", flexDirection: "column", gap: 9 }}>
-          <Row label="Element" value={element || "—"} hint={!element ? "add your date of birth" : undefined} />
-          <Row label="Sun sign" tip={SUN_TIP} value={sun ? `${sun.symbol} ${sun.name}` : "—"} hint={!sun ? "add your date of birth" : undefined} />
-          <Row label="Moon sign" tip={MOON_TIP} value={moon ? `${moon.symbol} ${moon.name}` : "—"} hint={!moon ? "add your date of birth" : undefined} />
-          <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : "—"} hint={!rising ? (!tob ? "add your time of birth" : "add your place of birth") : undefined} />
-          <Row label="Shengxiao" tip={SX_TIP} value={animal ? `${animal.symbol} ${animal.name}` : "—"} hint={!animal ? "add your date of birth" : undefined} />
-          <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} valueTip={wx?.meaning} hint={!wx ? "add your date of birth" : undefined} />
-        </div>
+        <p className="whisper" style={{ margin: "14px 0 0", fontSize: 13 }}>
+          Your chart is drawn from these. Behold it, and all it derives, on your card and under Your sky below.
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -783,8 +773,8 @@ function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
         the envelope sends it to your inbox, sealed in the Council&apos;s colours
       </p>
       {msg && <p className="scr" style={{ textAlign: "center", margin: "8px 0 0", fontSize: 14 }}>{msg}</p>}
-      {showChart && <NatalChartModal member={self} onClose={() => setShowChart(false)} />}
-      {showFore && <ForetellingModal member={self} onClose={() => setShowFore(false)} />}
+      {showChart && <NatalChartModal member={self} isSelf onClose={() => setShowChart(false)} />}
+      {showFore && <ForetellingModal member={self} isSelf onClose={() => setShowFore(false)} />}
     </div>
   );
 }

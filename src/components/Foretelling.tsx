@@ -22,7 +22,7 @@ function OmenBlock({ o }: { o: Omen }) {
   );
 }
 
-export default function ForetellingModal({ member, onClose }: { member: CardMember; onClose: () => void }) {
+export default function ForetellingModal({ member, onClose, onLeave, isSelf }: { member: CardMember; onClose: () => void; onLeave?: () => void; isSelf?: boolean }) {
   const [shown, setShown] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
   const close = () => { setShown(false); setTimeout(onClose, 240); };
@@ -39,12 +39,12 @@ export default function ForetellingModal({ member, onClose }: { member: CardMemb
   return (
     <AstralShell shown={shown} onClose={close}>
       {!ready || !reading ? (
-        <VeiledGate member={member} what="the foretelling cannot be read" onClose={close} />
+        <VeiledGate member={member} what="the foretelling cannot be read" isSelf={isSelf} onGo={onLeave || close} />
       ) : (
         <>
           <div className="disp" style={{ fontSize: 19 }}>The Foretelling</div>
           <p className="whisper" style={{ fontSize: 13, margin: "2px 0 12px" }}>
-            what the sky intends for {member.cult_name} · computed, never invented
+            what the sky intends for {isSelf ? "you" : member.cult_name} · computed, never invented
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: 8, margin: "0 0 16px" }}>
             <span className={`pill${view === "moon" ? " on" : ""}`} onClick={() => setView("moon")} style={{ position: "relative" }}>

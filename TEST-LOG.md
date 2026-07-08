@@ -1,5 +1,21 @@
 # Le Council — Test Log
 
+## 2026-07-08 — post-astral fixes from Keiser's live testing — NOT yet committed
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Card black-space bug fixed **structurally**: the overlay scrolls (like a page) and the card keeps its natural height, so there is no inner scroll container to clip or drift; page scroll locks beneath; scroll chaining blocked | Open a card on the phone, scroll to the very bottom: the card ends with its border + a small even gap, nothing more | ✓ (bottom gap measured = padding exactly) | [ ] |
+| 2 | Own card speaks to you: "what the vine has learned of you", "Your Finest Pours", "the sky at your first breath", etc. | Open your own card vs another member's | ✓ | [ ] |
+| 3 | Profile page: derived astrology rows removed (they live on the card); a whisper points to the card + Your sky | Profile shows only the birth inputs | ✓ | [ ] |
+| 4 | Date/time inputs no longer run past the card edge on iOS (`appearance: none`) | Profile on the phone: both fields have right gutters | ✓ (needs phone confirm) | [ ] |
+| 5 | Tooltips open reliably on touch (hover handlers were double-toggling taps) + tap targets enlarged to 22px | Tap any ⓘ on the phone once | ✓ | [ ] |
+| 6 | "Complete your record" closes the card + reading and goes to the profile; viewing SOMEONE ELSE'S veiled sky shows "their record awaits their own hand" (no button) | Tap it from a veiled view | ✓ | [ ] |
+| 7 | Timezone select: 32 major cities with UTC offsets ("New York (UTC-4)"); geocoded zones (e.g. Detroit) stay selectable | Profile + petition selects | ✓ | [ ] |
+| 8 | Place search understands "Town, Region": searches the town, ranks by region — "Tawas City, Michigan" now resolves | Try it on the profile | ✓ (live API check) | [ ] |
+| 9 | "The atlas does not know it" no longer shows alongside a pinned place | Fail a search after a successful pin | ✓ | [ ] |
+
+---
+
 ## 2026-07-08 — THE ASTRAL BUILD (Dossier, co-hosts, natal chart, Foretelling) — NOT yet committed
 
 **New SQL required on the live DB BEFORE this deploys:**

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { addApplication } from "@/lib/applications";
 import { geocodePlace } from "@/lib/geo";
-import { DEFAULT_TZ, allTimezones } from "@/lib/astrology";
+import { DEFAULT_TZ, curatedTimezones } from "@/lib/astrology";
 import { useAuth } from "@/components/AuthProvider";
 
 /* eslint-disable-next-line @next/next/no-img-element */
@@ -143,8 +143,8 @@ export default function Initiation() {
 
         <label className="field">Timezone of birth</label>
         <select value={tz} onChange={(e) => setTz(e.target.value)} style={{ colorScheme: "dark" }}>
-          {allTimezones().map((z) => (
-            <option key={z} value={z}>{z.replace(/_/g, " ")}</option>
+          {curatedTimezones(tz).map((z) => (
+            <option key={z.tz} value={z.tz}>{z.label}</option>
           ))}
         </select>
 

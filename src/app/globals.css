@@ -169,10 +169,25 @@ select option {
    the content comfortably inside a half-width field. */
 .birth-fields input {
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  /* iOS date/time inputs keep a native intrinsic width unless appearance is
+     stripped; without this they run past the card's right edge. */
+  -webkit-appearance: none;
+  appearance: none;
   color-scheme: dark;
   font-size: 14px;
   padding-left: 9px;
   padding-right: 6px;
+}
+
+/* Modal overlays scroll as a whole (the card inside keeps natural height);
+   contain stops the scroll chaining to the page behind — the mobile
+   "card drifts and leaves black space" bug. */
+.modal-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Pills ------------------------------------------------------------- */
