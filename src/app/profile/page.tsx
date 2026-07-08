@@ -3,7 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
-import { loadMembers, saveMember, removeMember } from "@/lib/members";
+import { loadMembers, saveMember, removeMember, rosterOrder } from "@/lib/members";
 import { deleteApplicationsByEmail } from "@/lib/applications";
 import { fetchCurrentGathering } from "@/lib/gatherings";
 import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
@@ -18,6 +18,9 @@ import ForetellingModal from "@/components/Foretelling";
 import { fullChart, ordinal } from "@/lib/natal";
 import type { CardMember } from "@/components/MemberCard";
 import MemberCard from "@/components/MemberCard";
+import Loading from "@/components/Loading";
+import { uploadAvatar } from "@/lib/photos";
+import { swr } from "@/lib/swr";
 import type { Role, Member, Gathering } from "@/lib/types";
 
 const fmtGDate = (d: string) =>
@@ -112,6 +115,7 @@ function RosterEditor() {
   const { mode, role } = useAuth();
   const isKeiser = role === "keiser";
   const [members, setMembers] = useState<Member[]>([]);
+  const [rosterLoaded, setRosterLoaded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   // Keiser editing a member's portrait: pick a file for a member, then crop it.
   const photoRef = useRef<HTMLInputElement>(null);
@@ -128,30 +132,19 @@ function RosterEditor() {
     e.target.value = "";
   };
 
-  // Roster order: the Keiser and full members first, then initiates, with
-  // every inactive soul (departed history) at the bottom; names break ties.
-  const rosterSort = (ms: Member[]) => {
-    const rank: Record<string, number> = { keiser: 0, member: 1, initiate: 2 };
-    return [...ms].sort((a, b) =>
-      Number(!!b.active) - Number(!!a.active) ||
-      (rank[a.role] ?? 3) - (rank[b.role] ?? 3) ||
-      (a.cult_name || "").localeCompare(b.cult_name || ""));
-  };
-
   useEffect(() => {
     // Live: the roster is the Supabase members table (so anointed initiates
     // appear here to be elevated). Demo: the local seed + overrides. (Supabase
     // may be connected with the login wall off — that still counts as demo.)
     if (mode === "live" && supabase) {
-      supabase
-        .from("members")
-        .select("*")
-        .then(({ data, error }) => {
-          if (error) console.error("Could not load roster:", error.message);
-          else if (data) setMembers(rosterSort(data as Member[]));
-        });
+      swr("members", async () => {
+        const { data, error } = await supabase!.from("members").select("*");
+        if (error) throw new Error(error.message);
+        return (data || []) as Member[];
+      }, (list) => { setMembers(rosterOrder(list)); setRosterLoaded(true); });
     } else {
-      setMembers(rosterSort(loadMembers()));
+      setMembers(rosterOrder(loadMembers()));
+      setRosterLoaded(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -194,6 +187,7 @@ function RosterEditor() {
           : "Every soul of the Council. Touch a portrait to know them."}
       </p>
       <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickPhoto} />
+      {!rosterLoaded && <Loading text="Summoning the roster…" />}
       {members.map((m) => {
         const open = openId === m.id;
         return (
@@ -210,13 +204,16 @@ function RosterEditor() {
                 </span>
                 {isKeiser && <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />}
               </button>
-              {isKeiser && m.role === "initiate" && (
+              {isKeiser && m.role === "initiate" ? (
+                // The Elevate button says "initiate" by existing — no tag needed,
+                // and together they pushed each other off the mobile edge.
                 <button onClick={() => edit(m.id, { role: "member" })} title="Elevate to full member"
                   style={{ width: "auto", flex: "none", background: "none", border: "1px solid var(--line2)", borderRadius: 14, color: "var(--gold2)", padding: "4px 12px", cursor: "pointer", fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                   <i className="ti ti-arrow-big-up-lines" style={{ fontSize: 12, marginRight: 4 }} />Elevate
                 </button>
+              ) : (
+                <span className="tag" style={{ opacity: m.active ? 1 : 0.4, flex: "none" }}>{m.role}</span>
               )}
-              <span className="tag" style={{ opacity: m.active ? 1 : 0.4, flex: "none" }}>{m.role}</span>
             </div>
             {isKeiser && open && (
               <div style={{ paddingLeft: 40, marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -225,7 +222,12 @@ function RosterEditor() {
                     <label className="field" style={{ marginTop: 0 }}>Frame their portrait</label>
                     <AvatarCropper
                       src={cropSrc}
-                      onSave={(url) => { edit(m.id, { avatar_url: url }); setCropSrc(null); setCropId(null); }}
+                      onSave={async (url) => {
+                        try {
+                          edit(m.id, { avatar_url: await uploadAvatar(m.id, url) });
+                        } catch (e) { alert(`The portrait would not take: ${(e as Error).message}`); }
+                        setCropSrc(null); setCropId(null);
+                      }}
                       onCancel={() => { setCropSrc(null); setCropId(null); }}
                     />
                   </div>
@@ -520,6 +522,13 @@ export default function Profile() {
     if (mode === "live" && supabase && email) {
       // Live: persist to the members row and surface any failure instead of
       // faking success (a swallowed error is why details kept vanishing).
+      let avatarUrl = avatar;
+      try {
+        avatarUrl = avatar ? await uploadAvatar(email, avatar) : avatar;
+      } catch (e) {
+        alert(`Your portrait would not take: ${(e as Error).message}`);
+        return;
+      }
       const { error } = await supabase.from("members").update({
         cult_name: name,
         date_of_birth: dob || null,
@@ -531,7 +540,7 @@ export default function Profile() {
         zodiac: sun?.name || null,
         element: element || null,
         venue_instructions: venue || null,
-        avatar_url: avatar,
+        avatar_url: avatarUrl,
       }).eq("email", email);
       if (error) { alert(`Could not save your profile: ${error.message}`); return; }
     } else {

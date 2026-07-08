@@ -139,6 +139,7 @@ handles the Next build.
 - Branding: favicon (`src/app/icon.png`), full logo, transparent art on true black.
 - **Login wall live in production** (Google SSO + branded magic link via Resend SMTP) + role gating. Initiate onboarding wired end to end: petition → Keiser anoints to initiate (limited access) → elevate to member from the profile roster.
 - **Live data on Supabase** — the whole loop (summon → RSVP → rite → reveal → commit) reads/writes live: ballots/scoring, offerings, annals/codex, Oracle themes + polls. Reveal auto-unlocks by polling for sealed ballots; reveal photos persist to Supabase Storage.
+- **Fast on mobile** — the signed-in member row and every heavy list (codex annals, gatherings, members) use a stale-while-revalidate cache (`src/lib/swr.ts` + `lcv_member_cache`): pages paint instantly from the last local snapshot and refresh silently. Member **portraits live in the public `avatars` Storage bucket** (short cacheable URLs, not base64 in the table; `scripts/migrate-avatars.ts` moves legacy ones). Loading spinners (`src/components/Loading.tsx`) cover only genuine first visits.
 - **Transactional email system** (Resend) — auto anoint/elevate, manual invite + tribunal summons from Profile → Heralds, branded magic link, Keiser petition alert.
 - **Clickable member cards** (tarot stats + chalice count), **tie/co-champion** handling on the reveal, rite **opens 30 min after the scheduled start**.
 - Tarot per night, date-voting poll + WhatsApp share, custom aromas, orb-number verdict, per-member venue instructions.

@@ -9,6 +9,7 @@ import { fetchGatherings, effectiveLastHosted } from "@/lib/gatherings";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { shareToWhatsApp } from "@/lib/share";
+import { swr } from "@/lib/swr";
 import Avatar from "@/components/Avatar";
 import MemberCard from "@/components/MemberCard";
 import type { Poll, Member, Gathering } from "@/lib/types";
@@ -139,7 +140,11 @@ export default function Oracle() {
     reloadThemes();
     fetchPolls().then(setPolls);
     if (mode === "live" && supabase) {
-      supabase.from("members").select("*").order("role").then(({ data }) => { if (data) setMembers(data as Member[]); });
+      swr("members", async () => {
+        const { data, error } = await supabase!.from("members").select("*");
+        if (error) throw new Error(error.message);
+        return (data || []) as Member[];
+      }, setMembers);
     } else {
       setMembers(loadMembers());
     }

@@ -161,3 +161,49 @@ $$;
 drop policy if exists "members roster read" on members;
 create policy "members roster read" on members
   for select using (is_member());
+
+-- ── Guard (2026-07-08): members may edit their own row, never their rank ────
+-- A "members self update" policy exists live (added via dashboard; it is what
+-- lets members save their profiles). RLS cannot restrict columns, so without
+-- this trigger a member could set role='keiser' on their own row. The trigger
+-- lets the Keiser, the SQL editor, and service-role scripts change anything;
+-- every other signed-in user can update everything EXCEPT role, active, email.
+create or replace function members_guard_privileged() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  -- No-JWT (SQL editor) and service-role (admin scripts) contexts are trusted;
+  -- signed-in users must be the Keiser to touch rank, standing, or email.
+  if (new.role is distinct from old.role
+      or new.active is distinct from old.active
+      or new.email is distinct from old.email)
+     and coalesce(auth.jwt() ->> 'role', '') not in ('', 'service_role')
+     and not is_keiser() then
+    raise exception 'Only the Keiser may change rank, standing, or email.';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists members_guard_privileged on members;
+create trigger members_guard_privileged before update on members
+  for each row execute function members_guard_privileged();
+
+-- The live "members self update" policy, mirrored here for the record:
+drop policy if exists "members self update" on members;
+create policy "members self update" on members
+  for update using ((auth.jwt() ->> 'email') = email);
+
+-- ── Avatars in Storage (2026-07-08): portraits leave the members table ──────
+-- Member portraits were base64 data URLs in members.avatar_url — hundreds of
+-- KB per roster query, uncacheable. They now live in a public bucket like
+-- reveal photos; the column holds a short URL the browser caches.
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true)
+  on conflict (id) do nothing;
+drop policy if exists "avatars insert" on storage.objects;
+create policy "avatars insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'avatars');
+drop policy if exists "avatars update" on storage.objects;
+create policy "avatars update" on storage.objects
+  for update to authenticated using (bucket_id = 'avatars');
+drop policy if exists "avatars read" on storage.objects;
+create policy "avatars read" on storage.objects
+  for select using (bucket_id = 'avatars');

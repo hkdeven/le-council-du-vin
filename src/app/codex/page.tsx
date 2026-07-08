@@ -8,6 +8,8 @@ import { loadMembers } from "@/lib/members";
 import { uploadRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
+import Loading from "@/components/Loading";
+import { swr, writeSwr } from "@/lib/swr";
 import type { Gathering, Member } from "@/lib/types";
 
 const fmtDate = (d: string) =>
@@ -278,19 +280,31 @@ export default function Codex() {
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
   const [members, setMembers] = useState<Pick<Member, "id" | "cult_name">[]>([]);
   const [adding, setAdding] = useState(false);
+  // Until the first fetch lands, show the waiting mark — zeros everywhere
+  // read as "no history" and send souls away before the annals arrive.
+  const [loaded, setLoaded] = useState(false);
 
+  // After an edit: fetch fresh and keep the snapshots honest.
   const refresh = async () => {
-    setAnnals(await fetchAnnals());
-    setGatherings(await fetchGatherings().catch(() => [] as Gathering[]));
-    setDq(await fetchDqCounts());
+    const annalsFresh = await fetchAnnals();
+    const gatheringsFresh = await fetchGatherings().catch(() => [] as Gathering[]);
+    const dqFresh = await fetchDqCounts();
+    setAnnals(annalsFresh); writeSwr("annals", annalsFresh);
+    setGatherings(gatheringsFresh); writeSwr("gatherings", gatheringsFresh);
+    setDq(dqFresh); writeSwr("dq", dqFresh);
+    setLoaded(true);
   };
 
   useEffect(() => {
-    refresh();
+    // First load: last snapshot instantly, fresh truth right behind it.
+    swr("annals", fetchAnnals, (d) => { setAnnals(d); setLoaded(true); });
+    swr("gatherings", () => fetchGatherings().catch(() => [] as Gathering[]), setGatherings);
+    swr("dq", fetchDqCounts, setDq);
     if (mode === "live" && supabase) {
-      supabase.from("members").select("id,cult_name").order("cult_name").then(({ data }) => {
-        if (data) setMembers(data as Member[]);
-      });
+      swr("members-brief", async () => {
+        const { data } = await supabase!.from("members").select("id,cult_name").order("cult_name");
+        return (data || []) as Member[];
+      }, setMembers);
     } else {
       setMembers(loadMembers());
     }
@@ -374,7 +388,8 @@ export default function Codex() {
       const scored = a.rows.filter((r) => !r.dq && r.votes > 0);
       return { theme: a.theme, avg: scored.length ? scored.reduce((s, r) => s + r.score, 0) / scored.length : null };
     })
-    .filter((t): t is { theme: string; avg: number } => t.avg != null);
+    .filter((t): t is { theme: string; avg: number } => t.avg != null)
+    .sort((a, b) => b.avg - a.avg);
 
   return (
     <section>
@@ -384,6 +399,10 @@ export default function Codex() {
         written here until the Keiser commits it.
       </p>
 
+      {!loaded ? (
+        <div className="card"><Loading text="Consulting the annals…" /></div>
+      ) : (
+      <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 16 }}>
         <Metric value={String(annals.length)} label="gatherings" />
         <Metric value={String(bottlesJudged)} label="bottles judged" />
@@ -490,6 +509,8 @@ export default function Codex() {
           </button>
         ))}
       </div>
+      </>
+      )}
     </section>
   );
 }

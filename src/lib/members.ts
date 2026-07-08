@@ -46,6 +46,17 @@ export function loadMembers(): Member[] {
   return base.map((m) => (overrides[m.id] ? { ...m, ...overrides[m.id] } : m));
 }
 
+// Canonical people order wherever souls are listed: the Keiser and full
+// members first, then active initiates, with every inactive soul (departed
+// history) at the bottom; names break ties.
+export function rosterOrder(ms: Member[]): Member[] {
+  const rank: Record<string, number> = { keiser: 0, member: 1, initiate: 2 };
+  return [...ms].sort((a, b) =>
+    Number(!!b.active) - Number(!!a.active) ||
+    (rank[a.role] ?? 3) - (rank[b.role] ?? 3) ||
+    (a.cult_name || "").localeCompare(b.cult_name || ""));
+}
+
 export function saveMember(id: string, patch: Partial<Member>) {
   if (typeof window === "undefined") return;
   const overrides = readOverrides();

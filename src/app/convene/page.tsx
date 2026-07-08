@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
-import { loadMembers } from "@/lib/members";
+import { loadMembers, rosterOrder } from "@/lib/members";
+import { swr } from "@/lib/swr";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickCurrent } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import { supabase } from "@/lib/supabase";
@@ -301,7 +302,7 @@ function MeetingBody({
             </button>
             {showGuests && (
               <div style={{ marginTop: 8 }}>
-                {members.map((mem) => (
+                {rosterOrder(members).map((mem) => (
                   <div key={mem.id} className="rk" style={{ padding: "8px 0" }}>
                     <button onClick={() => toggleRsvp(mem.id)} aria-label="Toggle attendance"
                       style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: attendees.includes(mem.id) ? "var(--gold2)" : "var(--faint)", fontSize: 18, display: "flex" }}>
@@ -382,12 +383,14 @@ export default function Convene() {
   const [hostOpen, setHostOpen] = useState(false);
 
   useEffect(() => {
-    fetchGatherings().then(setMeetings);
+    // Last snapshot instantly, fresh truth right behind (lib/swr.ts).
+    swr("gatherings", fetchGatherings, setMeetings);
     if (mode === "live" && supabase) {
-      supabase.from("members").select("*").order("role").then(({ data, error }) => {
-        if (error) console.error("Could not load members:", error.message);
-        else if (data) { setMembers(data as Member[]); setNewHost((h) => h || (data[0] as Member)?.id || ""); }
-      });
+      swr("members", async () => {
+        const { data, error } = await supabase!.from("members").select("*");
+        if (error) throw new Error(error.message);
+        return (data || []) as Member[];
+      }, (list) => { setMembers(list); setNewHost((h) => h || list[0]?.id || ""); });
     } else {
       const list = loadMembers();
       setMembers(list);
@@ -465,7 +468,7 @@ export default function Convene() {
       {isKeiser && (
         <>
           <MoonDivider />
-          <div className="eyebrow" style={{ margin: "0 0 10px", fontSize: 14 }}>Gatherings to come</div>
+          <div className="eyebrow" style={{ margin: "0 0 10px", fontSize: 14, textAlign: "center" }}>Gatherings to come</div>
           {future.map((m) => (
             <FutureCard key={m.id} m={m} isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(m.id, p)} onAttendees={(next) => setAttendeesLocal(m.id, next)} onDelete={() => deleteMeeting(m.id)} />
           ))}

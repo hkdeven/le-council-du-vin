@@ -48,11 +48,13 @@ export async function POST(req: Request) {
     // Any actual member may petition; the recipient is ALWAYS the Keiser —
     // whatever the client sent as `to` is ignored.
     if (!caller.isMember) return NextResponse.json({ ok: false, error: "Only members may petition." }, { status: 403 });
-    if (!caller.keiserEmail) return NextResponse.json({ ok: false, error: "The Keiser's inbox could not be found." }, { status: 500 });
     const text = (params?.text || "").trim();
     if (!text) return NextResponse.json({ ok: false, error: "The petition is empty." }, { status: 400 });
     if (text.length > 2000) return NextResponse.json({ ok: false, error: "The petition is too long (2000 characters at most)." }, { status: 400 });
-    recipients = [caller.keiserEmail];
+    // The roster lookup needs the "members roster read" policy; if it is not
+    // in place (or ever breaks) fall back to the configured Keiser address so
+    // a member's wish never bounces.
+    recipients = [caller.keiserEmail || process.env.KEISER_EMAIL || "hkdeven@gmail.com"];
   } else if (SELF_TYPES.has(type || "")) {
     // Self-send: any signed-in member, but strictly to their own address.
     const own = caller.email?.toLowerCase();

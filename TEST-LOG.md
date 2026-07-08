@@ -1,6 +1,25 @@
 # Le Council — Test Log
 
-## 2026-07-08 (night) — forgot password, convene fixes, roster order — NOT yet pushed
+## 2026-07-08 (late) — instant auth on refresh — NOT yet pushed
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | "Consulting the register" no longer blocks every refresh: the member row is cached locally (lcv_member_cache) and painted instantly, while the fresh row loads silently in the background and corrects any staleness; cache cleared on sign-out. First-ever load still fetches once | Refresh the app repeatedly: the gate/app should appear immediately after the first visit | ✓ (demo smoke; live path is the real test) | [ ] |
+| 2 | Codex: "Average score by theme" ordered highest average first | Codex metrics | ✓ (8.6 above 8.5) | [ ] |
+| 3 | Forgot password button always answers: clicking with no or malformed email says "First enter your email above, then ask again." (was silently disabled) | Click it with an empty email field | ✓ (logic; login panel unreachable in demo) | [ ] |
+| 4 | Feature requests can no longer bounce on "The Keiser's inbox could not be found": if the roster lookup fails (missing RLS policy), the route falls back to the Keiser's known address (env KEISER_EMAIL or default) | Send a wish as a member before/after the roster SQL | n/a | [ ] |
+| 5 | scripts/set-password.ts: Keiser sets (or creates) a member's login password directly — creates the missing auth account petition-approval never made, email pre-confirmed | Run for Martin, have him log in | ✓ (arg validation) | [ ] |
+| 6 | "RSVP on their behalf" list (and the roster) share one order: members first, then active initiates, inactive last (lib/members.ts rosterOrder) | Open the behalf list | ✓ | [ ] |
+| 7 | toggleAttendee surfaces silent RLS refusals: if the gatherings update writes 0 rows, the Keiser sees "The record refused the change" instead of a tick that vanishes on refresh | RSVP on behalf on live; if it errors, the gatherings policies are missing | ✓ (demo path) | [ ] |
+| 8 | Loading states: the codex shows a spinning loader + "Consulting the annals…" until data arrives (was zeros everywhere, reading as no history); the roster shows "Summoning the roster…"; the app-wide auth loader now actually spins (shared Loading component + lcv-spin animation) | Open codex/roster on a slow connection: spinner, then data | ✓ (branch + animation verified) | [ ] |
+| 9 | Convene: "Gatherings to come" title centred | Convene | ✓ | [ ] |
+| 10 | Roster row: an initiate the Keiser can elevate shows ONLY the Elevate button (the initiate tag was redundant and together they overflowed the mobile edge) | Roster on the phone: Elevate fully visible | ✓ | [ ] |
+| 11 | **Speed: portraits move to Storage.** New crops upload to the public `avatars` bucket (profile + roster editor); members.avatar_url holds a short cacheable URL instead of 15-40KB of base64. **SQL: avatars bucket block at the bottom of policies.sql. Then run scripts/migrate-avatars.ts (dry-run, then --write) to move the existing portraits.** | Roster/convene/oracle payloads shrink from ~100s of KB to a few KB; portraits browser-cached | ✓ (demo passthrough; live is the point) | [ ] |
+| 12 | **Speed: stale-while-revalidate lists** (lib/swr.ts): codex (annals/gatherings/dq/members), convene (gatherings/members), oracle (members), roster (members) paint from the last local snapshot instantly, fresh data lands right behind; snapshots kept honest after codex edits. Spinners now only show on a first-ever visit | Navigate between pages on live: instant paint, silent refresh | ✓ (all pages regression-swept in demo) | [ ] |
+
+---
+
+## 2026-07-08 (night) — forgot password, convene fixes, roster order — pushed 383c5df
 
 **Supabase dashboard step required before this works live:** Authentication → URL Configuration → Redirect URLs → add `https://lecouncilduvin.co.za/reset`.
 

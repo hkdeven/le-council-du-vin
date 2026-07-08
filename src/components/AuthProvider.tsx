@@ -87,19 +87,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!gated || !supabase) return;
     let active = true;
+    // Last known member row, so a refresh paints instantly instead of holding
+    // the whole app on "Consulting the register" while the row refetches.
+    // The fresh row still loads in the background and corrects any staleness.
+    const CACHE_KEY = "lcv_member_cache";
+    const readCache = (email: string): Member | null => {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as { email?: string; member?: Member | null };
+        return parsed.email === email ? parsed.member ?? null : null;
+      } catch {
+        return null;
+      }
+    };
     const resolve = async (sess: Session | null) => {
       if (!active) return;
       setSession(sess);
       const email = sess?.user?.email;
       if (email) {
+        const cached = readCache(email);
+        if (cached) {
+          setMember(cached);
+          setLoading(false);
+        }
         const { data } = await supabase!
           .from("members")
           .select("*")
           .eq("email", email)
           .maybeSingle();
-        if (active) setMember((data as Member) ?? null);
+        if (active) {
+          setMember((data as Member) ?? null);
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify({ email, member: data ?? null })); } catch {}
+        }
       } else if (active) {
         setMember(null);
+        try { localStorage.removeItem(CACHE_KEY); } catch {}
       }
       if (active) setLoading(false);
     };
@@ -178,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase?.auth.signOut();
     setSession(null);
     setMember(null);
+    try { localStorage.removeItem("lcv_member_cache"); } catch {}
   }, []);
 
   const roleForAvatar: Role = gated ? member?.role ?? "initiate" : demoRole;

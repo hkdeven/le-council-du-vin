@@ -78,7 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (loading) {
       return (
         <Centered>
-          <i className="ti ti-loader-2" style={{ fontSize: 26, color: "var(--gold)" }} aria-hidden="true" />
+          <i className="ti ti-loader-2 lcv-spin" style={{ fontSize: 26, color: "var(--gold)" }} aria-hidden="true" />
           <p className="whisper" style={{ fontSize: 15, marginTop: 10 }}>Consulting the register…</p>
         </Centered>
       );

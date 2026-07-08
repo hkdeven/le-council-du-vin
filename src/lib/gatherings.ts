@@ -127,8 +127,11 @@ export async function toggleAttendee(gatheringId: string, memberId: string): Pro
     const { data } = await supabase!.from("gatherings").select("attendees").eq("id", gatheringId).maybeSingle();
     const current: string[] = (data?.attendees as string[]) || [];
     const next = current.includes(memberId) ? current.filter((x) => x !== memberId) : [...current, memberId];
-    const { error } = await supabase!.from("gatherings").update({ attendees: next }).eq("id", gatheringId);
+    // .select() so a write RLS silently refuses (0 rows) surfaces as an error
+    // instead of a tick that vanishes on the next refresh.
+    const { data: updated, error } = await supabase!.from("gatherings").update({ attendees: next }).eq("id", gatheringId).select("id");
     if (error) throw new Error(error.message);
+    if (!updated?.length) throw new Error("The record refused the change — likely a missing update permission on gatherings.");
     return next;
   }
   const list = localAll();

@@ -95,8 +95,14 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
   };
 
   const doReset = async () => {
-    setBusy(true); setErr(null); setMsg(null);
-    const res = await resetPassword(email);
+    setErr(null); setMsg(null);
+    // The button always answers: without an email there is nothing to send to.
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
+      setErr("First enter your email above, then ask again.");
+      return;
+    }
+    setBusy(true);
+    const res = await resetPassword(email.trim());
     setBusy(false);
     if (res.error) setErr(res.error);
     else setMsg("If the Council knows this address, a restoration rite is on its way.");
@@ -149,7 +155,7 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
             {busy ? "Entering…" : "Enter"}
           </button>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <button onClick={doReset} disabled={busy || !email} title="We send a link to choose a new secret word"
+            <button onClick={doReset} disabled={busy} title="We send a link to choose a new secret word"
               style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>
               Forgot password
             </button>
