@@ -44,6 +44,8 @@ interface AuthValue {
     email: string,
     password: string
   ) => Promise<{ error?: string; needsConfirm?: boolean }>;
+  resetPassword: (email: string) => Promise<{ error?: string; sent?: boolean }>;
+  updatePassword: (password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -64,6 +66,8 @@ const AuthContext = createContext<AuthValue>({
   signInWithOtp: async () => ({}),
   signInWithPassword: async () => ({}),
   signUpWithPassword: async () => ({}),
+  resetPassword: async () => ({}),
+  updatePassword: async () => ({}),
   signOut: async () => {},
 });
 
@@ -154,6 +158,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [redirectTo]
   );
 
+  // Forgot password: the emailed link lands on /reset, where updatePassword
+  // seals the new secret word. Supabase only mails addresses it knows.
+  const resetPassword = useCallback(async (email: string) => {
+    setAuthError(null);
+    const { error } = await supabase!.auth.resetPasswordForEmail(email, {
+      redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/reset`,
+    });
+    return error ? { error: error.message } : { sent: true };
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    setAuthError(null);
+    const { error } = await supabase!.auth.updateUser({ password });
+    return { error: error?.message };
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase?.auth.signOut();
     setSession(null);
@@ -214,6 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithOtp,
         signInWithPassword,
         signUpWithPassword,
+        resetPassword,
+        updatePassword,
         signOut,
       }}
     >

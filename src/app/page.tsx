@@ -79,7 +79,7 @@ export default function Gate() {
 }
 
 function LoginPanel({ onBack }: { onBack: () => void }) {
-  const { signInWithGoogle, signInWithOtp, signInWithPassword, signUpWithPassword } = useAuth();
+  const { signInWithGoogle, signInWithOtp, signInWithPassword, resetPassword } = useAuth();
   const [tab, setTab] = useState<"password" | "link">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -87,14 +87,19 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const doPassword = async (signup: boolean) => {
+  const doPassword = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    const res = signup
-      ? await signUpWithPassword(email, password)
-      : await signInWithPassword(email, password);
+    const res = await signInWithPassword(email, password);
     setBusy(false);
     if (res.error) setErr(res.error);
-    else if (signup && "needsConfirm" in res && res.needsConfirm) setMsg("Check your inbox to confirm your sigil.");
+  };
+
+  const doReset = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    const res = await resetPassword(email);
+    setBusy(false);
+    if (res.error) setErr(res.error);
+    else setMsg("If the Council knows this address, a restoration rite is on its way.");
   };
 
   const doLink = async () => {
@@ -131,7 +136,7 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="your secret word"
           autoComplete="current-password"
-          onKeyDown={(e) => e.key === "Enter" && doPassword(false)}
+          onKeyDown={(e) => e.key === "Enter" && doPassword()}
         />
       )}
 
@@ -140,13 +145,13 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
 
       {tab === "password" ? (
         <>
-          <button className="btn gold" disabled={busy || !email || !password} onClick={() => doPassword(false)}>
+          <button className="btn gold" disabled={busy || !email || !password} onClick={doPassword}>
             {busy ? "Entering…" : "Enter"}
           </button>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <button onClick={() => doPassword(true)} disabled={busy || !email || !password}
+            <button onClick={doReset} disabled={busy || !email} title="We send a link to choose a new secret word"
               style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>
-              Forge a secret word
+              Forgot password
             </button>
             <button onClick={() => { setTab("link"); setErr(null); setMsg(null); }}
               style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>

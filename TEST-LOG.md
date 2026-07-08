@@ -1,5 +1,18 @@
 # Le Council — Test Log
 
+## 2026-07-08 (night) — forgot password, convene fixes, roster order — NOT yet pushed
+
+**Supabase dashboard step required before this works live:** Authentication → URL Configuration → Redirect URLs → add `https://lecouncilduvin.co.za/reset`.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Real **Forgot password** flow: the gate's "Forge a secret word" (which was actually password SIGN-UP and confused everyone) is now "Forgot password" — needs only the email, sends Supabase's recovery mail, lands on the new public /reset page where the member forges + confirms a new word (8+ chars). Password sign-up button removed; new souls enter by Google or magic link | Click Forgot password with your email, follow the mail, set a new word, log in with it | ✓ (gate + /reset states; recovery mail needs live) | [ ] |
+| 2 | Convene: "Gatherings to come" no longer lists revealed/past nights (the 16 imported historical nights were all appearing as upcoming) — only genuinely future, unrevealed gatherings show | Convene after the import: only the next summons listed | ✓ | [ ] |
+| 3 | Roster ordered: Keiser + full members first (alphabetical), then initiates, inactive souls last | Profile roster | ✓ | [ ] |
+| 4 | Convene copy: "Finding the host" → "Venue details"; "Summon a new gathering" at 14px | Meeting card + summon form | ✓ | [ ] |
+
+---
+
 ## 2026-07-08 (evening) — roster for all, RLS fix, codex photos + claims, rite/reveal gating, feature requests, history import — pushed
 
 **New SQL for the live DB (run any time, fixes Scott's raw-id bug immediately):** see the "members roster read" block at the bottom of supabase/policies.sql — is_member() + roster-wide select policy.

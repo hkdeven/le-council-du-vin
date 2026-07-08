@@ -265,7 +265,7 @@ function MeetingBody({
         </div>
 
         <div style={{ marginTop: 12 }}>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>Finding the host</div>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Venue details</div>
           {editing ? (
             <textarea value={m.venue_instructions ?? ""} onChange={(e) => onUpdate({ venue_instructions: e.target.value || null })} placeholder="Gate codes, parking, the way in…" style={{ minHeight: 70 }} />
           ) : m.venue_instructions ? (
@@ -396,7 +396,11 @@ export default function Convene() {
   }, [mode]);
 
   const current = pickCurrent(meetings);
-  const future = meetings.filter((m) => m.id !== current?.id);
+  // Gatherings to come: only nights still ahead and not yet revealed — the
+  // sixteen imported historical nights live in the codex, not here.
+  const today = new Date().toISOString().slice(0, 10);
+  const future = meetings.filter((m) =>
+    m.id !== current?.id && m.status !== "revealed" && (m.gather_date || "") >= today);
   const [count, setCount] = useWineCount(current);
 
   const [newTheme, setNewTheme] = useState("");
@@ -467,7 +471,7 @@ export default function Convene() {
           ))}
 
           <div className="card">
-            <div className="eyebrow" style={{ marginBottom: 8 }}>Summon a new gathering · Keiser</div>
+            <div className="eyebrow" style={{ marginBottom: 8, fontSize: 14 }}>Summon a new gathering · Keiser</div>
             <input value={newTheme} onChange={(e) => setNewTheme(e.target.value)} placeholder="The theme…" style={{ marginBottom: 8 }} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
               <input

@@ -128,6 +128,16 @@ function RosterEditor() {
     e.target.value = "";
   };
 
+  // Roster order: the Keiser and full members first, then initiates, with
+  // every inactive soul (departed history) at the bottom; names break ties.
+  const rosterSort = (ms: Member[]) => {
+    const rank: Record<string, number> = { keiser: 0, member: 1, initiate: 2 };
+    return [...ms].sort((a, b) =>
+      Number(!!b.active) - Number(!!a.active) ||
+      (rank[a.role] ?? 3) - (rank[b.role] ?? 3) ||
+      (a.cult_name || "").localeCompare(b.cult_name || ""));
+  };
+
   useEffect(() => {
     // Live: the roster is the Supabase members table (so anointed initiates
     // appear here to be elevated). Demo: the local seed + overrides. (Supabase
@@ -136,14 +146,14 @@ function RosterEditor() {
       supabase
         .from("members")
         .select("*")
-        .order("role")
         .then(({ data, error }) => {
           if (error) console.error("Could not load roster:", error.message);
-          else if (data) setMembers(data as Member[]);
+          else if (data) setMembers(rosterSort(data as Member[]));
         });
     } else {
-      setMembers(loadMembers());
+      setMembers(rosterSort(loadMembers()));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   const edit = async (id: string, patch: Partial<Member>) => {

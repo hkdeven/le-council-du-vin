@@ -20,7 +20,7 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
   { href: "/codex", label: "Codex", icon: "ti-chart-radar", min: "member" },
 ];
 
-const PUBLIC = ["/", "/initiation"];
+const PUBLIC = ["/", "/initiation", "/reset"];
 const DEMO_NAMES: Record<Role, string> = {
   initiate: "Cassian Vale",
   member: "Priestess Larissa",
