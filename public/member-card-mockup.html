@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the member card, reimagined</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--ink:#000;--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:420px;margin:0 auto;padding:26px 16px 70px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:11px;color:var(--dim);margin:14px 0 2px;text-align:center;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:0 0 4px;}
+
+  .card{position:relative;width:100%;background:linear-gradient(180deg,#12100e,#0a0908);border:1px solid var(--gold);border-radius:14px;box-shadow:0 0 0 1px rgba(0,0,0,0.6),0 20px 60px rgba(0,0,0,0.7);padding:22px 18px 24px;text-align:center;}
+  .x{position:absolute;top:8px;right:10px;color:var(--dim);font-size:16px;}
+  .moons{display:flex;justify-content:center;gap:11px;color:var(--gold);opacity:0.55;font-size:14px;margin:16px 0;}
+  .moons.top{margin:2px 0 12px;}
+  .av{width:70px;height:70px;border-radius:50%;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-family:"Cinzel",serif;font-size:19px;color:var(--gold2);margin:0 auto 10px;}
+  .nm{font-family:"Cinzel",serif;color:var(--gold2);font-size:19px;letter-spacing:0.03em;}
+  .phase{margin-top:3px;display:flex;justify-content:center;align-items:center;font-family:"Cormorant Garamond",serif;font-style:italic;font-size:15px;color:var(--gold);}
+  .tag{display:inline-block;font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:var(--gold2);border:1px solid var(--line2);border-radius:12px;padding:2px 10px;margin-top:7px;}
+  .hr{border-top:1px solid var(--line);margin:16px 0 6px;}
+  .rows{text-align:left;display:flex;flex-direction:column;gap:3px;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;}
+  .lab{display:inline-flex;align-items:center;font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold);font-size:11px;}
+  .val{color:var(--gold2);font-family:"Cormorant Garamond",serif;font-size:16px;text-align:right;display:inline-flex;align-items:center;gap:4px;}
+
+  .info{position:relative;display:inline-flex;color:var(--dim);font-size:12px;margin-left:4px;cursor:help;}
+  .info:hover .tip,.info:active .tip{opacity:1;visibility:visible;}
+  .tip{position:absolute;top:calc(100% + 6px);right:0;z-index:9;width:200px;background:#0d0b0a;border:1px solid var(--line2);border-radius:8px;padding:8px 10px;color:var(--parch);font-family:"EB Garamond",serif;font-size:12px;line-height:1.5;font-style:normal;letter-spacing:normal;text-transform:none;text-align:left;opacity:0;visibility:hidden;transition:opacity .15s;box-shadow:0 6px 20px rgba(0,0,0,.55);}
+  .lab .tip{left:0;right:auto;}
+
+  .chartbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:14px;background:none;border:1px solid var(--line2);border-radius:10px;color:var(--gold2);font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;padding:11px 0;cursor:pointer;}
+  .chartbtn i{color:var(--gold);font-size:15px;}
+  .fullrule{border-top:2px solid var(--gold);margin:16px -18px;}
+  .btnrow{display:flex;gap:10px;align-items:stretch;}
+  .btnrow .chartbtn{flex:1;}
+  .mailbtn{flex:none;width:46px;margin-top:14px;background:none;border:1px solid var(--line2);border-radius:10px;color:var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;}
+
+  .d-title{font-family:"Cinzel",serif;color:var(--gold2);font-size:15px;letter-spacing:0.06em;margin:0 0 2px;}
+  .d-sub{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:13px;margin:0 0 18px;}
+  .meds{display:flex;justify-content:space-between;gap:8px;}
+  .med{flex:1;display:flex;flex-direction:column;align-items:center;}
+  .disc{width:82px;height:82px;border-radius:50%;border:1px solid var(--line2);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .disc .num{font-family:"Cinzel",serif;font-size:26px;color:var(--gold2);line-height:1;}
+  .disc.marks .num{font-size:21px;}
+  .disc.warn{border-color:var(--wine);}
+  .disc.warn .num{color:#c17b80;}
+  .disc .of{font-family:"Cinzel",serif;font-size:11px;color:var(--dim);margin-top:1px;letter-spacing:0.1em;}
+  .cap{font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-top:8px;line-height:1.3;}
+  .block-h{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:14px;margin:0 0 12px;}
+  .cloud{position:relative;line-height:1.5;padding:2px 0;overflow-wrap:break-word;}
+  .cloud::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(203,189,147,0.08),transparent 68%);pointer-events:none;}
+  .a{font-family:"Cormorant Garamond",serif;font-style:italic;margin:0 6px;display:inline-block;}
+  .w1{font-size:12px;color:var(--faint);}
+  .w2{font-size:14px;color:var(--dim);}
+  .w3{font-size:16px;color:var(--parch);}
+  .w4{font-size:19px;color:var(--gold);}
+  .w5{font-size:23px;color:var(--gold2);}
+  .w6{font-size:27px;color:var(--gold2);text-shadow:0 0 12px rgba(203,189,147,0.4);}
+  .grail{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);text-align:left;}
+  .grail.first{border-top:none;}
+  .medal{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-family:"Cinzel",serif;color:var(--gold2);font-size:13px;}
+  .gname{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--gold2);font-size:17px;line-height:1.15;}
+  .gmeta{color:var(--dim);font-size:12px;margin-top:2px;}
+  .sc{flex:none;text-align:right;}
+  .sc .n{font-family:"Cinzel",serif;color:var(--gold2);font-size:17px;}
+  .sc .t{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.08em;color:var(--faint);font-size:11px;margin-top:1px;}
+
+  .reveal{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;}
+  .rtoggle{display:flex;align-items:center;justify-content:center;gap:6px;font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;font-size:10.5px;color:var(--dim);cursor:pointer;background:none;border:none;width:100%;padding:4px 0;}
+  .rtoggle i{font-size:12px;color:var(--gold);transition:transform .2s;}
+  .reveal.open .rtoggle i{transform:rotate(90deg);}
+  .rbody{display:none;text-align:left;font-size:13.5px;color:var(--dim);line-height:1.55;padding:8px 2px 0;}
+  .reveal.open .rbody{display:block;}
+  .pillrow{display:flex;justify-content:center;gap:8px;margin:4px 0 16px;}
+  .pill{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:14px;padding:4px 14px;}
+  .pill.on{color:var(--gold2);border-color:var(--line2);background:rgba(160,150,120,0.08);}
+  .aug{background:#0d0b0a;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;text-align:left;}
+  .aug .top{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+  .aug .glyphs{font-size:15px;color:var(--gold2);letter-spacing:2px;}
+  .aug .t{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:var(--gold);flex:1;}
+  .aug .when{font-size:12px;color:var(--faint);}
+  .aug .body{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:15px;color:var(--parch);line-height:1.45;}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--wine);color:#c17b80;border-radius:14px;padding:4px 12px;font-size:12.5px;}
+  .pexp{display:none;text-align:left;font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14.5px;color:var(--dim);line-height:1.5;padding:2px 0 10px 32px;}
+  .prow{cursor:pointer;}
+  .prow .chev{flex:none;color:var(--gold);font-size:13px;transition:transform .2s;}
+  .prow.open .chev{transform:rotate(90deg);}
+  .prow.open + .pexp{display:block;}
+  .legend{display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--dim);margin-top:6px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .sw{display:inline-block;width:14px;height:2px;}
+  .prow{display:flex;align-items:center;gap:10px;padding:5px 0;text-align:left;border-top:1px solid var(--line);}
+  .prow.first{border-top:none;}
+  .pg{flex:none;width:22px;color:var(--gold2);font-size:16px;text-align:center;}
+  .pn{flex:1;font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:var(--gold);}
+  .pv{color:var(--gold2);font-family:"Cormorant Garamond",serif;font-size:15px;}
+  .pv .h{color:var(--dim);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="plabel">The member card, reimagined</div>
+  <p class="note">tap any &#9432; for its meaning &middot; sample data shown</p>
+
+  <div class="card">
+    <span class="x"><i class="ti ti-x"></i></span>
+    <div class="moons top"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="av">PL</div>
+    <div class="nm">Priestess Larissa</div>
+    <div class="phase">Waxing Gibbous<span class="info"><i class="ti ti-info-circle"></i><span class="tip">Moon phase at birth</span></span></div>
+    <div><span class="tag">member</span></div>
+
+    <div class="hr"></div>
+    <div class="rows">
+      <div class="row"><span class="lab">Element <span class="info"><i class="ti ti-info-circle"></i><span class="tip">This defines the fundamental energy, temperament, and personality traits of each sign.</span></span></span><span class="val">Fire</span></div>
+      <div class="row"><span class="lab">Sun sign <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Core identity, ego, and life purpose (what most call their "star sign").</span></span></span><span class="val">&#9808; Sagittarius</span></div>
+      <div class="row"><span class="lab">Moon sign <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Inner emotions, subconscious, and private self.</span></span></span><span class="val">&#9803; Cancer</span></div>
+      <div class="row"><span class="lab">Ascendant <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The sign rising on the eastern horizon at the exact birth time and place: outward personality and how others first perceive them.</span></span></span><span class="val">&#9807; Scorpio</span></div>
+      <div class="row"><span class="lab">Shengxiao <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The Chinese zodiac: a 12-year cycle, each year a specific animal.</span></span></span><span class="val">&#39340; Horse</span></div>
+      <div class="row"><span class="lab">Wu Xing <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The five elements govern deeper personality, destiny, and how one moves through the world.</span></span></span><span class="val">&#28779; Fire <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Represents passion, energy, and dynamism. Those ruled by Fire are natural leaders, enthusiastic, decisive, and highly assertive.</span></span></span></div>
+      <div class="row"><span class="lab">Day-master <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The Bazi day-master: the element of the day of birth in the Chinese sexagenary cycle, held to be the truest self.</span></span></span><span class="val">&#22764; Yang Water <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The ocean: ambitious, far-ranging, deep beyond sounding.</span></span></span></div>
+      <div class="row"><span class="lab">Life path <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Numerology: the whole birth date reduced to its ruling number.</span></span></span><span class="val">3 <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The voice: expressive, playful, born to charm the table.</span></span></span></div>
+      <div class="row"><span class="lab">Venus sign <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Venus, the planet of taste, pleasure, and desire: how they savour.</span></span></span><span class="val">&#9807; Scorpio <span class="info"><i class="ti ti-info-circle"></i><span class="tip">All or nothing: obsessive, intense, drawn to dark and brooding depths.</span></span></span></div>
+      <div class="row"><span class="lab">Birth arcana <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The tarot birth card: the Major Arcana card hidden in the digits of the birth date. It names the archetype a soul carries for life, the lesson and power that keep returning.</span></span></span><span class="val">The High Priestess <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Keeper of the veil: intuition, secrets, the inner voice.</span></span></span></div>
+    </div>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+
+    <div class="d-title">The Palate Dossier</div>
+    <div class="d-sub">what the vine has learned of you</div>
+    <div class="meds">
+      <div class="med"><div class="disc"><span class="num">14</span></div><div class="cap">Moons<br>stood</div></div>
+      <div class="med"><div class="disc"><span class="num">3</span></div><div class="cap">Bottles<br>crowned</div></div>
+      <div class="med"><div class="disc marks warn"><span class="num">1</span><span class="of">of 5</span></div><div class="cap">Marks<br>against</div></div>
+    </div>
+    <div style="height:14px;"></div>
+    <div class="rows">
+      <div class="row"><span class="lab">Palate temper <span class="info"><i class="ti ti-info-circle"></i><span class="tip">How they score against the Council's average across every sealed ballot.</span></span></span><span class="val">Generous <span class="info"><i class="ti ti-info-circle"></i><span class="tip">They pour +0.7 above the table.</span></span></span></div>
+      <div class="row"><span class="lab">Kindred palate <span class="info"><i class="ti ti-info-circle"></i><span class="tip">The member whose scores track closest to theirs across shared gatherings.</span></span></span><span class="val">Magus Dominik</span></div>
+      <div class="row"><span class="lab">The wheel <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Moons since they last hosted a gathering.</span></span></span><span class="val">3 moons since hosting</span></div>
+      <div class="row"><span class="lab">Longest communion <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Their longest run of consecutive gatherings attended.</span></span></span><span class="val">6 gatherings</span></div>
+    </div>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+
+    <div class="block-h">Nose</div>
+    <div class="cloud">
+      <span class="a w2">violet</span><span class="a w3">cedar</span><span class="a w5">tobacco</span><span class="a w1">graphite</span><span class="a w4">cherry</span><span class="a w6">blackcurrant</span><span class="a w3">plum</span><span class="a w2">vanilla</span><span class="a w5">leather</span><span class="a w1">smoke</span><span class="a w4">black pepper</span><span class="a w3">raspberry</span><span class="a w2">oak</span><span class="a w1">earth</span><span class="a w4">cassis</span><span class="a w2">dried herbs</span>
+    </div>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+
+    <div class="block-h">Your Finest Pours</div>
+    <div class="grail first"><div class="medal">I</div><div style="flex:1;min-width:0;"><div class="gname">Ch&acirc;teau Margaux</div><div class="gmeta">Margaux, Bordeaux &middot; 2015 &middot; Wolf Moon</div></div><div class="sc"><div class="n">9.2</div><div class="t">crowned</div></div></div>
+    <div class="grail"><div class="medal">II</div><div style="flex:1;min-width:0;"><div class="gname">Penfolds Grange</div><div class="gmeta">Barossa Valley &middot; 2012 &middot; Snow Moon</div></div><div class="sc"><div class="n">8.7</div><div class="t">second</div></div></div>
+    <div class="grail"><div class="medal">III</div><div style="flex:1;min-width:0;"><div class="gname">Vega Sicilia &Uacute;nico</div><div class="gmeta">Ribera del Duero &middot; 2010 &middot; Worm Moon</div></div><div class="sc"><div class="n">8.4</div><div class="t">third</div></div></div>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+
+    <div class="fullrule"></div>
+    <div class="block-h" style="font-size:12px;margin-bottom:10px;">Chalice count</div>
+    <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;">
+      <img src="chalice.webp" width="22" height="31" alt="chalice"><img src="chalice.webp" width="22" height="31" alt="chalice"><img src="chalice.webp" width="22" height="31" alt="chalice">
+    </div>
+    <div class="fullrule" style="margin-bottom:34px;"></div>
+
+    <button class="chartbtn"><i class="ti ti-chart-donut"></i>Behold the natal chart</button>
+    <button class="chartbtn"><i class="ti ti-sparkles"></i>The Foretelling</button>
+  </div>
+
+  <div class="plabel" style="margin-top:26px;">What "Behold the natal chart" opens</div>
+  <div class="card">
+    <span class="x"><i class="ti ti-x"></i></span>
+    <div class="nm">Priestess Larissa</div>
+    <div class="d-sub" style="margin-bottom:12px;">the sky at her first breath &middot; 5 Dec 1990, 21:40, Cape Town</div>
+    <div id="wheel" style="margin:0 auto;max-width:330px;"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:#cbbd93;"></span>harmonious</span>
+      <span><span class="sw" style="background:#7a3038;"></span>hard</span>
+      <span style="color:var(--gold2);">ASC &middot; rising</span>
+    </div>
+    <div class="hr"></div>
+    <div>
+      <div class="prow first"><span class="pg">&#9737;</span><span class="pn">Sun</span><span class="pv">&#9808; Sagittarius 13&deg; <span class="h">&middot; 2nd house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">The Sun is the self: vitality, purpose, the light she cannot help but cast. In Sagittarius it burns for freedom and far horizons; in the 2nd house, worth and possessions become the quest.</div>
+      <div class="prow"><span class="pg">&#9789;</span><span class="pn">Moon</span><span class="pv">&#9803; Cancer 13&deg; <span class="h">&middot; 9th house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">The Moon is instinct, feeling, and need. In Cancer it is at home: deep, protective, tidal. In the 9th house, emotion seeks meaning, teachers, and far places.</div>
+      <div class="prow"><span class="pg">&#9791;</span><span class="pn">Mercury</span><span class="pv">&#9808; Sagittarius 25&deg; <span class="h">&middot; 2nd house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Mercury is mind and tongue. In Sagittarius it speaks in grand arcs and honest blurts; in the 2nd house, a mind that weighs value keenly.</div>
+      <div class="prow"><span class="pg">&#9792;</span><span class="pn">Venus</span><span class="pv">&#9807; Scorpio 7&deg; <span class="h">&middot; 1st house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Venus is taste, love, and pleasure. In Scorpio it desires utterly or not at all; rising in the 1st house, that magnetism is worn openly.</div>
+      <div class="prow"><span class="pg">&#9794;</span><span class="pn">Mars</span><span class="pv">&#9802; Gemini 13&deg; <span class="h">&middot; 8th house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Mars is drive and appetite. In Gemini it fights with words and wit; in the 8th house it is drawn to the deep, the shared, and the forbidden.</div>
+      <div class="prow"><span class="pg">&#9795;</span><span class="pn">Jupiter</span><span class="pv">&#9804; Leo 7&deg; <span class="h">&middot; 10th house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Jupiter is fortune and growth. In Leo it expands through generosity and show; in the 10th house, luck gathers around her name and standing.</div>
+      <div class="prow"><span class="pg">&#9796;</span><span class="pn">Saturn</span><span class="pv">&#9809; Capricorn 18&deg; <span class="h">&middot; 3rd house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Saturn is discipline and limit. In Capricorn it rules from its own throne: patient, exacting. In the 3rd house, words are weighed before they are spent.</div>
+      <div class="prow"><span class="pg">&#9797;</span><span class="pn">Uranus</span><span class="pv">&#9809; Capricorn 22&deg; <span class="h">&middot; 3rd house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Uranus is upheaval and sudden genius. In Capricorn it reforms the old order from within; in the 3rd house, a mind that startles mid-sentence.</div>
+      <div class="prow"><span class="pg">&#9798;</span><span class="pn">Neptune</span><span class="pv">&#9809; Capricorn 8&deg; <span class="h">&middot; 3rd house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Neptune is dream and dissolution. In Capricorn it romances tradition; in the 3rd house it slips poetry into plain speech.</div>
+      <div class="prow"><span class="pg">&#9799;</span><span class="pn">Pluto</span><span class="pv">&#9807; Scorpio 12&deg; <span class="h">&middot; 1st house</span></span><i class="ti ti-chevron-right chev"></i></div>
+      <div class="pexp">Pluto is power and rebirth. In Scorpio it stands in its own dark demesne: transformation as a way of life. In the 1st house, it is felt the moment she enters.</div>
+    </div>
+    <p class="note" style="margin:8px 0 0;">tap a row to read what the placement signifies</p>
+    <p class="d-sub" style="margin:10px 0 0;">whole-sign houses &middot; computed from the true sky</p>
+
+    <div class="reveal">
+      <button class="rtoggle"><i class="ti ti-chevron-right"></i>How this chart is drawn</button>
+      <div class="rbody">
+        Nothing here is guessed or generated. Your birth moment is first converted from local time to Universal Time using the historical timezone database, so old dates carry the offsets of their era. Each position is then computed from established astronomical formulae: the sun from its true ecliptic longitude, the moon from a perturbed lunar ephemeris, the planets from their orbital elements, and the ascendant from the exact sidereal time at your birthplace's latitude and longitude. Houses follow the whole-sign tradition.
+        <br><br>
+        The engine is tested against documented reference charts and known sky events: cusp-day birthdays, recorded full and new moons, and historical charts with published ascendants. Where a detail is missing, a birth time or place, the chart shows nothing rather than an estimate.
+      </div>
+    </div>
+  </div>
+
+  <div class="plabel" style="margin-top:26px;">What "The Foretelling" opens</div>
+  <div class="card">
+    <span class="x"><i class="ti ti-x"></i></span>
+    <div class="nm">The Foretelling</div>
+    <div class="d-sub" style="margin-bottom:12px;">what the sky intends for Priestess Larissa &middot; computed, never invented</div>
+    <div class="pillrow"><span class="pill on">This moon <span class="info"><i class="ti ti-info-circle"></i><span class="tip">Read by the moon itself: the reading runs from new moon to new moon, not the calendar month.</span></span></span><span class="pill">The year</span></div>
+
+    <div class="aug">
+      <div class="top"><span class="glyphs">&#127761;</span><span class="t">New moon &middot; &#9803; Cancer &middot; her 9th house</span><span class="when">14 July</span></div>
+      <div class="body">A seed planted among far places and higher learning: plan the pilgrimage, book the tasting.</div>
+    </div>
+    <div class="aug">
+      <div class="top"><span class="glyphs">&#9795; &#9651; &#9737;</span><span class="t">Jupiter trines her Sun</span><span class="when">9 to 31 July</span></div>
+      <div class="body">Fortune leans toward her. Accept the second glass, and the second chance.</div>
+    </div>
+    <div class="aug">
+      <div class="top"><span class="glyphs">&#9796; &#9633; &#9789;</span><span class="t">Saturn squares her Moon</span><span class="when">all month</span></div>
+      <div class="body">The vine tests her patience. Pour slowly, speak late.</div>
+    </div>
+    <div class="aug">
+      <div class="top"><span class="glyphs">&#127765;</span><span class="t">Full moon &middot; &#9810; Aquarius &middot; her 4th house</span><span class="when">29 July</span></div>
+      <div class="body">It rises over home and hearth: host, gather, restore.</div>
+    </div>
+    <div class="chip" style="margin-bottom:6px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i>Mercury retrograde, 18 July to 11 August: reread the label before you buy.</div>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+
+    <div class="block-h">The year, glimpsed</div>
+    <div class="aug">
+      <div class="top"><span class="glyphs">7</span><span class="t">Personal year</span><span class="when">2026</span></div>
+      <div class="body">The seeker's year: study, cellar, deepen. Buy to keep, not to open.</div>
+    </div>
+    <div class="aug">
+      <div class="top"><span class="glyphs">&#39340;</span><span class="t">Year of the Fire Horse</span><span class="when">from 17 Feb</span></div>
+      <div class="body">For a Horse, her own year: guard the flame, do not gallop at every invitation.</div>
+    </div>
+    <div class="aug">
+      <div class="top"><span class="glyphs">&#9797; &#8594; 9th</span><span class="t">Uranus enters her 9th house</span><span class="when">May</span></div>
+      <div class="body">The far vineyard calls. Travel for wine, and let one strange bottle change her mind.</div>
+    </div>
+    <p class="d-sub" style="margin:8px 0 0;">the vine calculates, it does not flatter</p>
+
+    <div class="reveal">
+      <button class="rtoggle"><i class="ti ti-chevron-right"></i>How this reading is made</button>
+      <div class="rbody">
+        The Foretelling is computed, never invented. The positions of the planets for the month and year ahead are calculated by the same astronomical engine as your natal chart, then compared against your own chart: a transit is reported only when a real geometric alignment occurs, with its true dates. Moon phases and retrogrades are astronomy, exact to the day.
+        <br><br>
+        The words that interpret each alignment are written once, by hand, in the Council's voice, and chosen by the alignment itself, never at random. Two members under the same transit will read the same truth differently placed, because the houses it lands in are theirs alone. No machine writes these words, and nothing is padded to fill a quiet month: a quiet month reads quiet.
+      </div>
+    </div>
+  </div>
+
+  <div class="plabel" style="margin-top:26px;">At the bottom of your own profile</div>
+  <div class="card" style="text-align:left;">
+    <div class="block-h" style="text-align:center;">Your sky</div>
+    <div class="btnrow">
+      <button class="chartbtn"><i class="ti ti-chart-donut"></i>Behold the natal chart</button>
+      <button class="mailbtn" aria-label="Email me the natal chart"><i class="ti ti-mail"></i></button>
+    </div>
+    <div class="btnrow">
+      <button class="chartbtn"><i class="ti ti-sparkles"></i>The Foretelling</button>
+      <button class="mailbtn" aria-label="Email me the foretelling"><i class="ti ti-mail"></i></button>
+    </div>
+    <p class="d-sub" style="text-align:center;margin:12px 0 0;">the envelope sends it to your inbox, sealed in the Council's colours</p>
+  </div>
+
+  <div class="plabel" style="margin-top:26px;">If time or place of birth is missing (both views)</div>
+  <div class="card">
+    <span class="x"><i class="ti ti-x"></i></span>
+    <div class="moons top"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="nm">The sky is veiled</div>
+    <p class="d-sub" style="margin:8px 0 14px;">the wheel cannot be drawn, nor the foretelling read</p>
+    <p style="font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--parch);line-height:1.5;margin:0 auto 6px;max-width:280px;">
+      The heavens ask two more truths of you:
+    </p>
+    <div style="display:flex;justify-content:center;gap:8px;margin:10px 0 16px;">
+      <span class="pill"><i class="ti ti-clock" style="font-size:11px;margin-right:5px;"></i>time of birth</span>
+      <span class="pill"><i class="ti ti-map-pin" style="font-size:11px;margin-right:5px;"></i>place of birth</span>
+    </div>
+    <p class="d-sub" style="margin:0 0 14px;">only the missing points are shown; give them and the sky unveils itself</p>
+    <a href="#" class="chartbtn" style="text-decoration:none;background:var(--gold2);color:#0a0908;border:none;"><i class="ti ti-user" style="color:#0a0908;"></i>Complete your record</a>
+  </div>
+
+  <p class="note" style="margin-top:18px;">mockup &middot; sample data &middot; nothing here is wired yet</p>
+</div>
+
+<script>
+(function(){
+  var ASC=217, C=165, VB=330;
+  var VS="︎"; // text presentation: thin glyphs, not emoji
+  var SG=["♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓"].map(function(g){return g+VS;});
+  var PL=[{g:"☉",L:253},{g:"☽",L:103},{g:"☿",L:265},{g:"♀",L:217},{g:"♂",L:73},{g:"♃",L:127},{g:"♄",L:288},{g:"♅",L:292},{g:"♆",L:278},{g:"♇",L:222}];
+  var ASP=[[253,73,"#7a3038"],[253,127,"#cbbd93"],[103,288,"#7a3038"],[217,127,"#cbbd93"]];
+  function pt(L,r){var a=(180+(ASC-L))*Math.PI/180;return[C+r*Math.cos(a),C+r*Math.sin(a)];}
+  var s='<svg viewBox="0 0 '+VB+' '+VB+'" role="img" aria-label="Natal chart wheel"><title>Natal chart wheel</title>';
+  s+='<circle cx="'+C+'" cy="'+C+'" r="158" fill="none" stroke="rgba(180,168,120,0.42)" stroke-width="1"/>';
+  s+='<circle cx="'+C+'" cy="'+C+'" r="132" fill="none" stroke="rgba(160,150,120,0.2)" stroke-width="1"/>';
+  s+='<circle cx="'+C+'" cy="'+C+'" r="92" fill="none" stroke="rgba(160,150,120,0.2)" stroke-width="1"/>';
+  for(var i=0;i<12;i++){
+    var d=pt(i*30,132),e=pt(i*30,158);
+    s+='<line x1="'+d[0]+'" y1="'+d[1]+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="rgba(160,150,120,0.25)" stroke-width="1"/>';
+    var g=pt(i*30+15,145);
+    s+='<text x="'+g[0]+'" y="'+(g[1]+5)+'" text-anchor="middle" font-size="14" fill="#9c8a5f">'+SG[i]+'</text>';
+    var hn=((i-7+12)%12)+1, hp=pt(i*30+15,82);
+    s+='<text x="'+hp[0]+'" y="'+(hp[1]+3)+'" text-anchor="middle" font-size="9" fill="#5a554c">'+hn+'</text>';
+  }
+  for(var j=0;j<ASP.length;j++){
+    var p1=pt(ASP[j][0],92),p2=pt(ASP[j][1],92);
+    s+='<line x1="'+p1[0]+'" y1="'+p1[1]+'" x2="'+p2[0]+'" y2="'+p2[1]+'" stroke="'+ASP[j][2]+'" stroke-width="1" opacity="0.75"/>';
+  }
+  var srt=PL.slice().sort(function(a,b){return a.L-b.L;});
+  for(var k=0;k<srt.length;k++){
+    var near=k>0&&(srt[k].L-srt[k-1].L)<9;
+    var r=near?122:107;
+    var q=pt(srt[k].L,r), t1=pt(srt[k].L,128), t2=pt(srt[k].L,132);
+    s+='<line x1="'+t1[0]+'" y1="'+t1[1]+'" x2="'+t2[0]+'" y2="'+t2[1]+'" stroke="#cbbd93" stroke-width="1.4"/>';
+    s+='<text x="'+q[0]+'" y="'+(q[1]+5)+'" text-anchor="middle" font-size="15" fill="#cbbd93">'+srt[k].g+'</text>';
+  }
+  var a1=pt(ASC,92),a2=pt(ASC,158);
+  s+='<line x1="'+a1[0]+'" y1="'+a1[1]+'" x2="'+a2[0]+'" y2="'+a2[1]+'" stroke="#cbbd93" stroke-width="1.6"/>';
+  s+='<text x="'+(a2[0]+4)+'" y="'+(a2[1]-6)+'" text-anchor="start" font-size="9" letter-spacing="1" fill="#cbbd93">ASC</text>';
+  s+='</svg>';
+  var el=document.getElementById('wheel'); if(el) el.innerHTML=s;
+  document.querySelectorAll('.prow').forEach(function(r){
+    r.addEventListener('click',function(){ r.classList.toggle('open'); });
+  });
+  document.querySelectorAll('.rtoggle').forEach(function(t){
+    t.addEventListener('click',function(){ t.parentElement.classList.toggle('open'); });
+  });
+  // Keep every tooltip on-screen: tips are laid out even while hidden, so
+  // measure each and nudge any that would bleed past the viewport edges.
+  function clampTips(){
+    var vw=document.documentElement.clientWidth;
+    document.querySelectorAll('.tip').forEach(function(tp){
+      tp.style.transform='';
+      var r=tp.getBoundingClientRect();
+      var dx=0;
+      if(r.left<8) dx=8-r.left;
+      else if(r.right>vw-8) dx=(vw-8)-r.right;
+      if(dx) tp.style.transform='translateX('+dx+'px)';
+    });
+  }
+  clampTips();
+  window.addEventListener('resize',clampTips);
+})();
+</script>
+</body>
+</html>

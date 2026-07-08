@@ -140,11 +140,15 @@ export default function Tribunal() {
         role: "initiate",
         date_of_birth: a.date_of_birth || null,
         time_of_birth: a.time_of_birth || null,
+        birth_place: a.birth_place || null,
+        birth_lat: a.birth_lat ?? null,
+        birth_lon: a.birth_lon ?? null,
+        birth_tz: a.birth_tz || null,
         active: true,
       };
       if (mode === "live" && supabase) {
         const { error } = await supabase.from("members").upsert(
-          { email: member.email, cult_name: member.cult_name, short_name: member.short_name, role: "initiate", date_of_birth: member.date_of_birth, time_of_birth: member.time_of_birth, active: true },
+          { email: member.email, cult_name: member.cult_name, short_name: member.short_name, role: "initiate", date_of_birth: member.date_of_birth, time_of_birth: member.time_of_birth, birth_place: member.birth_place, birth_lat: member.birth_lat, birth_lon: member.birth_lon, birth_tz: member.birth_tz, active: true },
           { onConflict: "email" }
         );
         // Surface the real reason instead of silently failing (e.g. an RLS
@@ -213,7 +217,7 @@ export default function Tribunal() {
       {pending.map((a) => (
         <div key={a.id} className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth }} size={40} />
+            <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth, birth_place: a.birth_place, birth_lat: a.birth_lat, birth_lon: a.birth_lon, birth_tz: a.birth_tz }} size={40} />
             <div>
               <div className="disp" style={{ fontSize: 16 }}>{a.cult_name}</div>
               <div className="whisper" style={{ fontSize: 14 }}>
@@ -254,7 +258,7 @@ export default function Tribunal() {
           return (
             <div key={a.id} style={{ borderBottom: "1px solid var(--line)" }}>
               <div className="rk" style={{ borderBottom: "none" }}>
-                <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth }} size={34} />
+                <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth, birth_place: a.birth_place, birth_lat: a.birth_lat, birth_lon: a.birth_lon, birth_tz: a.birth_tz }} size={34} />
                 <button
                   onClick={() => setOpenDecided(openD ? null : a.id)}
                   style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0, color: "inherit" }}

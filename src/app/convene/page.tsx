@@ -153,7 +153,7 @@ function MeetingBody({
     const text =
       `*Gathering ${toRoman(m.number)}*\n\n` +
       `*Theme:* ${m.theme_title}\n` +
-      `*Host:* ${m.host_name}\n` +
+      `*Host:* ${[m.host_name, m.host2_name].filter(Boolean).join(" & ")}\n` +
       `*When:* ${date} · from ${time}\n` +
       (m.venue_instructions ? `*Where:* ${m.venue_instructions}\n` : "") +
       (m.rules_text ? `\n${m.rules_text}\n` : "") +
@@ -203,6 +203,17 @@ function MeetingBody({
                 onUpdate({ host_id: id, host_name: h?.cult_name || "", venue_instructions: h?.venue_instructions || null });
               }}
             />
+            <label className="field">Co-host (optional)</label>
+            {/* Both hosts earn hosting-wheel credit; the venue stays the first host's. */}
+            <select value={m.host2_id || ""} onChange={(e) => {
+              const h = members.find((x) => x.id === e.target.value);
+              onUpdate({ host2_id: h?.id || null, host2_name: h?.cult_name || null });
+            }} style={{ colorScheme: "dark" }}>
+              <option value="">No co-host</option>
+              {members.filter((x) => x.id !== m.host_id).map((x) => (
+                <option key={x.id} value={x.id}>{x.cult_name}</option>
+              ))}
+            </select>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
               <div style={{ flex: "1 1 140px" }}>
                 <label className="field" style={{ marginTop: 0 }}>Date</label>
@@ -226,7 +237,7 @@ function MeetingBody({
             )}
             {meId && <Offering gatheringId={m.id} meId={meId} />}
             <div style={{ display: "flex", gap: 22, marginTop: 16, flexWrap: "wrap" }}>
-              <Detail label="Host" value={<span className="scr" style={{ fontSize: 16 }}>{m.host_name}</span>} />
+              <Detail label={m.host2_name ? "Hosts" : "Host"} value={<span className="scr" style={{ fontSize: 16 }}>{[m.host_name, m.host2_name].filter(Boolean).join(" & ")}</span>} />
               <Detail label="The night" value={<span style={{ color: "var(--parch)" }}>{date} · from {time}</span>} />
               <Detail label="Vessels" value={<span style={{ color: "var(--parch)" }}>{(isCurrent && count) || m.wine_count} cloaked</span>} />
             </div>
@@ -367,6 +378,7 @@ export default function Convene() {
   const [meetings, setMeetings] = useState<Gathering[]>([]);
   const [members, setMembers] = useState<Member[]>(seedMembers);
   const [newHost, setNewHost] = useState("");
+  const [newHost2, setNewHost2] = useState("");
   const [hostOpen, setHostOpen] = useState(false);
 
   useEffect(() => {
@@ -409,11 +421,14 @@ export default function Convene() {
     const title = newTheme.trim();
     if (!title || !newDate) return;
     const host = members.find((m) => m.id === newHost);
+    const host2 = members.find((m) => m.id === newHost2 && m.id !== newHost);
     const nextNum = Math.max(0, ...meetings.map((m) => m.number)) + 1;
     const draft: Gathering = {
       id: `g-${Date.now()}`, number: nextNum, moon_label: "A moon to come",
       theme_title: title, theme_description: null,
-      host_id: host?.id || null, host_name: host?.cult_name || "", gather_date: newDate, gather_time: "19:00",
+      host_id: host?.id || null, host_name: host?.cult_name || "",
+      host2_id: host2?.id || null, host2_name: host2?.cult_name || null,
+      gather_date: newDate, gather_time: "19:00",
       status: "upcoming", wine_count: 6,
       rules_text: DEFAULT_RULES, threat_text: DEFAULT_THREAT,
       venue_instructions: host?.venue_instructions || null, attendees: [],
@@ -487,6 +502,13 @@ export default function Convene() {
                 )}
               </div>
             </div>
+            <label className="field" style={{ marginTop: 10 }}>Co-host (optional)</label>
+            <select value={newHost2} onChange={(e) => setNewHost2(e.target.value)} style={{ colorScheme: "dark" }}>
+              <option value="">No co-host</option>
+              {members.filter((m) => m.id !== newHost).map((m) => (
+                <option key={m.id} value={m.id}>{m.cult_name}</option>
+              ))}
+            </select>
             <button className="btn gold" style={{ marginTop: 10 }} onClick={addMeeting} disabled={!newTheme.trim() || !newDate}>
               Summon it
             </button>

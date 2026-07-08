@@ -46,6 +46,7 @@ export default function Rite() {
       if (active && b) {
         setScores(b.scores || {});
         setSealed(!!b.sealed);
+        if (b.aromas) setAromasByWine(b.aromas);
       }
     });
     return () => { active = false; };
@@ -82,7 +83,7 @@ export default function Rite() {
   const setScore = (wine: number, val: number) => {
     setScores((s) => {
       const next = { ...s, [wine]: val };
-      if (meId) saveBallot(gid, meId, { scores: next, sealed: false }).catch(() => {});
+      if (meId) saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine }).catch(() => {});
       return next;
     });
     setSealed(false);
@@ -91,7 +92,7 @@ export default function Rite() {
   const sealReckoning = async () => {
     if (meId) {
       try {
-        await saveBallot(gid, meId, { scores, sealed: true });
+        await saveBallot(gid, meId, { scores, sealed: true, aromas: aromasByWine });
       } catch (e) {
         alert(`Could not seal your reckoning: ${(e as Error).message}`);
         return;
@@ -103,7 +104,10 @@ export default function Rite() {
   const toggleAroma = (a: string) =>
     setAromasByWine((m) => {
       const list = m[current] ?? [];
-      return { ...m, [current]: list.includes(a) ? list.filter((x) => x !== a) : [...list, a] };
+      const next = { ...m, [current]: list.includes(a) ? list.filter((x) => x !== a) : [...list, a] };
+      // Aromas feed the Palate Dossier's Nose, so they persist with the ballot.
+      if (meId) saveBallot(gid, meId, { scores, sealed, aromas: next }).catch(() => {});
+      return next;
     });
 
   const addAroma = () => {

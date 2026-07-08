@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers, saveMember, removeMember } from "@/lib/members";
@@ -9,9 +9,14 @@ import { fetchCurrentGathering } from "@/lib/gatherings";
 import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { sendEmail } from "@/lib/sendEmail";
 import { supabase } from "@/lib/supabase";
-import { sunSign, moonSign, risingSign, shengxiao, wuXing } from "@/lib/astrology";
+import { sunSign, moonSign, ascendant, shengxiao, wuXing, DEFAULT_TZ, allTimezones } from "@/lib/astrology";
+import { geocodePlace, type GeoHit } from "@/lib/geo";
 import { toRoman } from "@/lib/util";
 import AvatarCropper from "@/components/AvatarCropper";
+import NatalChartModal, { chartReady, wheelSvgString } from "@/components/NatalChart";
+import ForetellingModal from "@/components/Foretelling";
+import { fullChart, ordinal } from "@/lib/natal";
+import type { CardMember } from "@/components/MemberCard";
 import MemberCard from "@/components/MemberCard";
 import type { Role, Member, Gathering } from "@/lib/types";
 
@@ -33,6 +38,20 @@ const WX_TIP = "The five elements govern your deeper personality traits, destiny
 
 function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  // Keep the tooltip on-screen: measure once shown and nudge it back inside
+  // the viewport, so tips near either edge never bleed off on mobile.
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!open || !el) return;
+    el.style.transform = "";
+    const r = el.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    let dx = 0;
+    if (r.left < 8) dx = 8 - r.left;
+    else if (r.right > vw - 8) dx = vw - 8 - r.right;
+    if (dx) el.style.transform = `translateX(${dx}px)`;
+  }, [open]);
   return (
     <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
       <button
@@ -47,10 +66,11 @@ function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "rig
       </button>
       {open && (
         <span
+          ref={tipRef}
           role="tooltip"
           style={{
             position: "absolute", top: "calc(100% + 6px)", [align]: 0, zIndex: 30,
-            width: 232, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8,
+            width: 220, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8,
             padding: "9px 11px", color: "var(--parch)", fontSize: 12.5, lineHeight: 1.5,
             fontFamily: "'EB Garamond', serif", fontStyle: "normal", textTransform: "none",
             letterSpacing: "normal", boxShadow: "0 6px 20px rgba(0,0,0,0.55)",
@@ -389,6 +409,12 @@ export default function Profile() {
   const [editingName, setEditingName] = useState(false);
   const [dob, setDob] = useState("");
   const [tob, setTob] = useState("");
+  const [tz, setTz] = useState(DEFAULT_TZ);
+  const [place, setPlace] = useState("");
+  const [placeLat, setPlaceLat] = useState<number | null>(null);
+  const [placeLon, setPlaceLon] = useState<number | null>(null);
+  const [placeHits, setPlaceHits] = useState<GeoHit[] | null>(null); // null = not searched
+  const [seeking, setSeeking] = useState(false);
   const [venue, setVenue] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [rawFile, setRawFile] = useState<string | null>(null);
@@ -402,6 +428,10 @@ export default function Profile() {
       name: mode === "demo" ? DEMO_NAMES[role] : self?.cult_name || email || "",
       dob: self?.date_of_birth || "",
       tob: self?.time_of_birth || "",
+      tz: self?.birth_tz || DEFAULT_TZ,
+      place: self?.birth_place || "",
+      lat: self?.birth_lat ?? null,
+      lon: self?.birth_lon ?? null,
       venue: self?.venue_instructions || "",
       avatar: (self?.avatar_url as string | null) || null,
     };
@@ -416,6 +446,11 @@ export default function Profile() {
     setName(base.name);
     setDob(base.dob);
     setTob(base.tob);
+    setTz(base.tz || DEFAULT_TZ);
+    setPlace(base.place);
+    setPlaceLat(base.lat);
+    setPlaceLon(base.lon);
+    setPlaceHits(null);
     setVenue(base.venue);
     setAvatar(base.avatar);
     setSaved(false);
@@ -423,15 +458,34 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, mode, self]);
 
-  const sun = dob ? sunSign(dob) : null;
+  const sun = dob ? sunSign(dob, tob || undefined, tz) : null;
   const element = sun?.element ?? null;
-  const moon = dob ? moonSign(dob, tob || undefined) : null;
-  const rising = dob && tob ? risingSign(dob, tob) : null;
+  const moon = dob ? moonSign(dob, tob || undefined, tz) : null;
+  const rising = dob ? ascendant(dob, tob || undefined, tz, placeLat, placeLon) : null;
   const animal = dob ? shengxiao(dob) : null;
   const wx = dob ? wuXing(dob) : null;
   const initials = (name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const touch = () => setSaved(false);
+
+  // Look the birth town up in the atlas; picking a match pins its coordinates
+  // and sets the timezone (which stays editable).
+  const seekPlace = async () => {
+    if (!place.trim()) return;
+    setSeeking(true);
+    const hits = await geocodePlace(place);
+    setSeeking(false);
+    setPlaceHits(hits);
+    if (hits.length === 1) pickPlace(hits[0]);
+  };
+  const pickPlace = (h: GeoHit) => {
+    setPlace(h.label);
+    setPlaceLat(h.latitude);
+    setPlaceLon(h.longitude);
+    setTz(h.timezone);
+    setPlaceHits([]);
+    touch();
+  };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -450,6 +504,10 @@ export default function Profile() {
         cult_name: name,
         date_of_birth: dob || null,
         time_of_birth: tob || null,
+        birth_place: place || null,
+        birth_lat: placeLat,
+        birth_lon: placeLon,
+        birth_tz: tz || null,
         zodiac: sun?.name || null,
         element: element || null,
         venue_instructions: venue || null,
@@ -458,7 +516,7 @@ export default function Profile() {
       if (error) { alert(`Could not save your profile: ${error.message}`); return; }
     } else {
       try {
-        localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, venue, avatar }));
+        localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, tz, place, lat: placeLat, lon: placeLon, venue, avatar }));
       } catch {}
     }
     window.dispatchEvent(new CustomEvent("lcv-profile", { detail: { avatar } }));
@@ -539,11 +597,47 @@ export default function Profile() {
           </div>
         </div>
 
+        <label className="field" style={{ marginTop: 10 }}>Timezone of birth</label>
+        <select value={tz} onChange={(e) => { setTz(e.target.value); touch(); }} style={{ colorScheme: "dark" }}>
+          {allTimezones().map((z) => (
+            <option key={z} value={z}>{z.replace(/_/g, " ")}</option>
+          ))}
+        </select>
+
+        <label className="field" style={{ marginTop: 10 }}>Place of birth</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={place}
+            onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); touch(); }}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), seekPlace())}
+            placeholder="Cape Town"
+            style={{ flex: 1 }}
+          />
+          <button className="btn" style={{ width: "auto", padding: "0 14px" }} onClick={seekPlace} disabled={seeking || !place.trim()}>
+            {seeking ? "Seeking…" : "Mark it"}
+          </button>
+        </div>
+        {placeLat != null && (
+          <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
+            <i className="ti ti-map-pin" style={{ fontSize: 12, marginRight: 4 }} />The atlas knows it. Your chart is drawn from this place.
+          </p>
+        )}
+        {placeHits && placeHits.length > 1 && (
+          <div className="pills" style={{ marginTop: 8 }}>
+            {placeHits.map((h) => (
+              <span key={h.label} className="pill" onClick={() => pickPlace(h)}>{h.label}</span>
+            ))}
+          </div>
+        )}
+        {placeHits && placeHits.length === 0 && (
+          <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try the nearest larger town.</p>
+        )}
+
         <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12, display: "flex", flexDirection: "column", gap: 9 }}>
           <Row label="Element" value={element || "—"} hint={!element ? "add your date of birth" : undefined} />
           <Row label="Sun sign" tip={SUN_TIP} value={sun ? `${sun.symbol} ${sun.name}` : "—"} hint={!sun ? "add your date of birth" : undefined} />
           <Row label="Moon sign" tip={MOON_TIP} value={moon ? `${moon.symbol} ${moon.name}` : "—"} hint={!moon ? "add your date of birth" : undefined} />
-          <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : "—"} hint={!rising ? "add date + time of birth" : undefined} />
+          <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : "—"} hint={!rising ? (!tob ? "add your time of birth" : "add your place of birth") : undefined} />
           <Row label="Shengxiao" tip={SX_TIP} value={animal ? `${animal.symbol} ${animal.name}` : "—"} hint={!animal ? "add your date of birth" : undefined} />
           <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} valueTip={wx?.meaning} hint={!wx ? "add your date of birth" : undefined} />
         </div>
@@ -565,6 +659,11 @@ export default function Profile() {
       {role === "keiser" && <RosterEditor />}
       {role === "keiser" && <HeraldsEditor />}
 
+      <YourSky
+        self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
+        email={email}
+      />
+
       {mode === "demo" ? (
         <div className="card">
           <div className="eyebrow" style={{ marginBottom: 6 }}>View as</div>
@@ -583,5 +682,109 @@ export default function Profile() {
         </button>
       )}
     </section>
+  );
+}
+
+// Rasterize the wheel to a PNG and host it (live mode) so the emailed chart
+// can carry the image; mail clients cannot draw SVGs themselves.
+async function wheelPngUrl(chart: NonNullable<ReturnType<typeof fullChart>>): Promise<string | undefined> {
+  try {
+    const svg = wheelSvgString(chart);
+    return await new Promise<string | undefined>((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const S = 660;
+        const c = document.createElement("canvas");
+        c.width = S; c.height = S;
+        c.getContext("2d")!.drawImage(img, 0, 0, S, S);
+        c.toBlob(async (blob) => {
+          if (!blob || !supabase) return resolve(undefined);
+          const path = `wheel-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
+          const { error } = await supabase.storage.from("charts").upload(path, blob, { contentType: "image/png" });
+          if (error) return resolve(undefined);
+          resolve(supabase.storage.from("charts").getPublicUrl(path).data.publicUrl);
+        }, "image/png");
+      };
+      img.onerror = () => resolve(undefined);
+      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+// The two doors to your own sky, each with an envelope that emails it to
+// your own inbox. The send route only ever accepts your own address.
+function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
+  const [showChart, setShowChart] = useState(false);
+  const [showFore, setShowFore] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const ready = chartReady(self);
+
+  const birthLine = self.date_of_birth
+    ? `${new Date(self.date_of_birth).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${self.time_of_birth ? `, ${self.time_of_birth}` : ""}${self.birth_place ? `, ${self.birth_place.split(",")[0]}` : ""}`
+    : undefined;
+
+  const finish = (res: { ok: boolean; skipped?: string; error?: string }) => {
+    setBusy(null);
+    setMsg(res.ok ? "Sent. Consult your inbox." : res.skipped ? "The heralds are not yet configured." : res.error || "The herald failed on the road.");
+  };
+
+  const emailChart = async () => {
+    if (!ready || !self.date_of_birth) { setMsg("Give your birth time and place above; then the sky unveils."); return; }
+    if (!email) { setMsg("No inbox is known for you in this mode."); return; }
+    setBusy("natal"); setMsg(null);
+    const chart = fullChart(self.date_of_birth, self.time_of_birth, self.birth_tz, self.birth_lat, self.birth_lon)!;
+    const wheelUrl = await wheelPngUrl(chart);
+    const sunP = chart.planets.find((x) => x.key === "sun")!;
+    const moonP = chart.planets.find((x) => x.key === "moon")!;
+    finish(await sendEmail("natal", [email], {
+      name: self.cult_name, birthLine, wheelUrl,
+      sun: `${sunP.sign.symbol} ${sunP.sign.name}`,
+      moon: `${moonP.sign.symbol} ${moonP.sign.name}`,
+      rising: chart.ascSign ? `${chart.ascSign.symbol} ${chart.ascSign.name}` : undefined,
+      rows: chart.planets.map((x) => ({ glyph: x.glyph, planet: x.name, value: `${x.sign.symbol} ${x.sign.name} ${x.deg}°${x.house ? ` · ${ordinal(x.house)} house` : ""}` })),
+    }));
+  };
+
+  const emailFore = async () => {
+    if (!ready || !self.date_of_birth) { setMsg("Give your birth time and place above; then the sky unveils."); return; }
+    if (!email) { setMsg("No inbox is known for you in this mode."); return; }
+    setBusy("fore"); setMsg(null);
+    const { foretellingFor } = await import("@/lib/transits");
+    const r = foretellingFor({ dateStr: self.date_of_birth, timeStr: self.time_of_birth, tz: self.birth_tz, lat: self.birth_lat, lon: self.birth_lon }, Date.now());
+    if (!r) { setBusy(null); setMsg("The sky is veiled; complete your record first."); return; }
+    finish(await sendEmail("foretelling", [email], { name: self.cult_name, moonLabel: r.moonLabel, yearLabel: r.yearLabel, entries: r.entries, warning: r.warning || undefined, year: r.year }));
+  };
+
+  const rowStyle = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } as React.CSSProperties;
+  const mailStyle = { width: 46, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" } as React.CSSProperties;
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="eyebrow" style={{ marginBottom: 10, textAlign: "center", fontSize: 12 }}>Your sky</div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button className="btn" style={rowStyle} onClick={() => setShowChart(true)}>
+          <i className="ti ti-chart-donut" style={{ color: "var(--gold)" }} />Behold the natal chart
+        </button>
+        <button className="btn" aria-label="Email me the natal chart" title="Email me the natal chart" style={mailStyle} disabled={busy !== null} onClick={emailChart}>
+          <i className={`ti ti-${busy === "natal" ? "loader-2" : "mail"}`} />
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <button className="btn" style={rowStyle} onClick={() => setShowFore(true)}>
+          <i className="ti ti-sparkles" style={{ color: "var(--gold)" }} />The Foretelling
+        </button>
+        <button className="btn" aria-label="Email me the foretelling" title="Email me the foretelling" style={mailStyle} disabled={busy !== null} onClick={emailFore}>
+          <i className={`ti ti-${busy === "fore" ? "loader-2" : "mail"}`} />
+        </button>
+      </div>
+      <p className="whisper" style={{ textAlign: "center", margin: "12px 0 0", fontSize: 13 }}>
+        the envelope sends it to your inbox, sealed in the Council&apos;s colours
+      </p>
+      {msg && <p className="scr" style={{ textAlign: "center", margin: "8px 0 0", fontSize: 14 }}>{msg}</p>}
+      {showChart && <NatalChartModal member={self} onClose={() => setShowChart(false)} />}
+      {showFore && <ForetellingModal member={self} onClose={() => setShowFore(false)} />}
+    </div>
   );
 }

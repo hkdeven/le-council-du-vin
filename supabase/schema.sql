@@ -71,6 +71,9 @@ alter table gatherings add column if not exists threat_text text;
 alter table gatherings add column if not exists venue_instructions text;
 alter table gatherings add column if not exists reveal_photos text[];
 alter table gatherings add column if not exists attendees text[];
+-- Optional co-host: both hosts get hosting-wheel credit.
+alter table gatherings add column if not exists host2_id uuid;
+alter table gatherings add column if not exists host2_name text;
 
 -- Wines (numbered black cloths) -------------------------------------
 create table if not exists wines (
@@ -129,6 +132,15 @@ create table if not exists applications (
 alter table applications add column if not exists date_of_birth date;
 alter table applications add column if not exists time_of_birth time;
 alter table applications add column if not exists anointed_at timestamptz;
+-- Birth place (typed) + geocoded coordinates and IANA timezone for the chart.
+alter table applications add column if not exists birth_place text;
+alter table applications add column if not exists birth_lat double precision;
+alter table applications add column if not exists birth_lon double precision;
+alter table applications add column if not exists birth_tz text;
+alter table members add column if not exists birth_place text;
+alter table members add column if not exists birth_lat double precision;
+alter table members add column if not exists birth_lon double precision;
+alter table members add column if not exists birth_tz text;
 
 create table if not exists application_votes (
   id uuid primary key default gen_random_uuid(),
@@ -160,9 +172,11 @@ create table if not exists ballots (
   member_id uuid references members(id) on delete cascade,
   scores jsonb not null default '{}'::jsonb,
   sealed boolean not null default false,
+  aromas jsonb not null default '{}'::jsonb, -- cloth -> aromas (feeds the Nose)
   updated_at timestamptz not null default now(),
   primary key (gathering_id, member_id)
 );
+alter table ballots add column if not exists aromas jsonb not null default '{}'::jsonb;
 
 -- Offerings: each member's private bottle registration --------------
 create table if not exists offerings (
@@ -199,3 +213,13 @@ group by w.id;
 insert into members (email, cult_name, short_name, role, active)
 values ('hkdeven@gmail.com', 'The Keiser', 'KE', 'keiser', true)
 on conflict (email) do update set role = 'keiser';
+
+-- Storage: emailed natal-wheel snapshots (public read, member write) ---------
+insert into storage.buckets (id, name, public) values ('charts', 'charts', true)
+on conflict (id) do nothing;
+drop policy if exists "charts insert" on storage.objects;
+create policy "charts insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'charts');
+drop policy if exists "charts read" on storage.objects;
+create policy "charts read" on storage.objects
+  for select using (bucket_id = 'charts');

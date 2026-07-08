@@ -11,7 +11,7 @@ export const seedMembers: Member[] = [
   { id: "m-wernardt", email: "wernardt@nightvine.com", cult_name: "Adept Wernardt", short_name: "WT", role: "member", last_hosted: "2026-06-27", active: true },
   { id: "m-scott", email: "scott@nightvine.com", cult_name: "Scribe Scott", short_name: "SC", role: "member", last_hosted: "2026-07-04", active: true },
   { id: "m-matthew", email: "matthew@nightvine.com", cult_name: "Seer Matthew", short_name: "MW", role: "member", last_hosted: "2026-07-25", venue_instructions: "Estate gate on Rosmead — code 4471. Follow the lanterns to the cellar.", active: true },
-  { id: "m-keiser", email: "hkdeven@gmail.com", cult_name: "The Keiser", short_name: "KE", role: "keiser", zodiac: "Scorpio", element: "Water", date_of_birth: "1988-11-05", time_of_birth: "03:30", last_hosted: "2026-05-30", venue_instructions: "Ring twice. Street parking after 18:00 is free.", active: true },
+  { id: "m-keiser", email: "hkdeven@gmail.com", cult_name: "The Keiser", short_name: "KE", role: "keiser", zodiac: "Scorpio", element: "Water", date_of_birth: "1988-11-05", time_of_birth: "03:30", birth_place: "Vryburg, North West, South Africa", birth_lat: -26.95659, birth_lon: 24.7284, birth_tz: "Africa/Johannesburg", last_hosted: "2026-05-30", venue_instructions: "Ring twice. Street parking after 18:00 is free.", active: true },
 ];
 
 // The club's real theme pool.

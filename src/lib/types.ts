@@ -10,6 +10,12 @@ export interface Member {
   element?: string | null;
   date_of_birth?: string | null;
   time_of_birth?: string | null;
+  // Birth place, geocoded once on save; the coordinates and IANA timezone
+  // feed the exact natal calculations (ascendant needs all of them).
+  birth_place?: string | null;
+  birth_lat?: number | null;
+  birth_lon?: number | null;
+  birth_tz?: string | null;
   avatar_url?: string | null;
   last_hosted?: string | null;
   venue_instructions?: string | null;
@@ -48,6 +54,8 @@ export interface Gathering {
   theme_description?: string | null;
   host_id?: string | null;
   host_name?: string | null;
+  host2_id?: string | null; // optional co-host
+  host2_name?: string | null;
   gather_date: string;
   gather_time?: string | null;
   status: "upcoming" | "scoring" | "revealed";
@@ -94,5 +102,9 @@ export interface Application {
   status: "pending" | "anointed" | "cast_out";
   created_at: string;
   anointed_at?: string | null; // set when the Keiser anoints the petitioner
+  birth_place?: string | null;
+  birth_lat?: number | null;
+  birth_lon?: number | null;
+  birth_tz?: string | null;
   tally?: { anoint: number; cast_out: number; abstain: number };
 }

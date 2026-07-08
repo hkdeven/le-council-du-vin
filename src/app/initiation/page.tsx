@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { addApplication } from "@/lib/applications";
+import { geocodePlace } from "@/lib/geo";
+import { DEFAULT_TZ, allTimezones } from "@/lib/astrology";
 import { useAuth } from "@/components/AuthProvider";
 
 /* eslint-disable-next-line @next/next/no-img-element */
@@ -18,6 +20,8 @@ export default function Initiation() {
   const [email, setEmail] = useState("");
   const [dob, setDob] = useState("");
   const [tob, setTob] = useState("");
+  const [tz, setTz] = useState(DEFAULT_TZ);
+  const [place, setPlace] = useState("");
   const [drawReason, setDrawReason] = useState("");
   const [ifWine, setIfWine] = useState("");
   const [wineSin, setWineSin] = useState("");
@@ -29,11 +33,22 @@ export default function Initiation() {
   const submit = async () => {
     setBusy(true);
     setError(null);
+    // Pin the birth town quietly (first atlas match); the chart uses its
+    // coordinates + timezone. A miss just leaves the typed name.
+    let lat: number | null = null, lon: number | null = null, zone = tz;
+    if (place.trim()) {
+      const hits = await geocodePlace(place);
+      if (hits[0]) { lat = hits[0].latitude; lon = hits[0].longitude; zone = hits[0].timezone; }
+    }
     const record = {
       cult_name: cultName,
       email,
       date_of_birth: dob || null,
       time_of_birth: tob || null,
+      birth_place: place || null,
+      birth_lat: lat,
+      birth_lon: lon,
+      birth_tz: zone || null,
       draw_reason: drawReason,
       if_wine: ifWine,
       wine_sin: wineSin,
@@ -125,6 +140,16 @@ export default function Initiation() {
             <input type="time" value={tob} onChange={(e) => setTob(e.target.value)} />
           </div>
         </div>
+
+        <label className="field">Timezone of birth</label>
+        <select value={tz} onChange={(e) => setTz(e.target.value)} style={{ colorScheme: "dark" }}>
+          {allTimezones().map((z) => (
+            <option key={z} value={z}>{z.replace(/_/g, " ")}</option>
+          ))}
+        </select>
+
+        <label className="field">Place of birth</label>
+        <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Cape Town" />
         <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
           The stars that made you — your chart is drawn from these.
         </p>

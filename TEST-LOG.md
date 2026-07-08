@@ -1,9 +1,69 @@
 # Le Council — Test Log
 
+## 2026-07-08 — THE ASTRAL BUILD (Dossier, co-hosts, natal chart, Foretelling) — NOT yet committed
+
+**New SQL required on the live DB BEFORE this deploys:**
+
+```sql
+alter table gatherings add column if not exists host2_id uuid;
+alter table gatherings add column if not exists host2_name text;
+alter table ballots add column if not exists aromas jsonb not null default '{}'::jsonb;
+insert into storage.buckets (id, name, public) values ('charts', 'charts', true) on conflict (id) do nothing;
+drop policy if exists "charts insert" on storage.objects;
+create policy "charts insert" on storage.objects for insert to authenticated with check (bucket_id = 'charts');
+drop policy if exists "charts read" on storage.objects;
+create policy "charts read" on storage.objects for select using (bucket_id = 'charts');
+```
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **Palate Dossier** on every member card: moons stood, bottles crowned, marks (of 5, wine-red), palate temper (+tooltips), kindred palate, the wheel, longest communion, the **Nose** aroma cloud, **Their Finest Pours** | Open any member's card; stats derive from real ballots/annals; empty states whisper until data exists | ✓ (engine unit-tested; empty states) | [ ] |
+| 2 | **Aromas now persist** with the ballot (fills the Nose from the next rite onward) | Mark aromas in a rite, reload, they're restored; they appear on your card's Nose after sealing | ✓ | [ ] |
+| 3 | **Chalice band** relocated per approved design (thick gold rules, after Finest Pours, above the buttons) | Any member card | ✓ | [ ] |
+| 4 | **"Behold the natal chart"** on every card + profile: the wheel (all 10 planets, verified <1° vs documented positions), whole-sign houses, tap-a-row placement meanings, methodology note | Open a card of a member with time+place; rows expand | ✓ | [ ] |
+| 5 | **"The Foretelling"** on every card + profile: real transits for the lunar cycle (verified against the actual 2026 sky), new/full moons in their houses, Mercury retrograde with true dates, year view (personal year, Chinese year, house ingresses) | Open it for a member with time+place; This moon / The year pills | ✓ (matches documented 2026 events) | [ ] |
+| 6 | **The sky is veiled** gate when time/place of birth missing (both views), listing only the missing points + Complete-the-record link | Open chart/foretelling for a member without birth data | ✓ | [ ] |
+| 7 | **Co-hosts**: optional second host on summon + edit pencil; shown "A & B"; WhatsApp share; both credited on the hosting wheel and the dossier wheel | Summon/edit a gathering with a co-host | ✓ | [ ] |
+| 8 | **Profile → Your sky**: chart + Foretelling buttons with **envelope icons** that email each to your own inbox (branded; wheel travels as a snapshot to the `charts` bucket). Send route allows self-address only | Tap an envelope; check your inbox | route-gated ✓ | [ ] |
+
+---
+
 Changes I've made that **you have not yet confirmed in production.** I demo-test each before saying "done"; you verify on the live site and check it off. Newest at top.
 
 - `demo ✓` = I tested it in the local demo.
 - `live [ ]` = awaiting your check on lecouncilduvin.co.za.
+
+---
+
+## 2026-07-07 — exact natal engine + new card fields — NOT yet committed
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Sun sign computed from true solar longitude (no more cusp-day drift); element follows | A cusp birthday (e.g. 20 March) resolves to the correct side for its year | ✓ (equinox both sides) | [ ] |
+| 2 | Moon sign + all times timezone-aware (local birth time converted to UT via IANA tz, default Africa/Johannesburg) | Chart unchanged for mid-sign births; boundary births may correct | ✓ | [ ] |
+| 3 | Ascendant: real sidereal-time formula from time + place; folk approximation deleted | Needs time AND place; shows "unknown hour"/"unknown place" hints otherwise. Larissa should re-check her AM/PM then confirm Scorpio rising | ✓ (Einstein reference = Cancer) | [ ] |
+| 4 | Profile + petition: Timezone of birth select (default SA) + **Place of Birth** with "Mark it" geocoding (Open-Meteo, no key); coords/tz stored invisibly | Type a town → pick the match → "The atlas knows it", ascendant appears | ✓ (Vryburg end-to-end) | [ ] |
+| 5 | Member card: Moon phase at birth under the name (tooltip "Moon phase at birth") | Any member with a DOB | ✓ (Waning Crescent for Keiser) | [ ] |
+| 6 | Member card: Day-master, Life path, Venus sign, Birth arcana rows, each with label + value tooltips | Open any member card with a DOB | ✓ (all rows + 16 tooltips) | [ ] |
+| 7 | Chinese zodiac (Shengxiao/Wu Xing) already exact via CNY table (earlier fix); Matthew should now read Monkey | Check Matthew's card after deploy | ✓ | [ ] |
+
+| 8 | Tooltips never bleed off-screen (card + profile): labels anchor left, values right, all self-clamp into the viewport | On a phone, open any ⓘ near either screen edge; the bubble stays fully visible | ✓ (375px + 320px) | [ ] |
+| 9 | Approved astral mockup live for member proofing at `/member-card-mockup.html` (sample data, clearly labelled) | Open the URL, circulate to members | ✓ | [ ] |
+| 10 | Natal chart + Foretelling email templates ready (previews `7-natal-chart.html`, `8-foretelling.html`, incl. wheel image) — templates only, no send trigger yet | n/a until the astral build | ✓ | n/a |
+
+_Requires SQL on live DB before deploy (SQL below — **user confirmed run 2026-07-07**). Anointing carries birth place from petition → member._
+
+```sql
+alter table members add column if not exists birth_place text;
+alter table members add column if not exists birth_lat double precision;
+alter table members add column if not exists birth_lon double precision;
+alter table members add column if not exists birth_tz text;
+alter table applications add column if not exists birth_place text;
+alter table applications add column if not exists birth_lat double precision;
+alter table applications add column if not exists birth_lon double precision;
+alter table applications add column if not exists birth_tz text;
+alter table applications add column if not exists anointed_at timestamptz;
+```
 
 ---
 

@@ -14,7 +14,7 @@ const BODY_FONT = `'EB Garamond',Georgia,'Times New Roman',serif`;
 // (Apple Mail); elsewhere it falls back to a system script, then generic cursive.
 const SCRIPT_FONT = `'Great Vibes','Snell Roundhand','Apple Chancery','Brush Script MT',cursive`;
 
-function layout(inner: string, preheader = ""): string {
+function layout(inner: string, preheader = "", afterFooter = ""): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,6 +45,9 @@ function layout(inner: string, preheader = ""): string {
           <a href="${INSTAGRAM}" style="color:#9c8a5f;font-family:${BODY_FONT};font-size:12px;text-decoration:none;">Instagram</a>
         </div>
       </td></tr>
+      ${afterFooter ? `<tr><td style="padding:14px 24px 22px;border-top:1px solid #241f18;">
+        <div style="color:#5a554c;font-family:${BODY_FONT};font-size:11.5px;line-height:1.55;text-align:left;">${afterFooter}</div>
+      </td></tr>` : ""}
     </table>
   </td></tr>
 </table>
@@ -162,6 +165,115 @@ export function magicLinkHtml(url = "{{ .ConfirmationURL }}"): string {
     button(url, "Enter"),
     "Your link to enter Le Council du Vin."
   );
+}
+
+// 5. The member's natal chart, emailed to their own inbox on request from the
+// profile ("Your sky" envelope). Mail clients can't render the interactive
+// wheel, so the email carries the big three + the full placement table and a
+// button into the Council for the wheel itself.
+export interface NatalEmailParams {
+  name?: string;
+  birthLine?: string; // "5 Dec 1990, 21:40, Cape Town"
+  wheelUrl?: string; // hosted PNG of the member's wheel, snapshotted client-side at send time
+  sun?: string; // "♐ Sagittarius"
+  moon?: string;
+  rising?: string;
+  rows?: { glyph: string; planet: string; value: string }[]; // value: "♐ Sagittarius 13° · 2nd house"
+}
+export function natalChartEmail(np: NatalEmailParams): Email {
+  const big3 = (np.sun || np.moon || np.rising)
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 16px;"><tr>
+        ${([["Sun", np.sun], ["Moon", np.moon], ["Rising", np.rising]] as [string, string | undefined][])
+          .filter(([, v]) => v)
+          .map(([l, v]) => `<td align="center" width="33%" style="padding:11px 4px;border:1px solid #241f18;">
+            <div style="font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6f6653;">${l}</div>
+            <div style="font-family:${BODY_FONT};font-size:17px;color:#cbbd93;margin-top:4px;white-space:nowrap;">${v}</div>
+          </td>`).join("")}
+      </tr></table>`
+    : "";
+  const rows = (np.rows || []).length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 4px;border-top:1px solid #241f18;border-bottom:1px solid #241f18;">
+        ${(np.rows || []).map((r) => detailRow(`<span style="font-size:14px;letter-spacing:0;">${r.glyph}</span>&nbsp;&nbsp;${r.planet}`, r.value)).join("")}
+      </table>`
+    : "";
+  return {
+    subject: "Your natal chart, drawn from the true sky",
+    html: layout(
+      moons() +
+      heading("Your Natal Chart") +
+      p(`${np.name || "Member of the Council"}, this is the sky at your first breath${np.birthLine ? `: ${np.birthLine}` : ""}. Keep it close; it does not change.`) +
+      (np.wheelUrl ? `<img src="${np.wheelUrl}" alt="Your natal wheel" width="310" style="display:block;margin:4px auto 16px;width:310px;max-width:100%;height:auto;">` : "") +
+      big3 +
+      rows +
+      p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">Whole-sign houses, computed from the true sky. Nothing here is guessed.</span>`) +
+      p(`Every placement above holds a longer meaning than a letter can carry. <strong style="color:#cbbd93;">Open your chart in the Council</strong> and tap any row to read what it signifies: the planet, its sign, and the house it keeps.`) +
+      button(`${SITE}/profile`, "Read the full chart"),
+      "The sky at your first breath, kept in the Council's colours."
+    ),
+  };
+}
+
+// 6. The Foretelling, emailed to the member's own inbox on request. One block
+// per omen; the interpretations are the hand-written transit passages.
+export interface OmenEntry { glyphs: string; title: string; when: string; body: string }
+export interface ForetellingEmailParams {
+  name?: string;
+  moonLabel?: string; // "14 July to 11 August"
+  yearLabel?: string; // "2026"
+  entries?: OmenEntry[];
+  warning?: string; // e.g. Mercury retrograde note
+  year?: OmenEntry[];
+}
+// A gold-ruled section band, echoing the chalice band on the member card.
+function sectionBand(title: string, sub?: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 14px;"><tr>
+    <td align="center" style="border-top:1px solid #9c8a5f;border-bottom:1px solid #9c8a5f;padding:9px 6px;">
+      <div style="font-family:${HEAD_FONT};font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#cbbd93;">${title}</div>
+      ${sub ? `<div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#8a7f66;margin-top:2px;">${sub}</div>` : ""}
+    </td>
+  </tr></table>`;
+}
+function omenBlock(e: OmenEntry): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;"><tr>
+    <td style="border:1px solid #241f18;border-radius:10px;padding:11px 14px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="font-family:${BODY_FONT};"><span style="color:#cbbd93;font-size:15px;letter-spacing:2px;">${e.glyphs}</span>&nbsp;&nbsp;<span style="font-family:${HEAD_FONT};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9c8a5f;">${e.title}</span></td>
+        <td align="right" style="color:#5a554c;font-size:12px;font-family:${BODY_FONT};white-space:nowrap;vertical-align:top;">${e.when}</td>
+      </tr></table>
+      <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:15px;color:#cbc5b7;line-height:1.5;margin-top:5px;">${e.body}</div>
+    </td>
+  </tr></table>`;
+}
+export function foretellingEmail(fp: ForetellingEmailParams): Email {
+  const entries = (fp.entries || []).map(omenBlock).join("");
+  const warning = fp.warning
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 10px;"><tr>
+        <td align="center" style="border:1px solid #7a3038;border-radius:10px;padding:9px 14px;color:#c98a86;font-family:${BODY_FONT};font-size:13.5px;">${fp.warning}</td>
+      </tr></table>`
+    : "";
+  const moonSection = entries
+    ? sectionBand("This Moon", fp.moonLabel) + entries + warning
+    : "";
+  const yearSection = (fp.year || []).length
+    ? sectionBand("The Year", fp.yearLabel) + (fp.year || []).map(omenBlock).join("")
+    : "";
+  const howMade =
+    `<span style="font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6f6653;">How this reading is made</span><br>` +
+    `The positions of the planets for the month and year ahead are computed by the same astronomical engine as your natal chart, then compared against your own chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council's voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet.`;
+  return {
+    subject: `The Foretelling: what this moon intends`,
+    html: layout(
+      moons() +
+      heading("The Foretelling") +
+      p(`${fp.name || "Member of the Council"}, this is what the sky intends for you. Computed, never invented.`) +
+      moonSection +
+      yearSection +
+      p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">The vine calculates, it does not flatter.</span>`) +
+      button(`${SITE}/profile`, "Read it in the Council"),
+      "What the sky intends for you this moon.",
+      howMade
+    ),
+  };
 }
 
 // 4. Summons before the tribunal (5 disqualifications). (MANUAL, Keiser-triggered)

@@ -5,12 +5,13 @@ import { seedMembers } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
 import { fetchThemes, proposeTheme, favourTheme, editTheme, removeTheme, PoolTheme } from "@/lib/themes";
 import { fetchPolls, createPoll, updatePoll, toggleVote } from "@/lib/polls";
+import { fetchGatherings, effectiveLastHosted } from "@/lib/gatherings";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
 import MemberCard from "@/components/MemberCard";
-import type { Poll, Member } from "@/lib/types";
+import type { Poll, Member, Gathering } from "@/lib/types";
 
 const THEME_ICONS = ["ti-flame", "ti-hourglass", "ti-coin", "ti-grape", "ti-skull", "ti-star"];
 
@@ -125,6 +126,7 @@ export default function Oracle() {
 
   const [polls, setPolls] = useState<Poll[]>([]);
   const [members, setMembers] = useState<Member[]>(seedMembers);
+  const [allGatherings, setAllGatherings] = useState<Gathering[]>([]);
   const [themes, setThemes] = useState<PoolTheme[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [proposal, setProposal] = useState("");
@@ -140,6 +142,7 @@ export default function Oracle() {
       supabase.from("members").select("*").order("role").then(({ data }) => { if (data) setMembers(data as Member[]); });
     } else {
       setMembers(loadMembers());
+    fetchGatherings().then(setAllGatherings).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, meId]);
@@ -186,7 +189,9 @@ export default function Oracle() {
     editTheme(id, patch).catch(() => reloadThemes());
   };
 
-  const wheel = [...members].filter((m) => m.active).sort((a, b) => (a.last_hosted || "").localeCompare(b.last_hosted || ""));
+  // Co-hosts share hosting credit, so the wheel reads from the gatherings too.
+  const hostedOf = (m: Member) => effectiveLastHosted(m, allGatherings);
+  const wheel = [...members].filter((m) => m.active).sort((a, b) => (hostedOf(a) || "").localeCompare(hostedOf(b) || ""));
 
   return (
     <section>
@@ -277,7 +282,8 @@ export default function Oracle() {
         {wheel.map((m, i) => {
           const hostingNow = m.id === "m-matthew";
           const upNext = i === 0 && !hostingNow;
-          const when = m.last_hosted ? new Date(m.last_hosted).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "never";
+          const eff = hostedOf(m);
+          const when = eff ? new Date(eff).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "never";
           return (
             <div key={m.id} className="rk" style={{ opacity: hostingNow || upNext ? 1 : 0.6 }}>
               <MemberCard member={m} size={30} />

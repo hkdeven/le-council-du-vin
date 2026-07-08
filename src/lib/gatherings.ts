@@ -145,3 +145,20 @@ export async function deleteGathering(id: string): Promise<void> {
   }
   localSave(localAll().filter((m) => m.id !== id));
 }
+
+// A member's most recent hosting date, crediting BOTH hosts of a gathering
+// (co-hosts share the wheel), with the profile's last_hosted as the floor.
+export function effectiveLastHosted(
+  member: { id: string; cult_name: string; last_hosted?: string | null },
+  gatherings: Gathering[],
+  nowMs = Date.now()
+): string | null {
+  let last = member.last_hosted || null;
+  for (const g of gatherings) {
+    if (!g.gather_date || new Date(g.gather_date).getTime() > nowMs) continue;
+    const hosted = g.host_id === member.id || g.host_name === member.cult_name ||
+      g.host2_id === member.id || g.host2_name === member.cult_name;
+    if (hosted && (!last || g.gather_date > last)) last = g.gather_date;
+  }
+  return last;
+}
