@@ -1,6 +1,6 @@
 # Le Council — Test Log
 
-## 2026-07-08 (late) — instant auth on refresh — NOT yet pushed
+## 2026-07-08 (late) — speed batch: caches, portrait storage, loading states, UX fixes — pushed 68b6455
 
 | # | Change | How to verify live | Demo | Live |
 |---|--------|--------------------|------|------|
