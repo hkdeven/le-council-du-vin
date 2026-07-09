@@ -1,5 +1,19 @@
 # Le Council — Test Log
 
+## 2026-07-09 — convene never shows the past; codex owner dropdown; unscored/DQ history — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **Convene never shows a past event.** The top card only ever shows a night that is today-or-later AND unrevealed; when none exists it reads "The table is bare" (with the summon form right below for the Keiser). Previously, once every gathering had passed, the most recent OLD night was displayed as "This moon's theme" (Enter-the-rite button and all) — which also made a fresh summon look broken. The reveal/rite/reckoning pages keep their fallback to the most recent night (they need it after the night ends) | Convene with no future gathering: bare table, no old event; summon one: it appears as the current card immediately | ✓ (repro'd the old event showing, then the fix, in a scripted browser run) | [ ] |
+| 2 | Summon hardening: in live mode the member list starts empty until the real roster loads (the demo seed ids like "m-larissa" could otherwise be picked as host and make the insert fail with an invalid-uuid error); every convene mutation (summon, edit, cancel, RSVP) now also updates the local snapshot so navigating away and back never repaints the pre-edit list | Summon on live; also summon, go to codex, come back — the new night is still there instantly | ✓ | [ ] |
+| 3 | **Codex: "Brought by" is a dropdown**, not free text — Unclaimed / the roster / the row's existing imported name (departed souls stay selectable) / "Another name…" (prompts for a name, for departed members and guests) | Amend a night: the owner field is a select; pick a member; use Another name… | ✓ (screenshot; prompt name persisted + fed the DQ ledger) | [ ] |
+| 4 | **Past nights can be recorded with no wine names and/or no scores.** An empty score now means "never judged": the codex shows "—" (was 0.0), the row is unranked, and it no longer drags down theme averages, the Reliquary, Finest Pours, or the Prophecy's history. Re-editing keeps the score field empty instead of turning it into a real 0. Unnamed wines show as "Bottle II" etc. and stay claimable | Record a past gathering, leave a wine's name/score empty, seal; row shows — and averages ignore it; re-open the editor: score still blank | ✓ (scripted run: annal rows stored votes:0, averages stayed 8.5) | [ ] |
+| 5 | **DQs in past events**: tick "off theme · DQ" (relabelled from "off theme") on any wine row in the codex editor — works with or without a score/name; the owner picked in the dropdown lands in the Disqualifications ledger at the codex foot | Record/amend a night, tick DQ on a row with an owner: ✕ + "disqualified" on the row, ledger counts it | ✓ (ledger showed the DQ'd owner) | [ ] |
+
+---
+
 ## 2026-07-09 — the data awakens: split cloth, Reliquary, varietals + prices, the Reckoning, the Prophecy, the Unexplored — pushed
 
 **New SQL for the live DB before this deploys (all three lines, safe to run right now):**

@@ -88,6 +88,15 @@ export async function fetchCurrentGathering(): Promise<Gathering | null> {
   return pickCurrent(await fetchGatherings());
 }
 
+// The convening page's stricter pick: only a night still ahead (or tonight)
+// that has not been revealed. Unlike pickCurrent there is NO fallback to the
+// most recent past night — concluded gatherings live in the codex, never on
+// the convene page.
+export function pickUpcoming(all: Gathering[]): Gathering | null {
+  const today = new Date().toISOString().slice(0, 10);
+  return all.find((g) => g.status !== "revealed" && (g.gather_date || "") >= today) ?? null;
+}
+
 // The rite of judgement opens 30 minutes after the scheduled start — time for
 // souls to gather and pour before scoring. Before then no one may enter.
 const RITE_DELAY_MS = 30 * 60 * 1000;

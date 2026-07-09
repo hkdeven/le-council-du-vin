@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers, rosterOrder } from "@/lib/members";
-import { swr } from "@/lib/swr";
-import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickCurrent } from "@/lib/gatherings";
+import { swr, writeSwr } from "@/lib/swr";
+import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickUpcoming } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import { supabase } from "@/lib/supabase";
 import { toRoman } from "@/lib/util";
@@ -519,7 +519,9 @@ export default function Convene() {
   const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
 
   const [meetings, setMeetings] = useState<Gathering[]>([]);
-  const [members, setMembers] = useState<Member[]>(seedMembers);
+  // Live: start empty until the real roster arrives — the demo seeds carry
+  // fake ids ("m-larissa") that a live insert would reject as invalid uuids.
+  const [members, setMembers] = useState<Member[]>(mode === "live" ? [] : seedMembers);
   const [newHost, setNewHost] = useState("");
   const [newHost2, setNewHost2] = useState("");
   const [hostOpen, setHostOpen] = useState(false);
@@ -540,7 +542,9 @@ export default function Convene() {
     }
   }, [mode]);
 
-  const current = pickCurrent(meetings);
+  // The convening never shows a concluded night: no upcoming gathering means
+  // a bare table, not the most recent past event (that lives in the codex).
+  const current = pickUpcoming(meetings);
   // Gatherings to come: only nights still ahead and not yet revealed — the
   // sixteen imported historical nights live in the codex, not here.
   const today = new Date().toISOString().slice(0, 10);
@@ -551,18 +555,26 @@ export default function Convene() {
   const [newTheme, setNewTheme] = useState("");
   const [newDate, setNewDate] = useState("");
 
+  // Every local mutation also refreshes the swr snapshot, so navigating away
+  // and back never repaints a pre-edit list (and a fresh summon never looks
+  // like it failed).
+  const setMeetingsAndSnapshot = (next: Gathering[]) => {
+    setMeetings(next);
+    writeSwr("gatherings", next);
+  };
+
   const updateMeeting = (id: string, patch: Partial<Gathering>) => {
-    setMeetings((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    setMeetingsAndSnapshot(meetings.map((m) => (m.id === id ? { ...m, ...patch } : m)));
     updateGathering(id, patch).catch((e) => alert(`Could not save the meeting: ${e.message}`));
   };
 
   // RSVP already persisted via toggleAttendee (refetch-before-write); this only
   // syncs the local view, so we don't re-write (and re-clobber) the array.
   const setAttendeesLocal = (id: string, next: string[]) =>
-    setMeetings((ms) => ms.map((m) => (m.id === id ? { ...m, attendees: next } : m)));
+    setMeetingsAndSnapshot(meetings.map((m) => (m.id === id ? { ...m, attendees: next } : m)));
 
   const deleteMeeting = (id: string) => {
-    setMeetings((ms) => ms.filter((m) => m.id !== id));
+    setMeetingsAndSnapshot(meetings.filter((m) => m.id !== id));
     deleteGathering(id).catch((e) => alert(`Could not cancel the meeting: ${e.message}`));
   };
 
@@ -584,7 +596,7 @@ export default function Convene() {
     };
     try {
       const saved = await createGathering(draft);
-      setMeetings((ms) => [...ms, saved].sort((a, b) => a.gather_date.localeCompare(b.gather_date)));
+      setMeetingsAndSnapshot([...meetings, saved].sort((a, b) => a.gather_date.localeCompare(b.gather_date)));
       setNewTheme(""); setNewDate("");
     } catch (e) {
       alert(`Could not summon the gathering: ${(e as Error).message}`);
@@ -604,7 +616,9 @@ export default function Convene() {
       {current ? (
         <MeetingBody m={current} isCurrent isKeiser={isKeiser} meId={meId} members={members} allMeetings={meetings} onUpdate={(p) => updateMeeting(current.id, p)} onAttendees={(next) => setAttendeesLocal(current.id, next)} onDelete={isKeiser ? () => deleteMeeting(current.id) : undefined} count={count} setCount={setCount} />
       ) : (
-        <div className="card"><p className="whisper" style={{ margin: 0, fontSize: 15 }}>The table is bare. Summon a gathering below.</p></div>
+        <div className="card"><p className="whisper" style={{ margin: 0, fontSize: 15 }}>
+          The table is bare. {isKeiser ? "Summon a gathering below." : "No gathering has yet been summoned."}
+        </p></div>
       )}
 
       {isKeiser && (
