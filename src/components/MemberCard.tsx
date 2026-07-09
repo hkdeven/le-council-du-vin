@@ -225,6 +225,15 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             <div style={{ height: 14 }} />
             <div style={{ textAlign: "left" }}>
               <Row label="Palate temper" tip="How they score against the Council's average across every sealed ballot." value={dossier.temper ? dossier.temper.label : "too few ballots yet"} valueTip={dossier.temper ? `They pour ${dossier.temper.delta >= 0 ? "+" : ""}${dossier.temper.delta.toFixed(1)} against the table.` : undefined} />
+              {dossier.coin && (
+                <Row label="Value for coin"
+                  tip="How much scoring their money buys. Take every bottle they have brought with a known price: the points those bottles earned, divided by the rand they cost, per hundred rand. Higher means they find wines the table loves without spending much."
+                  value={`${dossier.coin.perHundred.toFixed(1)} pts per R100`}
+                  valueTip={`The table as a whole earns ${dossier.coin.table.toFixed(1)} points per hundred rand — ${dossier.coin.perHundred > dossier.coin.table ? "they hunt better value than most" : "the table hunts value better than they do"}.`} />
+              )}
+              {dossier.purse && (
+                <Row label="The purse" tip="Their average spend on a bottle, against the table's." value={`R${Math.round(dossier.purse.mine)} a bottle`} valueTip={`The table pours R${Math.round(dossier.purse.table)} on average.`} />
+              )}
               <Row label="Kindred palate" tip="The member whose scores track closest to theirs across shared gatherings." value={dossier.kindred || "not yet revealed"} />
               <Row label="The wheel" tip="Moons since they last hosted a gathering." value={dossier.wheel || "has not yet hosted"} />
               <Row label="Longest communion" tip="Their longest run of consecutive gatherings attended." value={dossier.communion > 0 ? `${dossier.communion} gathering${dossier.communion === 1 ? "" : "s"}` : "—"} />

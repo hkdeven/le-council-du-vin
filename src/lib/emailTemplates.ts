@@ -259,6 +259,49 @@ function omenBlock(e: OmenEntry): string {
     </td>
   </tr></table>`;
 }
+// The Reckoning of a gathering, sent to a member's own inbox from the reveal.
+export interface ReckoningEmailParams {
+  numberRoman?: string;
+  theme?: string;
+  dateLabel?: string;
+  crowned?: { title: string; owner: string; score: number }[];
+  ranked?: { rank: string; title: string; owner: string; score: number | null; dq: boolean }[];
+  split?: string;
+  quotes?: { text: string; cloth: string }[];
+  value?: string;
+}
+export function reckoningEmail(rp: ReckoningEmailParams): Email {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const crowned = (rp.crowned || [])
+    .map((c) => p(`<span style="text-align:center;display:block;">🏆 <strong style="color:#cbbd93;">${esc(c.title)}</strong> — borne by <strong style="color:#cbbd93;">${esc(c.owner || "an unclaimed hand")}</strong> · ${c.score.toFixed(1)}</span>`))
+    .join("");
+  const ranked = (rp.ranked || [])
+    .map((r) => `<tr>
+      <td style="padding:6px 0;border-bottom:1px solid #241f18;color:#cabfa2;font-family:${BODY_FONT};font-size:15px;">
+        <span style="font-family:${HEAD_FONT};font-size:11px;color:#cbbd93;">${esc(r.rank)}</span>&nbsp;&nbsp;${esc(r.title)}${r.owner ? ` · ${esc(r.owner)}` : ""}${r.dq ? ` <span style="color:#7a3038;">· cast out</span>` : ""}
+      </td>
+      <td align="right" style="padding:6px 0;border-bottom:1px solid #241f18;color:#cbbd93;font-family:${HEAD_FONT};font-size:13px;">${r.dq || r.score == null ? "—" : r.score.toFixed(1)}</td>
+    </tr>`).join("");
+  const quotes = (rp.quotes || [])
+    .map((q) => `<p style="margin:0 0 10px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:#cbc5b7;line-height:1.5;">&ldquo;${esc(q.text)}&rdquo; <span style="color:#5a554c;font-size:13px;">— on cloth ${esc(q.cloth)}</span></p>`)
+    .join("");
+  return {
+    subject: `The Reckoning of Gathering ${rp.numberRoman || ""}`.trim(),
+    html: layout(
+      moons() +
+      heading(`The Reckoning<br>of Gathering ${esc(rp.numberRoman || "")}`) +
+      p(`<span style="text-align:center;display:block;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:#9c8a5f;">${esc(rp.theme || "")}${rp.dateLabel ? ` · ${esc(rp.dateLabel)}` : ""}</span>`) +
+      (crowned ? sectionBand("The Crowning") + crowned : "") +
+      (ranked ? sectionBand("As the table ranked them") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ranked}</table>` : "") +
+      (rp.split ? sectionBand("The split cloth") + p(`⚡ ${esc(rp.split)}`) : "") +
+      (quotes ? sectionBand("The table's whispers") + quotes : "") +
+      (rp.value ? sectionBand("The ledger") + p(esc(rp.value)) : "") +
+      `<p style="margin:18px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#5a554c;">the vine calculates, it does not flatter</p>`,
+      "The reckoning of the Council's latest gathering."
+    ),
+  };
+}
+
 export function foretellingEmail(fp: ForetellingEmailParams): Email {
   const entries = (fp.entries || []).map(omenBlock).join("");
   const warning = fp.warning

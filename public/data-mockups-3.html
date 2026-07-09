@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · coin on the card + the prophecy button</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:420px;margin:0 auto;padding:26px 16px 70px;display:flex;flex-direction:column;gap:12px;}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:6px 0 0;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:11px;color:var(--gold2);margin:26px 0 2px;text-align:center;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:0 0 6px;line-height:1.5;}
+  .card{position:relative;width:100%;background:linear-gradient(180deg,#12100e,#0a0908);border:1px solid var(--gold);border-radius:14px;padding:20px 18px;text-align:center;}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;text-align:left;}
+  .lab{display:inline-flex;align-items:center;font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold);font-size:10px;}
+  .val{font-family:"Cormorant Garamond",serif;color:var(--gold2);font-size:16px;text-align:right;}
+  .i{color:var(--dim);font-size:12px;margin-left:5px;}
+  .new{border:1px dashed var(--gold);border-radius:8px;margin:2px -8px;padding:3px 8px;}
+  .newtag{font-family:"Cinzel",serif;font-size:8px;letter-spacing:0.14em;color:#0a0908;background:var(--gold2);border-radius:6px;padding:1px 6px;margin-right:6px;}
+  /* meeting card fragment */
+  .meet{background:linear-gradient(180deg,#12100e,#0a0908);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:left;}
+  .ghostbtn{display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid var(--line2);border-radius:10px;color:var(--gold2);font-family:"Cinzel",serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:11px 20px;cursor:pointer;}
+  /* the prophecy reveal */
+  .prophecy{overflow:hidden;max-height:0;opacity:0;transform:translateY(-8px) scale(0.98);transition:max-height .7s cubic-bezier(.2,.8,.25,1),opacity .6s ease .1s,transform .6s cubic-bezier(.2,.8,.25,1) .05s;text-align:center;}
+  .prophecy.open{max-height:420px;opacity:1;transform:translateY(0) scale(1);}
+  .orb{width:74px;height:74px;margin:18px auto 4px;display:block;filter:drop-shadow(0 0 14px rgba(203,189,147,0.35));animation:breathe 4s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{filter:drop-shadow(0 0 8px rgba(203,189,147,0.2));transform:scale(1)}50%{filter:drop-shadow(0 0 20px rgba(203,189,147,0.5));transform:scale(1.04)}}
+  .gv{font-family:"Great Vibes",cursive;color:var(--gold2);font-size:30px;line-height:1.2;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Coin on the card · the Prophecy, summoned</h1>
+
+  <!-- 1 -->
+  <div class="plabel">1 · The three coin rows — in the live Palate Dossier</div>
+  <p class="note">Your current dossier rows, with each candidate slotted where it would live (dashed = the new row; pick any, all, or none). Each keeps the label + tooltip + value pattern of its neighbours.</p>
+  <div class="card">
+    <div class="eyebrow" style="margin-bottom:8px">The Palate Dossier</div>
+    <div class="row"><span class="lab">Moons stood</span><span class="val">14</span></div>
+    <div class="row"><span class="lab">Bottles crowned</span><span class="val">3</span></div>
+    <div class="row"><span class="lab">Marks against <i class="ti ti-info-circle i"></i></span><span class="val">1 of 5</span></div>
+    <div class="row"><span class="lab">Palate temper <i class="ti ti-info-circle i"></i></span><span class="val">the stern palate</span></div>
+
+    <div class="new">
+      <div class="row" style="padding:4px 0"><span class="lab"><span class="newtag">A</span>The blindfold <i class="ti ti-info-circle i"></i></span><span class="val">holds true</span></div>
+      <div class="row" style="padding:0 0 4px"><span></span><span class="whisper">price sways their verdict not at all</span></div>
+    </div>
+
+    <div class="new">
+      <div class="row" style="padding:4px 0"><span class="lab"><span class="newtag">B</span>Coin&rsquo;s return <i class="ti ti-info-circle i"></i></span><span class="val">2.6 per R100</span></div>
+      <div class="row" style="padding:0 0 4px"><span></span><span class="whisper">the table&rsquo;s coin returns 2.1</span></div>
+    </div>
+
+    <div class="new">
+      <div class="row" style="padding:4px 0"><span class="lab"><span class="newtag">C</span>The purse <i class="ti ti-info-circle i"></i></span><span class="val">R340 a bottle</span></div>
+      <div class="row" style="padding:0 0 4px"><span></span><span class="whisper">the table pours R260</span></div>
+    </div>
+
+    <div class="row"><span class="lab">Kindred palate</span><span class="val">Priestess Larissa</span></div>
+    <div class="row"><span class="lab">The wheel</span><span class="val">2 moons since hosting</span></div>
+  </div>
+  <p class="note">A reads "holds true" or "a nose for gold" (their scores rise with price). B is points per hundred rand as a bringer. C is plain average spend — flagged earlier as slightly gossipy about money.</p>
+
+  <!-- 2 -->
+  <div class="plabel">2 · The Prophecy — summoned by a button</div>
+  <p class="note">The meeting card's tail: after Venue details and the RSVP block, a single centred summons. Tap it — the prophecy unfurls beneath with the emblem breathing above the words, and folds away again on second tap. (This mockup animates for real.)</p>
+  <div class="meet">
+    <div class="eyebrow" style="margin-bottom:4px">Venue details</div>
+    <p class="whisper" style="margin:0 0 12px">The gate code is 4471. Park on the street.</p>
+    <div class="eyebrow" style="margin-bottom:6px">Who answers the call · 6</div>
+    <p class="whisper" style="margin:0 0 16px">●●●●●● six souls attend</p>
+
+    <div style="text-align:center;border-top:1px solid var(--line);padding-top:14px">
+      <button class="ghostbtn" id="summon" onclick="toggleProphecy()">
+        <i class="ti ti-crystal-ball" style="font-size:14px"></i>
+        <span id="summonlabel">Consult the Prophecy</span>
+      </button>
+
+      <div class="prophecy" id="prophecy">
+        <img class="orb" src="/site-mark.png" alt="">
+        <div class="eyebrow" style="font-size:10px;letter-spacing:0.2em;margin-top:6px">The vine has spoken</div>
+        <div class="gv" style="margin:8px 0 2px">Priestess Larissa</div>
+        <p style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--parch);margin:0 12px;line-height:1.5">
+          shall be crowned this night — so say fourteen moons of sealed verdicts.
+        </p>
+        <p class="whisper" style="margin:10px 0 6px">spoken blind, before the cloths · right 6 nights of 16 · graded at the reckoning</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2b -->
+  <div class="plabel">2b · …before every offering is sealed</div>
+  <p class="note">The summons stays visible but dimmed. Tapping it gets the vine's refusal with the live count (RSVP'd souls minus sealed offerings). The moment the last offering lands, the button brightens and the prophecy may be consulted. Tap to try.</p>
+  <div class="meet" style="text-align:center">
+    <button class="ghostbtn" style="opacity:0.55" onclick="tryEarly()">
+      <i class="ti ti-crystal-ball" style="font-size:14px"></i>
+      Consult the Prophecy
+    </button>
+    <p class="whisper" id="refusal" style="margin:10px 0 0;opacity:0;transition:opacity .5s ease">
+      The vine holds its tongue — 2 of 6 offerings remain unsealed.
+    </p>
+  </div>
+
+  <script>
+    function tryEarly() {
+      const r = document.getElementById("refusal");
+      r.style.opacity = 1;
+      setTimeout(() => { r.style.opacity = 0; }, 3500);
+    }
+    function toggleProphecy() {
+      const p = document.getElementById("prophecy");
+      const l = document.getElementById("summonlabel");
+      const open = p.classList.toggle("open");
+      l.textContent = open ? "Let it be veiled" : "Consult the Prophecy";
+    }
+  </script>
+</div>
+</body>
+</html>

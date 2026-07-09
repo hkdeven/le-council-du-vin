@@ -12,7 +12,12 @@ import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import { useWineCount } from "@/lib/useWineCount";
-import { fetchOffering, saveOffering } from "@/lib/bottles";
+import { fetchOffering, saveOffering, fetchAllOfferings, type Offering as OfferingData } from "@/lib/bottles";
+import { speakProphecy, prophecyRecord } from "@/lib/prophecy";
+import { fetchAnnals } from "@/lib/annals";
+import { fetchBallotHistory } from "@/lib/ballots";
+import GrapePicker from "@/components/GrapePicker";
+import { detectVarietals } from "@/lib/varietals";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
 import MemberCard from "@/components/MemberCard";
@@ -28,15 +33,19 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 // the wine's name is hidden from the screen too; the member can edit or erase.
 function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) {
   const [title, setTitle] = useState("");
+  const [price, setPrice] = useState("");
+  const [varietals, setVarietals] = useState<string[]>([]);
   const [sealed, setSealed] = useState(false);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let active = true;
-    fetchOffering(gatheringId, meId).then((saved) => {
+    fetchOffering(gatheringId, meId).then((saved: OfferingData | null) => {
       if (!active) return;
-      setTitle(saved || "");
-      setSealed(!!saved);
+      setTitle(saved?.title || "");
+      setPrice(saved?.price != null ? String(saved.price) : "");
+      setVarietals(saved?.varietals || []);
+      setSealed(!!saved?.title);
       setEditing(false);
     });
     return () => { active = false; };
@@ -44,54 +53,182 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
 
   const seal = () => {
     if (!title.trim()) return;
-    saveOffering(gatheringId, meId, title).catch((e) => alert(`Could not seal your offering: ${e.message}`));
+    const grapes = [...new Set([...varietals, ...detectVarietals(title)])];
+    setVarietals(grapes);
+    saveOffering(gatheringId, meId, {
+      title,
+      price: price !== "" && Number.isFinite(Number(price)) ? Number(price) : null,
+      varietals: grapes,
+    }).catch((e) => alert(`Could not seal your offering: ${e.message}`));
     setSealed(true);
     setEditing(false);
   };
   const erase = () => {
-    saveOffering(gatheringId, meId, "").catch(() => {});
+    saveOffering(gatheringId, meId, null).catch(() => {});
     setTitle("");
+    setPrice("");
+    setVarietals([]);
     setSealed(false);
     setEditing(false);
   };
 
   return (
-    <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12, textAlign: "left" }}>
-      <div className="eyebrow" style={{ marginBottom: 6 }}>Your offering</div>
+    <div style={{ borderBottom: "1px solid var(--line)", marginTop: 14, paddingBottom: 14, textAlign: "center" }}>
       {sealed && !editing ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="whisper" style={{ fontSize: 14, flex: 1, minWidth: 180 }}>
-            <i className="ti ti-lock" style={{ fontSize: 12, marginRight: 5 }} />
-            Your wine is sealed — known only to you, until the cloths are lifted.
-          </span>
-          <button onClick={() => setEditing(true)} aria-label="Edit your offering" title="Edit"
-            style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--gold2)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
-            <i className="ti ti-pencil" style={{ fontSize: 14 }} />
-          </button>
-          <button onClick={erase} aria-label="Erase your offering" title="Erase"
-            style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--wine)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
-            <i className="ti ti-trash" style={{ fontSize: 14 }} />
-          </button>
+        <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Your offering</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span className="whisper" style={{ fontSize: 14, flex: 1, minWidth: 180 }}>
+              <i className="ti ti-lock" style={{ fontSize: 12, marginRight: 5 }} />
+              Your wine is sealed — known only to you, until the cloths are lifted.
+            </span>
+            <button onClick={() => setEditing(true)} aria-label="Edit your offering" title="Edit"
+              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--gold2)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
+              <i className="ti ti-pencil" style={{ fontSize: 14 }} />
+            </button>
+            <button onClick={erase} aria-label="Erase your offering" title="Erase"
+              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--wine)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
+              <i className="ti ti-trash" style={{ fontSize: 14 }} />
+            </button>
+          </div>
         </div>
       ) : (
         <>
-          <p className="whisper" style={{ margin: "0 0 8px", fontSize: 14 }}>
-            Log the wine you shall bring. Hidden from every other soul — even the Keiser — until the reveal.
-          </p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && seal()}
-              placeholder="e.g. 2022 Alheit Cartology"
-              style={{ flex: 1 }}
-            />
-            <button className="btn" style={{ width: "auto", padding: "0 16px" }} onClick={seal} disabled={!title.trim()}>
-              Seal it
+          {!editing && (
+            <button onClick={() => setEditing(true)}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "12px 20px", cursor: "pointer" }}>
+              <i className="ti ti-bottle" style={{ fontSize: 14 }} />
+              Log your offering
             </button>
+          )}
+          <div style={{ overflow: "hidden", maxHeight: editing ? 440 : 0, opacity: editing ? 1 : 0, transform: editing ? "translateY(0)" : "translateY(-8px)", transition: "max-height 0.6s cubic-bezier(.2,.8,.25,1), opacity 0.5s ease 0.08s, transform 0.5s cubic-bezier(.2,.8,.25,1)" }}>
+            <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", textAlign: "left", marginTop: 2 }}>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Your offering · sealed from all eyes</div>
+              <p className="whisper" style={{ margin: "0 0 10px", fontSize: 14 }}>
+                Log the wine you shall bring. Hidden from every other soul — even the Keiser — until the reveal.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={() => { const hits = detectVarietals(title); if (hits.length) setVarietals((v) => [...new Set([...v, ...hits])]); }}
+                  placeholder="e.g. 2022 Alheit Cartology"
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number" min="0" inputMode="numeric"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="R · optional"
+                  style={{ width: 110 }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <GrapePicker value={varietals} onChange={setVarietals} listId={`offer-grapes-${gatheringId}`} />
+                </div>
+                <button className="btn gold" style={{ width: "auto", padding: "10px 16px" }} onClick={seal} disabled={!title.trim()}>
+                  Seal it
+                </button>
+              </div>
+              <button onClick={() => setEditing(false)}
+                style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 10, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+                veil it for now
+              </button>
+            </div>
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// The Prophecy: summoned by a button at the meeting card's tail. The vine
+// speaks only once every RSVP'd soul has sealed an offering; the verdict is
+// stored on the gathering the first time it is spoken, and graded at the
+// reckoning. It weighs bringer history + the room's grape and price leanings.
+function Prophecy({ g, members, allMeetings, onSpoken }: {
+  g: Gathering;
+  members: Member[];
+  allMeetings: Gathering[];
+  onSpoken: (patch: Partial<Gathering>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [record, setRecord] = useState<{ right: number; total: number } | null>(null);
+  const attendees = g.attendees || [];
+
+  const consult = async () => {
+    setRefusal(null);
+    if (open) { setOpen(false); return; }
+    if (busy) return;
+    setBusy(true);
+    try {
+      const annals = await fetchAnnals();
+      setRecord(prophecyRecord(allMeetings, annals));
+      if (!g.prophecy) {
+        if (attendees.length === 0) {
+          setRefusal("The vine holds its tongue — no souls have answered the call yet.");
+          return;
+        }
+        const offerings = await fetchAllOfferings(g.id);
+        const missing = attendees.filter((id) => !offerings[id]?.title).length;
+        if (missing > 0) {
+          setRefusal(`The vine holds its tongue — ${missing} of ${attendees.length} offerings remain unsealed.`);
+          return;
+        }
+        const history = await fetchBallotHistory(annals.map((a) => a.gatheringId), members.map((m) => m.id));
+        const verdict = speakProphecy({ attendees, offerings, members, annals, ballots: history, nowMs: Date.now() });
+        if (!verdict) {
+          setRefusal("The vine holds its tongue — it has too little history to speak from.");
+          return;
+        }
+        onSpoken({ prophecy: verdict });
+      }
+      setOpen(true);
+    } catch (e) {
+      setRefusal(`The vine faltered: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ textAlign: "center", marginTop: 14 }}>
+      <button onClick={consult} disabled={busy}
+        style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
+        <i className="ti ti-crystal-ball" style={{ fontSize: 14 }} />
+        {open ? "Let it be veiled" : busy ? "Consulting…" : "Consult the Prophecy"}
+      </button>
+      <div style={{ overflow: "hidden", maxHeight: refusal ? 300 : 0, opacity: refusal ? 1 : 0, transform: refusal ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.98)", transition: "max-height 0.7s cubic-bezier(.2,.8,.25,1), opacity 0.6s ease 0.1s, transform 0.6s cubic-bezier(.2,.8,.25,1) 0.05s" }}>
+        {refusal && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/site-mark.png" alt="" style={{ width: 64, height: 64, margin: "16px auto 4px", display: "block", opacity: 0.45, filter: "grayscale(0.4)" }} />
+            <div className="eyebrow" style={{ fontSize: 10, letterSpacing: "0.2em", marginTop: 4 }}>The vine holds its tongue</div>
+            <p className="scr" style={{ fontStyle: "italic", fontSize: 16, color: "var(--parch)", margin: "8px 12px 4px", lineHeight: 1.5 }}>
+              {refusal.replace(/^The vine holds its tongue — /, "").replace(/^The vine faltered: /, "")}
+            </p>
+          </>
+        )}
+      </div>
+      <div style={{ overflow: "hidden", maxHeight: open ? 420 : 0, opacity: open ? 1 : 0, transform: open ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.98)", transition: "max-height 0.7s cubic-bezier(.2,.8,.25,1), opacity 0.6s ease 0.1s, transform 0.6s cubic-bezier(.2,.8,.25,1) 0.05s" }}>
+        {g.prophecy && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/site-mark.png" alt="" className="lcv-breathe" style={{ width: 74, height: 74, margin: "18px auto 4px", display: "block" }} />
+            <div className="eyebrow" style={{ fontSize: 10, letterSpacing: "0.2em", marginTop: 6 }}>The vine has spoken</div>
+            <div className="scr" style={{ fontFamily: "'Great Vibes', cursive", color: "var(--gold2)", fontSize: 30, lineHeight: 1.2, margin: "8px 0 2px" }}>{g.prophecy.name}</div>
+            <p className="scr" style={{ fontStyle: "italic", fontSize: 15, color: "var(--parch)", margin: "0 12px", lineHeight: 1.5 }}>
+              shall be crowned this night — so say the sealed verdicts of every moon before.
+            </p>
+            <p className="whisper" style={{ margin: "10px 0 6px", fontSize: 13 }}>
+              spoken once, before the cloths{record && record.total > 0 ? ` · right ${record.right} night${record.right === 1 ? "" : "s"} of ${record.total}` : ""} · graded at the reckoning
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -129,10 +266,10 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
 }
 
 function MeetingBody({
-  m, isCurrent, isKeiser, meId, members, onUpdate, onAttendees, onDelete, count, setCount,
+  m, isCurrent, isKeiser, meId, members, onUpdate, onAttendees, onDelete, count, setCount, allMeetings,
 }: {
   m: Gathering; isCurrent: boolean; isKeiser: boolean; meId: string | null; members: Member[];
-  onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void;
+  onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void; allMeetings?: Gathering[];
   onDelete?: () => void; count?: number; setCount?: (n: number) => void;
 }) {
   const [showGuests, setShowGuests] = useState(false);
@@ -231,6 +368,8 @@ function MeetingBody({
           <>
             <div className="disp" style={{ fontSize: 20, margin: "8px 0 4px" }}>{m.theme_title}</div>
             {m.theme_description && <p className="whisper" style={{ margin: 0, fontSize: 15 }}>{m.theme_description}</p>}
+            {/* full-bleed rule under the theme, kin to the member card's bands */}
+            <div style={{ borderTop: "2px solid var(--gold)", margin: "14px -16px" }} />
             {showRite && (
               <Link href="/rite" className="btn gold" style={{ display: "block", textDecoration: "none", fontSize: 16, textAlign: "center", margin: "16px 0 4px" }}>
                 Enter the rite
@@ -315,6 +454,9 @@ function MeetingBody({
               </div>
             )}
           </div>
+        )}
+        {isCurrent && allMeetings && (
+          <Prophecy g={m} members={members} allMeetings={allMeetings} onSpoken={onUpdate} />
         )}
         </div>
       </div>
@@ -460,7 +602,7 @@ export default function Convene() {
       </div>
 
       {current ? (
-        <MeetingBody m={current} isCurrent isKeiser={isKeiser} meId={meId} members={members} onUpdate={(p) => updateMeeting(current.id, p)} onAttendees={(next) => setAttendeesLocal(current.id, next)} onDelete={isKeiser ? () => deleteMeeting(current.id) : undefined} count={count} setCount={setCount} />
+        <MeetingBody m={current} isCurrent isKeiser={isKeiser} meId={meId} members={members} allMeetings={meetings} onUpdate={(p) => updateMeeting(current.id, p)} onAttendees={(next) => setAttendeesLocal(current.id, next)} onDelete={isKeiser ? () => deleteMeeting(current.id) : undefined} count={count} setCount={setCount} />
       ) : (
         <div className="card"><p className="whisper" style={{ margin: 0, fontSize: 15 }}>The table is bare. Summon a gathering below.</p></div>
       )}

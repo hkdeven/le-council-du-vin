@@ -3,22 +3,50 @@
 import { useState, useEffect, useRef } from "react";
 import { toRoman } from "@/lib/util";
 import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, AnnalRow } from "@/lib/annals";
+import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
 import { loadMembers } from "@/lib/members";
 import { uploadRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import Loading from "@/components/Loading";
+import GrapePicker from "@/components/GrapePicker";
+import { detectVarietals } from "@/lib/varietals";
 import { swr, writeSwr } from "@/lib/swr";
 import type { Gathering, Member } from "@/lib/types";
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
+// A tap-to-open explainer used on the Reliquary rows.
+function RelicTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const away = () => setOpen(false);
+    window.addEventListener("pointerdown", away);
+    return () => window.removeEventListener("pointerdown", away);
+  }, [open]);
+  return (
+    <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
+      <button aria-label="More" onPointerDown={(e) => e.stopPropagation()} onClick={() => setOpen((o) => !o)}
+        style={{ width: "auto", background: "none", border: "none", padding: 4, margin: -4, cursor: "pointer", color: "var(--dim)", display: "inline-flex" }}>
+        <i className="ti ti-info-circle" style={{ fontSize: 12 }} />
+      </button>
+      {open && (
+        <span role="tooltip" onPointerDown={(e) => e.stopPropagation()}
+          style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 30, width: 220, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "9px 11px", color: "var(--parch)", fontSize: 12.5, lineHeight: 1.5, fontFamily: "'EB Garamond', serif", fontStyle: "normal", textTransform: "none", letterSpacing: "normal", boxShadow: "0 6px 20px rgba(0,0,0,0.55)" }}>
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // A gathering under the Keiser's pen: everything editable, ranks recomputed
 // from the scores on save (ties share rank 1, DQs unranked) exactly as the
 // reveal would have judged it.
-interface DraftRow { cloth: number; title: string; owner: string; score: string; dq: boolean; votes: number }
+interface DraftRow { cloth: number; title: string; owner: string; score: string; dq: boolean; votes: number; varietals: string[]; price: string }
 interface Draft {
   gatheringId?: string;
   number: number;
@@ -41,7 +69,7 @@ function draftFrom(a: AnnalEntry, g?: Gathering): Draft {
     host_name: g?.host_name || "",
     host2_id: g?.host2_id || null,
     host2_name: g?.host2_name || "",
-    rows: a.rows.map((r) => ({ cloth: r.cloth, title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, votes: r.votes })),
+    rows: a.rows.map((r) => ({ cloth: r.cloth, title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
   };
 }
 
@@ -58,7 +86,7 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
   const setRow = (i: number, patch: Partial<DraftRow>) =>
     setD((x) => ({ ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   const addRow = () =>
-    setD((x) => ({ ...x, rows: [...x.rows, { cloth: Math.max(0, ...x.rows.map((r) => r.cloth)) + 1, title: "", owner: "", score: "", dq: false, votes: 1 }] }));
+    setD((x) => ({ ...x, rows: [...x.rows, { cloth: Math.max(0, ...x.rows.map((r) => r.cloth)) + 1, title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }] }));
   const dropRow = (i: number) => setD((x) => ({ ...x, rows: x.rows.filter((_, j) => j !== i) }));
 
   // Hosts from imported history may be a bare name with no member id; keep
@@ -121,10 +149,18 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
               <i className="ti ti-trash" style={{ fontSize: 14 }} />
             </button>
           </div>
-          <input value={r.title} onChange={(e) => setRow(i, { title: e.target.value })} placeholder="The wine…" style={{ marginBottom: 6 }} />
-          <div style={{ display: "flex", gap: 8 }}>
+          <input value={r.title} onChange={(e) => setRow(i, { title: e.target.value })}
+            onBlur={() => { const hits = detectVarietals(r.title); if (hits.length) setRow(i, { varietals: [...new Set([...r.varietals, ...hits])] }); }}
+            placeholder="The wine…" style={{ marginBottom: 6 }} />
+          <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
             <input list="codex-souls" value={r.owner} onChange={(e) => setRow(i, { owner: e.target.value })} placeholder="Brought by…" style={{ flex: 1 }} />
             <input type="number" step="0.1" min="0" max="10" value={r.score} onChange={(e) => setRow(i, { score: e.target.value })} placeholder="Score" style={{ width: 84 }} />
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <GrapePicker value={r.varietals} onChange={(v) => setRow(i, { varietals: v })} listId={`grapes-${r.cloth}`} />
+            </div>
+            <input type="number" min="0" inputMode="numeric" value={r.price} onChange={(e) => setRow(i, { price: e.target.value })} placeholder="Price · R" style={{ width: 104 }} />
           </div>
         </div>
       ))}
@@ -152,12 +188,13 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
   );
 }
 
-function AnnalCard({ a, g, isKeiser, members, myName, onSave, onErase, onClaim, onAddPhoto }: {
+function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, onClaim, onAddPhoto }: {
   a: AnnalEntry;
   g?: Gathering;
   isKeiser: boolean;
   members: Pick<Member, "id" | "cult_name">[];
   myName: string;
+  split?: { cloth: number; min: number; max: number };
   onSave: (d: Draft) => Promise<void>;
   onErase: (gatheringId: string) => Promise<void>;
   onClaim: (a: AnnalEntry, cloth: number) => Promise<void>;
@@ -221,7 +258,13 @@ function AnnalCard({ a, g, isKeiser, members, myName, onSave, onErase, onClaim, 
               <span className="disp" style={{ width: 24, fontSize: 11 }}>{r.dq ? "✕" : toRoman(r.rank || 0)}</span>
               <span style={{ flex: 1 }}>
                 <span className="scr" style={{ fontSize: 14 }}>{r.title || `Bottle ${toRoman(r.cloth)}`}</span>
+                {split?.cloth === r.cloth && <i className="ti ti-bolt" title="The split cloth" style={{ color: "var(--gold2)", fontSize: 12, marginLeft: 5 }} />}
                 {r.owner ? <span style={{ color: "var(--dim)" }}> — {r.owner}</span> : null}
+                {(r.varietals?.length || r.price != null) ? (
+                  <span className="whisper" style={{ fontSize: 12 }}>
+                    {" "}· {[r.varietals?.join(", "), r.price != null ? `R${r.price}` : null].filter(Boolean).join(" · ")}
+                  </span>
+                ) : null}
                 {!r.owner && canClaim && (
                   <button
                     onClick={() => { if (window.confirm(`Claim ${r.title || `Bottle ${toRoman(r.cloth)}`} as your own pour?`)) onClaim(a, r.cloth).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
@@ -235,6 +278,16 @@ function AnnalCard({ a, g, isKeiser, members, myName, onSave, onErase, onClaim, 
               <span className="disp" style={{ fontSize: 12 }}>{r.votes > 0 ? r.score.toFixed(1) : "—"}</span>
             </div>
           ))}
+
+          {split && (() => {
+            const w = a.rows.find((r) => r.cloth === split.cloth);
+            return (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "3px 10px", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13, marginTop: 8 }}>
+                <i className="ti ti-bolt" style={{ fontSize: 12 }} />
+                The split cloth: {w?.title || `Bottle ${toRoman(split.cloth)}`} divided the table, {split.min} to {split.max}
+              </div>
+            );
+          })()}
 
           {g && (photos.length > 0 || !!myName) && (
             <div style={{ marginTop: 12 }}>
@@ -283,6 +336,8 @@ export default function Codex() {
   // Until the first fetch lands, show the waiting mark — zeros everywhere
   // read as "no history" and send souls away before the annals arrive.
   const [loaded, setLoaded] = useState(false);
+  // Sealed ballots power the split-cloth markers and the Reliquary.
+  const [history, setHistory] = useState<HistoryBallot[]>([]);
 
   // After an edit: fetch fresh and keep the snapshots honest.
   const refresh = async () => {
@@ -311,6 +366,39 @@ export default function Codex() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
+  // One pass over the sealed ballots once the annals + roster are known.
+  useEffect(() => {
+    if (!annals.length || !members.length) return;
+    fetchBallotHistory(annals.map((a) => a.gatheringId), members.map((m) => m.id))
+      .then((h) => setHistory(h.filter((b) => b.sealed)))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annals.length, members.length]);
+
+  // The split cloth per night: the widest score gap on any wine, when wide
+  // enough (>= 5) to count as a genuine schism.
+  const splits = (() => {
+    const out: Record<string, { cloth: number; min: number; max: number }> = {};
+    const byG = new Map<string, HistoryBallot[]>();
+    for (const b of history) {
+      const list = byG.get(b.gatheringId) || [];
+      list.push(b); byG.set(b.gatheringId, list);
+    }
+    for (const [gid, list] of byG) {
+      let best: { cloth: number; min: number; max: number } | null = null;
+      const cloths = new Set<number>();
+      list.forEach((b) => Object.keys(b.scores).forEach((c) => cloths.add(Number(c))));
+      for (const cloth of cloths) {
+        const scores = list.map((b) => b.scores[cloth]).filter((v) => typeof v === "number");
+        if (scores.length < 3) continue;
+        const min = Math.min(...scores), max = Math.max(...scores);
+        if (max - min >= 5 && (!best || max - min > best.max - best.min)) best = { cloth, min, max };
+      }
+      if (best) out[gid] = best;
+    }
+    return out;
+  })();
+
   // Seal an amended or newly recorded gathering: ranks recomputed from scores
   // (competition style, ties share, DQs unranked), gathering + annal in step.
   const saveDraft = async (d: Draft) => {
@@ -323,6 +411,8 @@ export default function Codex() {
       votes: r.votes || 1,
       dq: r.dq,
       rank: r.dq || r.score === "" ? null : 1 + scored.filter((s) => s > Number(r.score)).length,
+      varietals: r.varietals.length ? r.varietals : undefined,
+      price: r.price !== "" && Number.isFinite(Number(r.price)) ? Number(r.price) : undefined,
     }));
     const gpatch: Partial<Gathering> = {
       number: d.number, theme_title: d.theme, gather_date: d.date, status: "revealed",
@@ -383,6 +473,55 @@ export default function Codex() {
   const winsMax = Math.max(1, ...victoryList.map(([, n]) => n));
   // The most frequent winner holds the chalice.
   const chaliceChampion = victoryList[0]?.[0] || "—";
+  // The Reliquary: all-time records, reckoned fresh from the annals + ballots.
+  const relics = (() => {
+    if (!annals.length) return null;
+    let pour: { title: string; score: number; date: string } | null = null;
+    for (const a of annals) for (const r of a.rows) {
+      if (!r.dq && r.votes > 0 && (!pour || r.score > pour.score)) pour = { title: r.title || `Bottle ${toRoman(r.cloth)}`, score: r.score, date: a.date };
+    }
+    let schism: { title: string; min: number; max: number } | null = null;
+    {
+      const byG = new Map<string, HistoryBallot[]>();
+      for (const b of history) { const l = byG.get(b.gatheringId) || []; l.push(b); byG.set(b.gatheringId, l); }
+      for (const [gid, list] of byG) {
+        const cloths = new Set<number>();
+        list.forEach((b) => Object.keys(b.scores).forEach((c) => cloths.add(Number(c))));
+        for (const cloth of cloths) {
+          const scores = list.map((b) => b.scores[cloth]).filter((v) => typeof v === "number");
+          if (scores.length < 3) continue;
+          const min = Math.min(...scores), max = Math.max(...scores);
+          if (!schism || max - min > schism.max - schism.min) {
+            const night = annals.find((a) => a.gatheringId === gid);
+            const w = night?.rows.find((r) => r.cloth === cloth);
+            schism = { title: w?.title || `Bottle ${toRoman(cloth)}`, min, max };
+          }
+        }
+      }
+    }
+    // Temper: each soul's mean given vs the table's mean, over 20+ verdicts.
+    const nameOf = new Map(members.map((m) => [m.id, m.cult_name]));
+    const all: number[] = [];
+    const per = new Map<string, number[]>();
+    for (const b of history) {
+      const vals = Object.values(b.scores).filter((v) => typeof v === "number");
+      all.push(...vals);
+      const l = per.get(b.memberId) || []; l.push(...vals); per.set(b.memberId, l);
+    }
+    const tableMean = all.length ? all.reduce((x, y) => x + y, 0) / all.length : 0;
+    let iron: { name: string; delta: number } | null = null;
+    let gentle: { name: string; delta: number } | null = null;
+    for (const [mid, vals] of per) {
+      if (vals.length < 20) continue;
+      const name = nameOf.get(mid);
+      if (!name) continue;
+      const delta = vals.reduce((x, y) => x + y, 0) / vals.length - tableMean;
+      if (!iron || delta < iron.delta) iron = { name, delta };
+      if (!gentle || delta > gentle.delta) gentle = { name, delta };
+    }
+    return { pour, schism, iron, gentle };
+  })();
+
   const themeAvgs = annals
     .map((a) => {
       const scored = a.rows.filter((r) => !r.dq && r.votes > 0);
@@ -409,28 +548,35 @@ export default function Codex() {
         <Metric value={chaliceChampion} label="champion of the chalice" />
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="eyebrow" style={{ marginBottom: 4 }}>Disqualifications</div>
-        <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-          Wines cast out for breaking theme. At {DQ_THRESHOLD}, the offender is summoned before the tribunal.
-        </p>
-        {dqList.length === 0 ? (
-          <p className="whisper" style={{ margin: 0, fontSize: 14 }}>No wine has yet strayed. The Council is watching.</p>
-        ) : (
-          dqList.map(([name, n]) => (
-            <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
-              <span style={{ width: 110, fontSize: 13, color: n >= DQ_THRESHOLD ? "var(--wine)" : "var(--dim)" }}>{name}</span>
-              <div className="bar" style={{ flex: 1, margin: 0 }}>
-                <i style={{ width: `${(n / dqMax) * 100}%`, background: n >= DQ_THRESHOLD ? "var(--wine)" : "var(--gold)" }} />
-              </div>
-              <span className="disp" style={{ fontSize: 13, color: n >= DQ_THRESHOLD ? "var(--wine)" : "var(--gold2)" }}>
-                {n}{n >= DQ_THRESHOLD ? " · summoned" : ""}
-              </span>
+      {relics && (relics.pour || relics.schism || relics.iron) && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>The Reliquary · records of the Council</div>
+          {relics.pour && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
+              <span className="eyebrow" style={{ fontSize: 10 }}>Highest pour ever</span>
+              <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.pour.title} · {relics.pour.score.toFixed(1)}</span>
             </div>
-          ))
-        )}
-      </div>
-
+          )}
+          {relics.schism && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The great schism<RelicTip text="The single wine that split the table widest: the gap between its highest and lowest score across every night in the codex." /></span>
+              <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.schism.title}, {relics.schism.min} to {relics.schism.max}</span>
+            </div>
+          )}
+          {relics.iron && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The iron palate<RelicTip text="The harshest judge: the member whose average verdict sits furthest below the table's average, over at least twenty scores." /></span>
+              <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.iron.name}, {relics.iron.delta.toFixed(1)}</span>
+            </div>
+          )}
+          {relics.gentle && relics.gentle.name !== relics.iron?.name && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The gentle hand<RelicTip text="The kindest judge: the member whose average verdict sits furthest above the table's average, over at least twenty scores." /></span>
+              <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.gentle.name}, +{relics.gentle.delta.toFixed(1)}</span>
+            </div>
+          )}
+        </div>
+      )}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 12 }}>Victories by member</div>
         {victoryList.length === 0 ? (
@@ -463,6 +609,7 @@ export default function Codex() {
         </div>
       )}
 
+
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 4 }}>Past gatherings</div>
         <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>
@@ -482,6 +629,7 @@ export default function Codex() {
                 isKeiser={isKeiser}
                 members={members}
                 myName={myName}
+                split={splits[a.gatheringId]}
                 onSave={saveDraft}
                 onErase={eraseGathering}
                 onClaim={claimWine}
@@ -496,7 +644,7 @@ export default function Codex() {
               draft={{
                 number: Math.max(0, ...annals.map((a) => a.number), ...gatherings.map((g) => g.number || 0)) + 1,
                 theme: "", date: "", host_id: null, host_name: "", host2_id: null, host2_name: "",
-                rows: [{ cloth: 1, title: "", owner: "", score: "", dq: false, votes: 1 }],
+                rows: [{ cloth: 1, title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }],
               }}
               members={members}
               onCancel={() => setAdding(false)}
@@ -509,6 +657,29 @@ export default function Codex() {
           </button>
         ))}
       </div>
+
+      <div className="card" style={{ margin: "16px 0 0" }}>
+        <div className="eyebrow" style={{ marginBottom: 4 }}>Disqualifications</div>
+        <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+          Wines cast out for breaking theme. At {DQ_THRESHOLD}, the offender is summoned before the tribunal.
+        </p>
+        {dqList.length === 0 ? (
+          <p className="whisper" style={{ margin: 0, fontSize: 14 }}>No wine has yet strayed. The Council is watching.</p>
+        ) : (
+          dqList.map(([name, n]) => (
+            <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
+              <span style={{ width: 110, fontSize: 13, color: n >= DQ_THRESHOLD ? "var(--wine)" : "var(--dim)" }}>{name}</span>
+              <div className="bar" style={{ flex: 1, margin: 0 }}>
+                <i style={{ width: `${(n / dqMax) * 100}%`, background: n >= DQ_THRESHOLD ? "var(--wine)" : "var(--gold)" }} />
+              </div>
+              <span className="disp" style={{ fontSize: 13, color: n >= DQ_THRESHOLD ? "var(--wine)" : "var(--gold2)" }}>
+                {n}{n >= DQ_THRESHOLD ? " · summoned" : ""}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+
       </>
       )}
     </section>

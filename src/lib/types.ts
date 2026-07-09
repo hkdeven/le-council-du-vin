@@ -62,6 +62,7 @@ export interface Gathering {
   status: "upcoming" | "scoring" | "revealed";
   wine_count: number;
   reveal_photos?: string[] | null;
+  prophecy?: { member_id: string; name: string; at: string } | null; // spoken once, before the night
   rules_text?: string | null;
   threat_text?: string | null;
   venue_instructions?: string | null;

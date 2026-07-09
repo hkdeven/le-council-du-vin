@@ -6,6 +6,9 @@ import { loadMembers } from "@/lib/members";
 import { fetchThemes, proposeTheme, favourTheme, editTheme, removeTheme, PoolTheme } from "@/lib/themes";
 import { fetchPolls, createPoll, updatePoll, toggleVote } from "@/lib/polls";
 import { fetchGatherings, effectiveLastHosted } from "@/lib/gatherings";
+import { fetchAnnals, type AnnalEntry } from "@/lib/annals";
+import { GRAPES } from "@/lib/varietals";
+import { toRoman } from "@/lib/util";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { shareToWhatsApp } from "@/lib/share";
@@ -129,6 +132,7 @@ export default function Oracle() {
   const [members, setMembers] = useState<Member[]>(seedMembers);
   const [allGatherings, setAllGatherings] = useState<Gathering[]>([]);
   const [themes, setThemes] = useState<PoolTheme[]>([]);
+  const [annals, setAnnals] = useState<AnnalEntry[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [proposal, setProposal] = useState("");
   const [proposalDesc, setProposalDesc] = useState("");
@@ -139,6 +143,7 @@ export default function Oracle() {
   useEffect(() => {
     reloadThemes();
     fetchPolls().then(setPolls);
+    fetchAnnals().then(setAnnals).catch(() => {});
     if (mode === "live" && supabase) {
       swr("members", async () => {
         const { data, error } = await supabase!.from("members").select("*");
@@ -199,6 +204,35 @@ export default function Oracle() {
   const hostedOf = (m: Member) => effectiveLastHosted(m, allGatherings);
   const wheel = [...members].filter((m) => m.active).sort((a, b) => (hostedOf(a) || "").localeCompare(hostedOf(b) || ""));
 
+  // The Unexplored: grapes the Council has never poured, and the finest one
+  // it has neglected longest. Silent until the codex knows enough varietals.
+  const unexplored = (() => {
+    const seen = new Map<string, { last: string; scores: number[] }>();
+    for (const a of annals) for (const r of a.rows) {
+      for (const g of r.varietals || []) {
+        const e = seen.get(g) || { last: "", scores: [] };
+        if (a.date > e.last) e.last = a.date;
+        if (!r.dq && r.votes > 0) e.scores.push(r.score);
+        seen.set(g, e);
+      }
+    }
+    if (seen.size < 5) return null;
+    const never = GRAPES.filter((g) => !seen.has(g)).slice(0, 6);
+    let neglected: { grape: string; since: string; avg: number } | null = null;
+    const cutoff = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
+    for (const [grape, e] of seen) {
+      if (e.last > cutoff || e.scores.length < 2) continue;
+      const avg = e.scores.reduce((s, x) => s + x, 0) / e.scores.length;
+      if (avg < 6.5) continue;
+      if (!neglected || avg > neglected.avg) {
+        neglected = { grape, since: new Date(e.last).toLocaleDateString("en-GB", { month: "long", year: "numeric" }), avg };
+      }
+    }
+    if (!never.length && !neglected) return null;
+    return { never, neglected };
+  })();
+  const toRomanWord = (n: number) => (n > 0 ? toRoman(n).toLowerCase() : "no");
+
   return (
     <section>
       <h1 className="disp" style={{ fontSize: 18, fontWeight: 500 }}>The oracle</h1>
@@ -240,6 +274,35 @@ export default function Oracle() {
       <MoonDivider />
 
       <div className="card" style={{ marginBottom: 16 }}>
+        {unexplored && (
+          <>
+            <div className="eyebrow" style={{ marginBottom: 6 }}><i className="ti ti-compass" style={{ marginRight: 5 }} />The Unexplored</div>
+            <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+              In {toRomanWord(annals.length)} moons, the Council has never poured:
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {unexplored.never.map((grape) => (
+                <button key={grape} onClick={() => {
+                  setProposal(grape);
+                  document.getElementById("theme-proposal")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                  style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "4px 12px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontSize: 14 }}>
+                  {grape}<i className="ti ti-plus" style={{ fontSize: 11, color: "var(--dim)" }} />
+                </button>
+              ))}
+            </div>
+            {unexplored.neglected && (
+              <p className="whisper" style={{ margin: "10px 0 0", fontSize: 13 }}>
+                Nor returned to <button onClick={() => {
+                  setProposal(unexplored.neglected!.grape);
+                  document.getElementById("theme-proposal")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }} style={{ width: "auto", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold2)", fontFamily: "inherit", fontStyle: "inherit", fontSize: "inherit" }}>{unexplored.neglected.grape}</button> since {unexplored.neglected.since}, though it scored {unexplored.neglected.avg.toFixed(1)}. Tap a grape to propose it as a theme.
+              </p>
+            )}
+            {/* full-bleed rule joining the unexplored to the pool it feeds */}
+            <div style={{ borderTop: "1px solid var(--gold)", margin: "16px -16px" }} />
+          </>
+        )}
         <div className="eyebrow" style={{ marginBottom: 10 }}>Theme pool — cast your favour</div>
         {themes.map((t, i) => (
           <div key={t.id} className="rk" style={{ alignItems: editingTheme === t.id ? "flex-start" : "center" }}>
@@ -275,11 +338,12 @@ export default function Oracle() {
           </div>
         ))}
         <div style={{ marginTop: 14 }}>
-          <input value={proposal} onChange={(e) => setProposal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && propose()} placeholder="Propose a new theme…" style={{ width: "100%" }} />
+          <input id="theme-proposal" value={proposal} onChange={(e) => setProposal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && propose()} placeholder="Propose a new theme…" style={{ width: "100%" }} />
           <input value={proposalDesc} onChange={(e) => setProposalDesc(e.target.value)} onKeyDown={(e) => e.key === "Enter" && propose()} placeholder="A supporting line (optional)…" style={{ width: "100%", marginTop: 8 }} />
           <button className="btn" style={{ marginTop: 8 }} onClick={propose} disabled={!proposal.trim()}>Add to the pool</button>
         </div>
       </div>
+
 
       <MoonDivider />
 

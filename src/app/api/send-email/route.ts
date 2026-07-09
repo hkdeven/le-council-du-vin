@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, featureRequestEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, featureRequestEmail, reckoningEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -30,7 +30,7 @@ async function callerIdentity(req: Request): Promise<{ email: string | null; nam
   }
 }
 
-const SELF_TYPES = new Set(["natal", "foretelling"]);
+const SELF_TYPES = new Set(["natal", "foretelling", "reckoning"]);
 
 export async function POST(req: Request) {
   const key = process.env.RESEND_API_KEY;
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
   const { type, to, params } = (await req.json().catch(() => ({}))) as {
     type?: string; to?: string | string[];
-    params?: ({ name?: string; count?: number; text?: string } & InviteParams & NatalEmailParams & ForetellingEmailParams);
+    params?: ({ name?: string; count?: number; text?: string } & InviteParams & NatalEmailParams & ForetellingEmailParams & ReckoningEmailParams);
   };
   let recipients = Array.from(new Set((Array.isArray(to) ? to : [to]).filter(Boolean) as string[])).slice(0, 200);
 
@@ -75,6 +75,7 @@ export async function POST(req: Request) {
     case "natal": email = natalChartEmail(params || {}); break;
     case "foretelling": email = foretellingEmail(params || {}); break;
     case "feature": email = featureRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
+    case "reckoning": email = reckoningEmail(params || {}); break;
     default: return NextResponse.json({ ok: false, error: "Unknown email type." }, { status: 400 });
   }
 

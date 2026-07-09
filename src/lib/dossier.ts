@@ -22,6 +22,9 @@ export interface DossierStats {
   communion: number; // longest run of consecutive gatherings stood
   nose: { aroma: string; count: number }[]; // top aromas, most-marked first
   pours: { title: string; score: number; rank: number; meta: string }[]; // top 3 they brought
+  // Coin rows (Keiser-approved pair). Null until 2+ of their bottles carry prices.
+  coin: { perHundred: number; table: number } | null; // points per R100 as a bringer
+  purse: { mine: number; table: number } | null; // average bottle spend vs the table
 }
 
 export interface DossierInputs {
@@ -168,7 +171,22 @@ export function computeDossier(inp: DossierInputs): DossierStats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 16);
 
-  return { moonsStood, bottlesCrowned, marks, temper, kindred, wheel, communion, nose, pours: pours.slice(0, 3) };
+  // Coin's return + the purse: from every priced, judged bottle in the annals.
+  const pricedAll: { score: number; price: number; owner: string }[] = [];
+  for (const a of annals) for (const r of a.rows) {
+    if (!r.dq && r.votes > 0 && (r.price ?? 0) > 0) pricedAll.push({ score: r.score, price: r.price!, owner: r.owner });
+  }
+  const minePriced = pricedAll.filter((x) => x.owner === member.cult_name);
+  let coin: DossierStats["coin"] = null;
+  let purse: DossierStats["purse"] = null;
+  if (minePriced.length >= 2 && pricedAll.length >= 4) {
+    const per = (list: typeof pricedAll) => list.reduce((s, x) => s + x.score, 0) / list.reduce((s, x) => s + x.price, 0) * 100;
+    coin = { perHundred: per(minePriced), table: per(pricedAll) };
+    const avg = (list: typeof pricedAll) => list.reduce((s, x) => s + x.price, 0) / list.length;
+    purse = { mine: avg(minePriced), table: avg(pricedAll) };
+  }
+
+  return { moonsStood, bottlesCrowned, marks, temper, kindred, wheel, communion, nose, pours: pours.slice(0, 3), coin, purse };
 }
 
 // Gather the inputs (live or demo) and compute.

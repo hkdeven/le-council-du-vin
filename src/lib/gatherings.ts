@@ -31,7 +31,7 @@ function toRow(g: Partial<Gathering>) {
   const keys: (keyof Gathering)[] = [
     "number", "moon_label", "theme_title", "theme_description", "host_id", "host_name", "host2_id", "host2_name",
     "gather_date", "gather_time", "status", "wine_count", "reveal_photos", "rules_text",
-    "threat_text", "venue_instructions", "attendees",
+    "threat_text", "venue_instructions", "attendees", "prophecy",
   ];
   const row: Record<string, unknown> = {};
   for (const k of keys) if (g[k] !== undefined) row[k] = g[k];
@@ -48,6 +48,7 @@ function fromRow(r: Record<string, any>): Gathering {
     host_name: r.host_name ?? null,
     host2_id: r.host2_id ?? null,
     host2_name: r.host2_name ?? null,
+    prophecy: r.prophecy ?? null,
     gather_date: r.gather_date,
     gather_time: r.gather_time ?? "19:00",
     status: r.status || "upcoming",

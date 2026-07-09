@@ -14,6 +14,8 @@ export interface AnnalRow {
   votes: number;
   rank: number | null; // null when disqualified
   dq: boolean;
+  varietals?: string[]; // the grapes, Keiser-identified or carried from the offering
+  price?: number | null; // rand, when known
 }
 
 export interface AnnalEntry {

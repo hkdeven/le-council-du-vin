@@ -13,11 +13,14 @@ const jdOfMs = (ms: number) => ms / 86400000 + 2440587.5;
 const msOfJd = (jd: number) => (jd - 2440587.5) * 86400000;
 const fmtDay = (jd: number) => new Date(msOfJd(jd)).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
 
-export interface Omen { glyphs: string; title: string; when: string; body: string }
+export interface Omen { glyphs: string; title: string; when: string; body: string; plain?: string }
 export interface Foretelling {
   moonLabel: string; // "14 July to 11 August"
   entries: Omen[];
+  dayLabel: string;
+  day: Omen[];
   warning: string | null;
+  warningPlain: string | null;
   yearLabel: string;
   year: Omen[];
 }
@@ -104,6 +107,35 @@ const TRANSIT_TEXT: Record<string, Record<Tone, string>> = {
     hard: "Old ghosts ask for an audience. Grant it once, briefly, then pour them out.",
   },
 };
+// The same omens in plain speech, for the translate toggle.
+const TRANSIT_PLAIN: Record<string, Record<Tone, string>> = {
+  jupiter: {
+    conjunction: "Jupiter (luck and growth) sits right on a key point of your chart. Things tend to go your way this month: a good window for saying yes, hosting, and taking opportunities.",
+    harmonious: "Jupiter (luck and growth) is at an easy angle to your chart: mild good fortune. Opportunities come with less effort than usual.",
+    hard: "Jupiter (luck and growth) is at a tense angle: the risk this month is overdoing it, in spending, promising, or indulging. Enjoy yourself, but set the limit before you start.",
+  },
+  saturn: {
+    conjunction: "Saturn (structure and discipline) sits on a key point of your chart. Careful work done now tends to last; shortcuts tend to get exposed.",
+    harmonious: "Saturn (structure and discipline) is at an easy angle: steady, unglamorous progress. Past diligence quietly pays off.",
+    hard: "Saturn (structure and discipline) is at a tense angle: things feel slower and heavier than usual. Be patient and do not rush decisions.",
+  },
+  uranus: {
+    conjunction: "Uranus (surprise and change) sits on a key point of your chart: expect plans to change suddenly. Stay flexible.",
+    harmonious: "Uranus (surprise and change) is at an easy angle: a good month to try something new or break a routine on purpose.",
+    hard: "Uranus (surprise and change) is at a tense angle: surprises may be disruptive. Avoid locking in big commitments this month if you can.",
+  },
+  neptune: {
+    conjunction: "Neptune (imagination and fog) sits on a key point of your chart: intuition is strong but facts get blurry. Great for creativity, risky for paperwork.",
+    harmonious: "Neptune (imagination and fog) is at an easy angle: your gut readings are unusually reliable this month.",
+    hard: "Neptune (imagination and fog) is at a tense angle: it is easy to be misled, or to fool yourself. Double-check details, offers, and promises.",
+  },
+  pluto: {
+    conjunction: "Pluto (deep change) sits on a key point of your chart: something may end or transform this month. Letting it happen clears space for what is next.",
+    harmonious: "Pluto (deep change) is at an easy angle: quiet influence and focus. One decisive move goes a long way.",
+    hard: "Pluto (deep change) is at a tense angle: old issues or old faces may resurface. Deal with them once, briefly, and move on.",
+  },
+};
+
 const ASPECT_VERB: Record<string, string> = {
   conjunction: "conjoins", sextile: "sextiles", square: "squares", trine: "trines", opposition: "opposes",
 };
@@ -125,10 +157,80 @@ const PERSONAL_YEAR: Record<number, string> = {
   9: "The elder's year: finish, forgive, and empty the bottle before the new one.",
 };
 
+// --- The day's passages ---------------------------------------------------
+// The Moon crosses a house in about two and a half days; this line anchors
+// every daily reading. Both tongues, hand-written.
+const MOON_HOUSE: Record<number, { body: string; plain: string }> = {
+  1: { body: "The moon crosses your rising: feelings wear no cloak today. Lead with them.",
+       plain: "The Moon is in your 1st house today: emotions sit close to the surface and others can read them. A good day to be direct about what you want." },
+  2: { body: "The moon counts your coins and your appetite. Want less, taste more.",
+       plain: "The Moon is in your 2nd house today: money and comfort are on your mind. Small treats satisfy more than big purchases." },
+  3: { body: "The moon walks the short roads: letters, kin, quick words. Send the message.",
+       plain: "The Moon is in your 3rd house today: a chatty, busy day of messages and errands. Good for the conversation you have been postponing." },
+  4: { body: "The moon comes home. Tend the hearth before the world.",
+       plain: "The Moon is in your 4th house today: home and family pull at you. A night in serves you better than a night out." },
+  5: { body: "The moon plays. Pour something you cannot justify.",
+       plain: "The Moon is in your 5th house today: a day for fun, romance, and creativity. Do something purely because you enjoy it." },
+  6: { body: "The moon takes up the small tools: habit, craft, service. Sharpen one thing.",
+       plain: "The Moon is in your 6th house today: routines, chores, and health are favoured. Put one corner of your life in order." },
+  7: { body: "The moon sits across the table: partners and rivals ask their share.",
+       plain: "The Moon is in your 7th house today: relationships take centre stage, in cooperation or friction. Meet people halfway." },
+  8: { body: "The moon descends to the shared and the hidden. Settle a debt, keep a secret.",
+       plain: "The Moon is in your 8th house today: a more intense, private day of shared money, deep talks, and things unsaid. Handle one of them honestly." },
+  9: { body: "The moon looks to far places. Study something, or book the road.",
+       plain: "The Moon is in your 9th house today: restlessness and curiosity rise. A good day to learn something, plan travel, or look at the bigger picture." },
+  10: { body: "The moon climbs to your name and standing. Be seen doing the work.",
+        plain: "The Moon is in your 10th house today: career and reputation are lit. Effort shows today; so do mistakes." },
+  11: { body: "The moon joins the many: friends, allies, the long table.",
+        plain: "The Moon is in your 11th house today: a social day. Friends and groups bring more than solo effort; accept the invitation." },
+  12: { body: "The moon withdraws behind the veil. Rest is not retreat.",
+        plain: "The Moon is in your 12th house today: a low-battery, inward day. Rest without guilt and skip the crowds you do not need." },
+};
+
+// Fast planets making an exact aspect to the natal chart on the day itself.
+const DAY_TEXT: Record<string, Record<Tone, { body: string; plain: string }>> = {
+  mercury: {
+    conjunction: { body: "The messenger stands upon you: the word finds you today. Write it down before it leaves.",
+      plain: "Mercury (communication) sits exactly on a key point of your chart today: conversations and ideas flow. A good day for the important talk or email." },
+    harmonious: { body: "The messenger leans kindly: quick words land well today.",
+      plain: "Mercury (communication) is at an easy angle today: talking, asking, and negotiating all run smoothly." },
+    hard: { body: "The messenger crosses you: words tangle today. Say less, twice.",
+      plain: "Mercury (communication) is at a tense angle today: misunderstandings come easily. Keep messages short and reread before sending." },
+  },
+  venus: {
+    conjunction: { body: "The lady stands upon you: charm without effort. Pour the good bottle.",
+      plain: "Venus (affection and pleasure) sits exactly on a key point of your chart today: a warm day for love, friends, and beauty. Treat yourself, and someone else." },
+    harmonious: { body: "The lady leans in: the table is friendly today.",
+      plain: "Venus (affection and pleasure) is at an easy angle today: social things go well. A good day for a date, a gift, or making peace." },
+    hard: { body: "The lady crosses you: desire argues with sense. Let the purse win.",
+      plain: "Venus (affection and pleasure) is at a tense angle today: cravings and spending pull hard. Enjoy modestly; do not buy the whole cellar." },
+  },
+  mars: {
+    conjunction: { body: "The red one stands upon you: the blood is up. Spend it on work, not war.",
+      plain: "Mars (drive and temper) sits exactly on a key point of your chart today: energy runs high. Burn it on something physical or productive before it turns into irritation." },
+    harmonious: { body: "The red one leans with you: strike while it is hot.",
+      plain: "Mars (drive and temper) is at an easy angle today: energy and courage are up. A good day to start, push, or train." },
+    hard: { body: "The red one crosses you: short fuse, sharp tongue. Count three before either.",
+      plain: "Mars (drive and temper) is at a tense angle today: friction and impatience come quickly. Do not pick the fight; find a better outlet." },
+  },
+};
+
+const PERSONAL_YEAR_PLAIN: Record<number, string> = {
+  1: "In numerology this is a start year for you: the best time to launch the project or change you keep postponing.",
+  2: "A partnership year: progress comes through cooperation and patience rather than pushing.",
+  3: "An expression year: visibility, socialising, and speaking up work in your favour.",
+  4: "A groundwork year: routines, finances, and unglamorous building. Invest now, benefit later.",
+  5: "A change year: expect movement in travel, roles, or circumstances. Ride it rather than resist it.",
+  6: "A home year: family, relationships, and duties close to home take priority and reward the attention.",
+  7: "A quiet year: learning, reflection, and depth beat noise. A good year to study and to save.",
+  8: "A results year: earlier efforts pay off. A good year to ask for what your work is worth.",
+  9: "A closing year: finish things, let go, and clear the deck so the next cycle can start clean.",
+};
+
 // --- The reading ---------------------------------------------------------
 const TRANSIT_PLANETS = ["jupiter", "saturn", "uranus", "neptune", "pluto"] as const;
 const PLANET_GLYPH: Record<string, string> = {
-  sun: "☉", moon: "☽", jupiter: "♃", saturn: "♄", uranus: "♅", neptune: "♆", pluto: "♇", asc: "ASC",
+  sun: "☉", moon: "☽", mercury: "☿", venus: "♀", mars: "♂", jupiter: "♃", saturn: "♄", uranus: "♅", neptune: "♆", pluto: "♇", asc: "ASC",
 };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -162,6 +264,7 @@ export function foretellingFor(
     title: `New moon · ${nmSign.symbol} ${nmSign.name} · your ${ordinal(nmHouse)} house`,
     when: fmtDay(cycleStart),
     body: `${NEW_MOON_VERB} ${HOUSE_DOMAIN[nmHouse]}: set the intention there, and let it root in the dark.`,
+    plain: `A new moon is a monthly fresh start. This one lands in the part of your life about ${HOUSE_DOMAIN[nmHouse]} — a good moment to begin something in that area.`,
   });
   const fmLon = moonLongitude(fullJd);
   const fmSign = ZODIAC[Math.floor(fmLon / 30) % 12];
@@ -193,6 +296,7 @@ export function foretellingFor(
             title: `${cap(tp)} ${ASPECT_VERB[A.type]} your ${target.label}`,
             when: whole ? "all this moon" : `${fmtDay(first)} to ${fmtDay(last)}`,
             body: TRANSIT_TEXT[tp][tone],
+            plain: TRANSIT_PLAIN[tp][tone],
             orb: minOrb,
           });
         }
@@ -200,13 +304,14 @@ export function foretellingFor(
     }
   }
   found.sort((a, b) => a.orb - b.orb);
-  for (const f of found.slice(0, 3)) entries.push({ glyphs: f.glyphs, title: f.title, when: f.when, body: f.body });
+  for (const f of found.slice(0, 3)) entries.push({ glyphs: f.glyphs, title: f.title, when: f.when, body: f.body, plain: f.plain });
 
   entries.push({
     glyphs: "🌕",
     title: `Full moon · ${fmSign.symbol} ${fmSign.name} · your ${ordinal(fmHouse)} house`,
     when: fmtDay(fullJd),
     body: `${FULL_MOON_VERB} ${HOUSE_DOMAIN[fmHouse]}: what was seeded there comes to light.`,
+    plain: `A full moon is a monthly peak. This one lights up the part of your life about ${HOUSE_DOMAIN[fmHouse]} — something in that area comes to a head, or finally shows results.`,
   });
 
   // Mercury retrograde overlapping the cycle. Scan a little past both ends so
@@ -226,8 +331,10 @@ export function foretellingFor(
       if (jd >= cycleStart && jd <= cycleEnd) touchesCycle = true;
     }
   }
+  let warningPlain: string | null = null;
   if (touchesCycle && retroFirst != null && retroLast != null) {
     warning = `Mercury retrograde, ${fmtDay(retroFirst)} to ${fmtDay(retroLast)}: reread the label before you buy.`;
+    warningPlain = `Mercury retrograde, ${fmtDay(retroFirst)} to ${fmtDay(retroLast)}: communication and logistics get glitchy. Double-check bookings, messages, and purchases, and expect small delays.`;
   }
 
   // --- The year, glimpsed -------------------------------------------------
@@ -239,20 +346,24 @@ export function foretellingFor(
   const [, bm, bd] = natal.dateStr.split("-").map(Number);
   const reduce = (x: number) => { while (x > 9) x = String(x).split("").reduce((s, c) => s + Number(c), 0); return x; };
   const py = reduce(reduce(bm) + reduce(bd) + reduce(yearNum));
-  year.push({ glyphs: String(py), title: "Personal year", when: String(yearNum), body: PERSONAL_YEAR[py] });
+  year.push({ glyphs: String(py), title: "Personal year", when: String(yearNum), body: PERSONAL_YEAR[py], plain: PERSONAL_YEAR_PLAIN[py] });
 
   // The Chinese year, read against their own animal.
   const yi = yearAnimalInfo(yearNum);
   const own = shengxiao(natal.dateStr);
   let cnBody: string;
+  let cnPlain: string;
   if (own && own.name === yi.animal.name) {
     cnBody = `Your own year: guard the flame, do not gallop at every invitation. Keep something in reserve.`;
+    cnPlain = `This is your own zodiac year, which Chinese tradition treats as an unstable one: keep reserves, avoid big gambles, and do not overcommit.`;
   } else if (own && (((yi.index - ANIMAL_INDEX[own.name]) % 12) + 12) % 12 === 6) {
     cnBody = `The ${yi.animal.name} clashes with your ${own.name}: a year for cunning, not confrontation. Move around, not through.`;
+    cnPlain = `Your sign (${own.name}) sits opposite this year's sign (${yi.animal.name}), a traditional clash: expect more friction than usual, and go around obstacles rather than through them.`;
   } else {
     cnBody = `The ${yi.element} ${yi.animal.name} sets the pace${own ? ` for your ${own.name}` : ""}: match its stride where it serves you, and let it pass where it does not.`;
+    cnPlain = `This is the year of the ${yi.element} ${yi.animal.name}. It has no special clash with your sign${own ? ` (${own.name})` : ""}: use its momentum where helpful, and do not force the rest.`;
   }
-  year.push({ glyphs: yi.animal.symbol, title: `Year of the ${yi.element} ${yi.animal.name}`, when: yi.fromLabel, body: cnBody });
+  year.push({ glyphs: yi.animal.symbol, title: `Year of the ${yi.element} ${yi.animal.name}`, when: yi.fromLabel, body: cnBody, plain: cnPlain });
 
   // Outer-planet house ingresses during the calendar year.
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -267,6 +378,7 @@ export function foretellingFor(
           title: `${cap(tp)} enters your ${ordinal(h)} house`,
           when: MONTHS[m],
           body: `Its weight moves onto ${HOUSE_DOMAIN[h]}. ${TRANSIT_TEXT[tp].conjunction.split(". ")[1] || ""}`.trim(),
+          plain: `${cap(tp)}'s slow influence shifts into the part of your life about ${HOUSE_DOMAIN[h]}, and stays there for months or longer: expect a gradual change of focus in that area.`,
         });
         break; // one ingress per planet is plenty for a glimpse
       }
@@ -274,12 +386,62 @@ export function foretellingFor(
     }
   }
 
+  // --- This day ------------------------------------------------------------
+  const day: Omen[] = [];
+  const dMoonLon = moonLongitude(nowJd);
+  const dSign = ZODIAC[Math.floor(dMoonLon / 30) % 12];
+  const dHouse = houseOf(dMoonLon, chart.asc)!;
+  day.push({
+    glyphs: "☽",
+    title: `Moon in ${dSign.symbol} ${dSign.name} · your ${ordinal(dHouse)} house`,
+    when: "today",
+    body: MOON_HOUSE[dHouse].body,
+    plain: MOON_HOUSE[dHouse].plain,
+  });
+  // Fast planets exactly aspecting the natal chart today (tight 2° orb).
+  const dayHits: (Omen & { orb: number })[] = [];
+  for (const fp of ["mercury", "venus", "mars"] as const) {
+    const lon = planetLongitude(fp, nowJd);
+    for (const target of targets) {
+      for (const A of ANGLES) {
+        const orb = Math.abs(angDiff(lon, target.lon) - A.angle);
+        if (orb <= 2) {
+          const tone: Tone = A.type === "conjunction" ? "conjunction" : A.type === "square" || A.type === "opposition" ? "hard" : "harmonious";
+          dayHits.push({
+            glyphs: `${PLANET_GLYPH[fp]} ${ASPECT_GLYPH[A.type]} ${PLANET_GLYPH[target.key]}`,
+            title: `${cap(fp)} ${ASPECT_VERB[A.type]} your ${target.label}`,
+            when: "exact today",
+            body: DAY_TEXT[fp][tone].body,
+            plain: DAY_TEXT[fp][tone].plain,
+            orb,
+          });
+        }
+      }
+    }
+  }
+  dayHits.sort((a, b) => a.orb - b.orb);
+  for (const h of dayHits.slice(0, 2)) day.push({ glyphs: h.glyphs, title: h.title, when: h.when, body: h.body, plain: h.plain });
+  // Mercury walking backward today gets its own quiet line.
+  const movingToday = rev(planetLongitude("mercury", nowJd + 0.5) - planetLongitude("mercury", nowJd - 0.5));
+  if (movingToday > 180) {
+    day.push({
+      glyphs: "☿",
+      title: "Mercury retrograde",
+      when: "today",
+      body: "The messenger walks backward: reread the label, resend nothing in anger.",
+      plain: "Mercury is retrograde today: double-check plans, messages, and purchases, and allow for small delays.",
+    });
+  }
+
   return {
     moonLabel: `${fmtDay(cycleStart)} to ${fmtDay(cycleEnd)}`,
     entries,
     warning,
+    warningPlain,
     yearLabel: String(yearNum),
     year,
+    dayLabel: new Date(nowMs).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
+    day,
   };
 }
 

@@ -1,5 +1,43 @@
 # Le Council — Test Log
 
+## 2026-07-09 — the data awakens: split cloth, Reliquary, varietals + prices, the Reckoning, the Prophecy, the Unexplored — pushed
+
+**New SQL for the live DB before this deploys (all three lines, safe to run right now):**
+```sql
+alter table offerings add column if not exists price numeric;
+alter table offerings add column if not exists varietals text[] not null default '{}';
+alter table gatherings add column if not exists prophecy jsonb;
+```
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **The split cloth** (mockup B): each codex night marks its most divisive wine (bolt on the row + chip "X divided the table, 3 to 10") when the widest score gap is 5+, from sealed ballots, 3+ votes | Expand an imported night with a known schism | ✓ | [ ] |
+| 2 | **The Reliquary** (mockup C): all-time records card on the codex — Highest pour ever (plain), The great schism, Iron palate, The gentle hand (each tooltipped, 20+ scores to qualify for temper records) | Codex bottom, tooltips on tap | ✓ (temper rows correctly hidden below threshold in demo) | [ ] |
+| 3 | **Varietals + price in the codex editor** (mockup D): every wine row keeps title/owner/score/off-theme and gains a multi-grape chip picker + price field; grapes in the wine's NAME auto-select on blur (unit-tested incl. "Savignon" typo, "Cabernet Syrah" double); codex rows show them dimly (" · Cabernet Sauvignon · R450") | Pencil any night, type a wine name with a grape in it | ✓ (7/7 detection tests) | [ ] |
+| 4 | **Offering carries price + grape** (mockup E): optional R and grape fields on "your offering" (auto-detect from the name); claiming your bottle on the reveal carries them onto the row and into the annal on commit. Per Keiser: lives behind a **full-width "Log your offering"** button that unfurls a bordered box (animated open/close; title + R + grapes + Seal it + "veil it for now"); sealed state = its own box with edit/erase; the rule now sits BELOW the offering (none above), doubling as the divider before the Prophecy | Tap Log your offering, seal, reopen | ✓ (full-width measured, unfurl, seal, storage) | [ ] |
+| 4b | Prophecy refusal restyled like the verdict: dimmed emblem + "THE VINE HOLDS ITS TONGUE" eyebrow + the count in large italic, animated unfurl (was one small whisper line) | Consult before offerings are in | ✓ (screenshot) | [ ] |
+| 4d | Convene meeting card: full-bleed 2px gold rule directly below the theme (touches both card borders, kin to the member card's chalice bands) | Meeting card | ✓ (edges measured) | [ ] |
+| 4c | **The Unexplored moved into the theme-pool card** — sits above the pool, joined to it by a full-bleed gold rule (tap-a-grape still pre-fills the proposal) | Oracle once varietals exist | ✓ | [ ] |
+| 5a | Reckoning restyled per Keiser: gold-ruled section bands in one flow (the email's design), no stacked cards | Commit + view | ✓ (screenshot match) | [ ] |
+| 6 | **The Prophecy** (all-data model per Keiser): "Consult the Prophecy" at the current meeting card's tail; refuses with a live count until every RSVP'd soul has a sealed offering; then weighs bringer history + each ATTENDING taster's grape leanings + price sensitivity across the sealed offerings, names a soul, and stores the verdict on the gathering (spoken once); animated unfurl with the breathing emblem; accuracy record shown once nights accumulate; the Reckoning grades it ("The vine foresaw it" / "The vine is humbled") | Consult before/after offerings; commit a night and read the grade | ✓ (refusal count, speaking, storage, humbling all verified) | [ ] |
+| 7 | **The Unexplored** (Oracle): grapes the Council has never poured as tappable chips (tap pre-fills the theme proposal + scrolls to it) + the finest neglected grape ("Nor returned to Riesling since November 2025, though it scored 7.8"); silent until the codex knows 5+ distinct varietals | Oracle between themes and the wheel, once varietals are backfilled | ✓ (chips, prefill, neglect line) | [ ] |
+| 8 | Card: "Coin's return" renamed **"Value for coin"**, value now reads "1.9 pts per R100", label tooltip explains the arithmetic in plain words, value tooltip gives the table's rate + a verdict sentence | Card tooltip | ✓ | [ ] |
+| 5c | **Coin rows on the card** (Keiser kept B + C, dropped the blindfold): "Coin's return" (points per R100 as a bringer vs the table's rate) and "The purse" (average spend vs the table), between Palate temper and Kindred palate, tooltipped; hidden until the member has 2+ priced bottles and the table has 4+ | Open a card once prices accumulate | ✓ (values hand-verified: 1.9/R100, R423) | [ ] |
+| 5b | Codex reordered: the Reliquary sits where Disqualifications stood; DQs moved to the very bottom of the page | Codex order: metrics, Reliquary, victories, averages, past gatherings, DQs | ✓ | [ ] |
+| 5 | **The Reckoning** (mockup F): once the Keiser commits to the Annals, the reveal page BECOMES the Reckoning — the Crowning, the ranked table, the split cloth, the table's whispers (3 punchy anonymous notes from that night), the ledger (best value when 2+ prices known), photo gallery, and an "Email this to me" self-send (branded reckoningEmail; route allows own address only) | Commit a night, watch the page transform; email yourself | ✓ (full page render verified; email needs live) | [ ] |
+
+---
+
+## 2026-07-09 — Foretelling: This day + plain speech + segmented pill — pushed
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **This day**: a real daily reading — the Moon's sign + which house it crosses (12 hand-written passages), fast-planet aspects (Mercury/Venus/Mars × conj/easy/tense, 9 passages) reported only when exact today (2° orb, top 2), and a Mercury-retrograde line when active. Quiet day reads short, per the no-padding rule | Open a Foretelling: This day is the default view | ✓ (moon-in-house renders) | [ ] |
+| 2 | **Plain speech everywhere**: every passage across all three views (day, moon, year — transits, moons, retrograde, personal year, Chinese year, ingresses) now displays hand-written plain English; the Council-tongue originals remain in the data and in the emails. No toggle (Keiser's ruling: plain is the page voice) | Read any Foretelling passage | ✓ (all three views) | [ ] |
+| 3 | **Segmented pill**: This day / This moon / The year live inside one bordered pill; the active segment wears a gold background with dark text; the lunar-cycle info tip lives on the This moon segment | Tap through the three segments | ✓ (gold follows selection) | [ ] |
+
+---
+
 ## 2026-07-09 — titles, kindred rules, tooltip dismissal, card polish — pushed
 
 **New SQL for the live DB before this deploys:**

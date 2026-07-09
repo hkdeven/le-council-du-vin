@@ -1,8 +1,10 @@
 "use client";
 
 // The Foretelling: a personal reading computed from real transits against the
-// member's natal chart. Two views: this moon (new moon to new moon) and the
-// year glimpsed. Computed, never invented; the passages are written by hand.
+// member's natal chart. Three views: this day (the Moon's crossing + exact
+// fast-planet aspects), this moon (new moon to new moon), and the year
+// glimpsed. Computed, never invented; the passages are written by hand and
+// spoken plainly on the page (the emails keep the Council tongue).
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { foretellingFor, type Omen } from "@/lib/transits";
@@ -17,7 +19,7 @@ function OmenBlock({ o }: { o: Omen }) {
         <span className="eyebrow" style={{ flex: 1, fontSize: 11, lineHeight: 1.5 }}>{o.title}</span>
         <span style={{ color: "var(--faint)", fontSize: 12, whiteSpace: "nowrap" }}>{o.when}</span>
       </div>
-      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--parch)", lineHeight: 1.5 }}>{o.body}</div>
+      <div style={{ fontFamily: "'EB Garamond', serif", fontSize: 14.5, color: "var(--parch)", lineHeight: 1.55 }}>{o.plain || o.body}</div>
     </div>
   );
 }
@@ -26,7 +28,7 @@ export default function ForetellingModal({ member, onClose, onLeave, isSelf }: {
   const [shown, setShown] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
   const close = () => { setShown(false); setTimeout(onClose, 240); };
-  const [view, setView] = useState<"moon" | "year">("moon");
+  const [view, setView] = useState<"day" | "moon" | "year">("day");
   const [tipOpen, setTipOpen] = useState(false);
   const tipMe = useRef({});
   useEffect(() => {
@@ -56,29 +58,53 @@ export default function ForetellingModal({ member, onClose, onLeave, isSelf }: {
           <p className="whisper" style={{ fontSize: 13, margin: "2px 0 12px" }}>
             what the sky intends for {isSelf ? "you" : member.cult_name} · computed, never invented
           </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, margin: "0 0 16px" }}>
-            <span className={`pill${view === "moon" ? " on" : ""}`} onClick={() => setView("moon")} style={{ position: "relative" }}>
-              This moon
-              <button aria-label="More" onClick={(e) => { e.stopPropagation(); setTipOpen((o) => !o); }}
-                style={{ background: "none", border: "none", padding: 0, marginLeft: 5, cursor: "pointer", color: "var(--dim)", width: "auto", display: "inline-flex" }}>
-                <i className="ti ti-info-circle" style={{ fontSize: 11 }} />
+          {/* One segmented pill: the active view wears the gold. */}
+          <div style={{ display: "inline-flex", border: "1px solid var(--line2)", borderRadius: 18, overflow: "visible", margin: "0 0 16px", position: "relative" }}>
+            {([
+              { key: "day", label: "This day" },
+              { key: "moon", label: "This moon" },
+              { key: "year", label: "The year" },
+            ] as const).map((seg, i) => (
+              <button key={seg.key} onClick={() => setView(seg.key)}
+                style={{
+                  width: "auto", border: "none", cursor: "pointer", padding: "8px 14px",
+                  borderRadius: i === 0 ? "17px 0 0 17px" : i === 2 ? "0 17px 17px 0" : 0,
+                  borderLeft: i > 0 ? "1px solid var(--line2)" : "none",
+                  background: view === seg.key ? "var(--gold2)" : "none",
+                  color: view === seg.key ? "#0a0908" : "var(--dim)",
+                  fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase",
+                  display: "inline-flex", alignItems: "center", gap: 5, position: "relative",
+                }}>
+                {seg.label}
+                {seg.key === "moon" && (
+                  <>
+                    <span role="button" aria-label="More" onClick={(e) => { e.stopPropagation(); setTipOpen((o) => !o); }}
+                      style={{ display: "inline-flex", cursor: "pointer", color: view === "moon" ? "#0a0908" : "var(--dim)" }}>
+                      <i className="ti ti-info-circle" style={{ fontSize: 11 }} />
+                    </span>
+                    {tipOpen && (
+                      <span role="tooltip" style={{ position: "absolute", top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", zIndex: 9, width: 200, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 10px", color: "var(--parch)", fontSize: 12, lineHeight: 1.5, textAlign: "left", fontFamily: "'EB Garamond', serif", textTransform: "none", letterSpacing: "normal" }}>
+                        Read by the moon itself: the moon view runs from new moon to new moon, not the calendar month.
+                      </span>
+                    )}
+                  </>
+                )}
               </button>
-              {tipOpen && (
-                <span role="tooltip" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 9, width: 200, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 10px", color: "var(--parch)", fontSize: 12, lineHeight: 1.5, textAlign: "left", fontFamily: "'EB Garamond', serif", textTransform: "none", letterSpacing: "normal" }}>
-                  Read by the moon itself: the reading runs from new moon to new moon, not the calendar month.
-                </span>
-              )}
-            </span>
-            <span className={`pill${view === "year" ? " on" : ""}`} onClick={() => setView("year")}>The year</span>
+            ))}
           </div>
 
-          {view === "moon" ? (
+          {view === "day" ? (
+            <>
+              <p className="whisper" style={{ margin: "0 0 12px", fontSize: 13 }}>{reading.dayLabel}</p>
+              {reading.day.map((o, i) => <OmenBlock key={i} o={o} />)}
+            </>
+          ) : view === "moon" ? (
             <>
               <p className="whisper" style={{ margin: "0 0 12px", fontSize: 13 }}>{reading.moonLabel}</p>
               {reading.entries.map((o, i) => <OmenBlock key={i} o={o} />)}
               {reading.warning && (
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--wine)", color: "#c17b80", borderRadius: 14, padding: "6px 12px", fontSize: 12.5, marginBottom: 4 }}>
-                  <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} />{reading.warning}
+                  <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} />{reading.warningPlain || reading.warning}
                 </div>
               )}
             </>
@@ -91,7 +117,7 @@ export default function ForetellingModal({ member, onClose, onLeave, isSelf }: {
 
           <p className="whisper" style={{ margin: "8px 0 0", fontSize: 12 }}>the vine calculates, it does not flatter</p>
           <Methodology title="How this reading is made">
-            The positions of the planets for the month and year ahead are computed by the same astronomical engine as the natal chart, then compared against this chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council&apos;s voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet.
+            The positions of the planets for the day, the month, and the year ahead are computed by the same astronomical engine as the natal chart, then compared against this chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council&apos;s voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet.
           </Methodology>
         </>
       )}

@@ -58,9 +58,9 @@ export async function fetchAllBallots(gatheringId: string): Promise<MemberBallot
   if (gatheringsLive()) {
     const { data } = await supabase!
       .from("ballots")
-      .select("member_id,scores,sealed")
+      .select("member_id,scores,sealed,notes")
       .eq("gathering_id", gatheringId);
-    return (data || []).map((r) => ({ memberId: r.member_id as string, scores: (r.scores as Record<number, number>) || {}, sealed: !!r.sealed }));
+    return (data || []).map((r) => ({ memberId: r.member_id as string, scores: (r.scores as Record<number, number>) || {}, sealed: !!r.sealed, notes: (r.notes as Record<number, string>) || {} }));
   }
   if (typeof window === "undefined") return [];
   const prefix = `lcv_ballot_${gatheringId}_`;
@@ -70,7 +70,7 @@ export async function fetchAllBallots(gatheringId: string): Promise<MemberBallot
       const k = localStorage.key(i);
       if (k?.startsWith(prefix)) {
         const b = JSON.parse(localStorage.getItem(k) || "{}") as Ballot;
-        out.push({ memberId: k.slice(prefix.length), scores: b.scores || {}, sealed: !!b.sealed });
+        out.push({ memberId: k.slice(prefix.length), scores: b.scores || {}, sealed: !!b.sealed, notes: b.notes || {} });
       }
     }
   } catch {}
