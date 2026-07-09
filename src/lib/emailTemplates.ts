@@ -69,6 +69,12 @@ function button(href: string, label: string): string {
     <a href="${href}" style="display:inline-block;background-color:#cbbd93;color:#0a0908;font-family:${HEAD_FONT};font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:13px 30px;border-radius:8px;">${label}</a>
   </td></tr></table>`;
 }
+// A full-width horizontal rule. Table-based so Outlook draws it too.
+function rule(): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;"><tr>
+    <td height="1" style="border-top:1px solid #3a3327;font-size:0;line-height:0;">&nbsp;</td>
+  </tr></table>`;
+}
 function detailRow(label: string, value: string): string {
   return `<tr>
     <td style="padding:6px 0;color:#6f6653;font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;vertical-align:top;">${label}</td>
@@ -217,7 +223,7 @@ export function natalChartEmail(np: NatalEmailParams): Email {
       moons() +
       heading("Your Natal Chart") +
       p(`${np.name || "Member of the Council"}, this is the sky at your first breath${np.birthLine ? `: ${np.birthLine}` : ""}. Keep it close; it does not change.`) +
-      (np.wheelUrl ? `<img src="${np.wheelUrl}" alt="Your natal wheel" width="310" style="display:block;margin:4px auto 16px;width:310px;max-width:100%;height:auto;">` : "") +
+      (np.wheelUrl ? rule() + `<img src="${np.wheelUrl}" alt="Your natal wheel" width="310" style="display:block;margin:4px auto 16px;width:310px;max-width:100%;height:auto;">` : "") +
       big3 +
       rows +
       p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">Whole-sign houses, computed from the true sky. Nothing here is guessed.</span>`) +
