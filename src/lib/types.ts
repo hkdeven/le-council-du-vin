@@ -6,6 +6,7 @@ export interface Member {
   cult_name: string;
   short_name: string;
   role: Role;
+  title?: string | null; // optional honorific, shown on the card in place of the moon phase
   zodiac?: string | null;
   element?: string | null;
   date_of_birth?: string | null;

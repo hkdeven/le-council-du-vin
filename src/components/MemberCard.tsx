@@ -21,6 +21,7 @@ export interface CardMember {
   short_name?: string | null;
   avatar_url?: string | null;
   role?: string | null;
+  title?: string | null; // optional honorific; shown in place of the moon phase
   date_of_birth?: string | null;
   time_of_birth?: string | null;
   birth_place?: string | null;
@@ -45,6 +46,7 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 function Tip({ text, align = "right" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const tipRef = useRef<HTMLSpanElement>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
   // Only one tooltip open anywhere: opening one announces itself and every
   // other tooltip closes (they used to pile up until closed by hand).
   const me = useRef({});
@@ -54,8 +56,16 @@ function Tip({ text, align = "right" }: { text: string; align?: "left" | "right"
     const onOther = (e: Event) => {
       if ((e as CustomEvent).detail !== me.current) setOpen(false);
     };
+    // Any tap outside the tip (not just on another tip) dismisses it.
+    const onDoc = (e: Event) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener("lcv-tip-open", onOther);
-    return () => window.removeEventListener("lcv-tip-open", onOther);
+    document.addEventListener("pointerdown", onDoc, true);
+    return () => {
+      window.removeEventListener("lcv-tip-open", onOther);
+      document.removeEventListener("pointerdown", onDoc, true);
+    };
   }, [open]);
   // Hover-open only where hover exists. On touch, mouseenter fires WITH the
   // tap and the click-toggle then closed it again — the "tooltips don't open"
@@ -75,7 +85,7 @@ function Tip({ text, align = "right" }: { text: string; align?: "left" | "right"
     if (dx) el.style.transform = `translateX(${dx}px)`;
   }, [open]);
   return (
-    <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
+    <span ref={wrapRef} style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
       <button type="button" aria-label="More" onClick={() => setOpen((o) => !o)}
         onMouseEnter={hoverable ? () => setOpen(true) : undefined}
         onMouseLeave={hoverable ? () => setOpen(false) : undefined}
@@ -94,7 +104,7 @@ function Tip({ text, align = "right" }: { text: string; align?: "left" | "right"
 function Row({ label, tip, value, valueTip }: { label: string; tip: string; value: string; valueTip?: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "5px 0" }}>
-      <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center" }}>{label}<Tip text={tip} align="left" /></span>
+      <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", fontSize: 10 }}>{label}<Tip text={tip} align="left" /></span>
       <span style={{ display: "inline-flex", alignItems: "center", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 16 }}>{value}{valueTip && <Tip text={valueTip} />}</span>
     </div>
   );
@@ -171,11 +181,15 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
           )}
         </div>
         <div className="disp" style={{ fontSize: 19 }}>{member.cult_name}</div>
-        {phase && (
+        {member.title ? (
+          <div style={{ marginTop: 3, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold)" }}>
+            {member.title}
+          </div>
+        ) : phase ? (
           <div style={{ marginTop: 3, display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold)" }}>
             {phase}<Tip text="Moon phase at birth" />
           </div>
-        )}
+        ) : null}
         {member.role && <div style={{ marginTop: 4 }}><span className="tag">{member.role}</span></div>}
 
         <div style={{ borderTop: "1px solid var(--line)", margin: "16px 0 6px" }} />
@@ -197,7 +211,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
           <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made {isSelf ? "you" : "them"} are unrecorded.</p>
         )}
 
-        <MoonRow />
+        <div style={{ borderTop: "2px solid var(--gold)", margin: "26px -20px" }} />
 
         <div className="disp" style={{ fontSize: 15 }}>The Palate Dossier</div>
         <p className="whisper" style={{ fontSize: 13, margin: "2px 0 18px" }}>what the vine has learned of {isSelf ? "you" : "them"}</p>

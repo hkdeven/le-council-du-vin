@@ -36,6 +36,7 @@ const ROLES: Role[] = ["initiate", "member", "keiser"];
 function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const tipRef = useRef<HTMLSpanElement>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
   // Only one tooltip open anywhere (shared signal with the card's tooltips).
   const me = useRef({});
   useEffect(() => {
@@ -44,8 +45,16 @@ function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "rig
     const onOther = (e: Event) => {
       if ((e as CustomEvent).detail !== me.current) setOpen(false);
     };
+    // Any tap outside the tip (not just on another tip) dismisses it.
+    const onDoc = (e: Event) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener("lcv-tip-open", onOther);
-    return () => window.removeEventListener("lcv-tip-open", onOther);
+    document.addEventListener("pointerdown", onDoc, true);
+    return () => {
+      window.removeEventListener("lcv-tip-open", onOther);
+      document.removeEventListener("pointerdown", onDoc, true);
+    };
   }, [open]);
   // Keep the tooltip on-screen: measure once shown and nudge it back inside
   // the viewport, so tips near either edge never bleed off on mobile.
@@ -64,7 +73,7 @@ function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "rig
   // fought the click-toggle and tooltips appeared not to open at all.
   const hoverable = typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
   return (
-    <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
+    <span ref={wrapRef} style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
       <button
         type="button"
         aria-label="More"
@@ -254,6 +263,10 @@ function RosterEditor() {
                   <label className="field" style={{ marginTop: 0 }}>Cult name</label>
                   <input value={m.cult_name} onChange={(e) => edit(m.id, { cult_name: e.target.value })} />
                 </div>
+                <div>
+                  <label className="field" style={{ marginTop: 0 }}>Title</label>
+                  <input value={m.title || ""} onChange={(e) => edit(m.id, { title: e.target.value.slice(0, 60) || null })} placeholder="Optional honorific" />
+                </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: "1 1 60%" }}>
                     <label className="field" style={{ marginTop: 0 }}>Email</label>
@@ -440,6 +453,7 @@ export default function Profile() {
   const [placeHits, setPlaceHits] = useState<GeoHit[] | null>(null); // null = not searched
   const [seeking, setSeeking] = useState(false);
   const [venue, setVenue] = useState("");
+  const [title, setTitle] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [rawFile, setRawFile] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -457,6 +471,7 @@ export default function Profile() {
       lat: self?.birth_lat ?? null,
       lon: self?.birth_lon ?? null,
       venue: self?.venue_instructions || "",
+      title: self?.title || "",
       avatar: (self?.avatar_url as string | null) || null,
     };
     // Live: the Supabase member row is the source of truth. Demo: local storage.
@@ -476,6 +491,7 @@ export default function Profile() {
     setPlaceLon(base.lon);
     setPlaceHits(null);
     setVenue(base.venue);
+    setTitle(base.title);
     setAvatar(base.avatar);
     setSaved(false);
     setEditingName(false);
@@ -531,6 +547,7 @@ export default function Profile() {
       }
       const { error } = await supabase.from("members").update({
         cult_name: name,
+        title: title.trim() || null,
         date_of_birth: dob || null,
         time_of_birth: tob || null,
         birth_place: place || null,
@@ -545,7 +562,7 @@ export default function Profile() {
       if (error) { alert(`Could not save your profile: ${error.message}`); return; }
     } else {
       try {
-        localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, tz, place, lat: placeLat, lon: placeLon, venue, avatar }));
+        localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, tz, place, lat: placeLat, lon: placeLon, venue, title, avatar }));
       } catch {}
     }
     window.dispatchEvent(new CustomEvent("lcv-profile", { detail: { avatar } }));
@@ -608,6 +625,15 @@ export default function Profile() {
             <div style={{ marginTop: 5 }}><span className="tag">{role}</span></div>
           </div>
         </div>
+        <label className="field" style={{ marginTop: 12 }}>Title</label>
+        <input
+          value={title}
+          onChange={(e) => { setTitle(e.target.value.slice(0, 60)); touch(); }}
+          placeholder="Warden of the Western Cellars… (optional)"
+        />
+        <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
+          Neither as long as a bio nor as short as a salutation. Worn on your card in place of the moon phase.
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>

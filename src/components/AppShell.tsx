@@ -120,13 +120,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-        <Link href="/" aria-label="The gate" style={{ display: "flex", flex: "none" }}>
+        <Link href="/convene" aria-label="The convening" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "inherit", flex: "none" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/site-mark.png" alt="" width={34} height={34} style={{ display: "block" }} />
+          <span className="disp" style={{ fontSize: 14, letterSpacing: "0.12em", whiteSpace: "nowrap" }}>
+            Le Council du Vin
+          </span>
         </Link>
-        <div className="disp" style={{ fontSize: 14, letterSpacing: "0.12em", whiteSpace: "nowrap" }}>
-          Le Council du Vin
-        </div>
 
         <Link
           href="/profile"

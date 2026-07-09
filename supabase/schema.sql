@@ -141,6 +141,7 @@ alter table members add column if not exists birth_place text;
 alter table members add column if not exists birth_lat double precision;
 alter table members add column if not exists birth_lon double precision;
 alter table members add column if not exists birth_tz text;
+alter table members add column if not exists title text; -- optional honorific, shown on the card in place of the moon phase
 
 create table if not exists application_votes (
   id uuid primary key default gen_random_uuid(),

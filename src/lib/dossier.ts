@@ -26,7 +26,7 @@ export interface DossierStats {
 
 export interface DossierInputs {
   member: Pick<Member, "id" | "cult_name"> & { last_hosted?: string | null };
-  members: Pick<Member, "id" | "cult_name">[];
+  members: (Pick<Member, "id" | "cult_name"> & Partial<Pick<Member, "role" | "active">>)[];
   gatherings: Gathering[];
   annals: AnnalEntry[];
   ballots: HistoryBallot[];
@@ -92,11 +92,14 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   }
 
   // Kindred palate: whose scores track theirs closest across shared wines.
+  // Only living, full members qualify as kindred — imported departed souls
+  // and initiates share history but not standing.
   let kindred: string | null = null;
   let bestScore = -2;
   const mineByGathering = new Map(mine.map((b) => [b.gatheringId, b.scores]));
   for (const other of members) {
     if (other.id === member.id) continue;
+    if (other.active === false || other.role === "initiate") continue;
     const xs: number[] = [], ys: number[] = [];
     for (const b of sealed) {
       if (b.memberId !== other.id) continue;
@@ -173,7 +176,7 @@ export async function dossierFor(member: { id: string; cult_name: string; last_h
   const [gatherings, annals, dq] = await Promise.all([fetchGatherings(), fetchAnnals(), fetchDqCounts()]);
   let members: Pick<Member, "id" | "cult_name">[];
   if (gatheringsLive()) {
-    const { data } = await supabase!.from("members").select("id,cult_name,last_hosted");
+    const { data } = await supabase!.from("members").select("id,cult_name,last_hosted,role,active");
     members = (data as Member[]) || [];
   } else {
     members = loadMembers();

@@ -1,5 +1,23 @@
 # Le Council — Test Log
 
+## 2026-07-09 — titles, kindred rules, tooltip dismissal, card polish — pushed
+
+**New SQL for the live DB before this deploys:**
+```sql
+alter table members add column if not exists title text;
+```
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Kindred palate only names living FULL members — initiates and inactive/departed souls no longer qualify (their imported ballots still feed everyone's stats) | A card whose kindred was a departed soul now names a member | ✓ (filter + types) | [ ] |
+| 2 | **Member titles** (the first feature-request wish granted): optional 60-char honorific on the profile ("Neither as long as a bio nor as short as a salutation"), Keiser can also set it per member in the roster editor; shown on the card in place of the moon-phase line (no title → moon phase as before) | Set a title, open your card | ✓ (input + card swap) | [ ] |
+| 3 | Tooltips dismiss on ANY tap outside them (was: only when another tooltip opened) — card tips + profile tips | Open a ⓘ on the phone, tap anywhere | ✓ (pointerdown probe) | [ ] |
+| 4 | Card derived-value labels (Element … Birth arcana) at 10px | Any card with birth data | ✓ (style) | [ ] |
+| 5 | Card: solid full-bleed 2px gold rule above The Palate Dossier (was moon icons), 26px breathing room above and below | Any card | ✓ (2px + 26px measured) | [ ] |
+| 6 | Header mark + "Le Council du Vin" link to Convene | Tap the logo | ✓ | [ ] |
+
+---
+
 ## 2026-07-08 (late) — speed batch: caches, portrait storage, loading states, UX fixes — pushed 68b6455
 
 | # | Change | How to verify live | Demo | Live |
