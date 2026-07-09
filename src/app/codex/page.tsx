@@ -463,9 +463,13 @@ export default function Codex() {
     await refresh();
   };
 
+  // Gathering first, and loudly: if the live DB refuses the delete (e.g. a
+  // missing policy), the error surfaces in the editor's alert BEFORE the annal
+  // is touched — a silently surviving gathering would keep resurfacing (it was
+  // exactly what left an erased night haunting the convene page).
   const eraseGathering = async (gatheringId: string) => {
+    if (gatherings.some((g) => g.id === gatheringId)) await deleteGathering(gatheringId);
     await deleteAnnal(gatheringId);
-    if (gatherings.some((g) => g.id === gatheringId)) await deleteGathering(gatheringId).catch(() => {});
     await refresh();
   };
 
