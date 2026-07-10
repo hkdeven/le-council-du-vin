@@ -1,12 +1,27 @@
 # Le Council — Test Log
 
-## 2026-07-09 (night) — oracle fixes, wide grape ledger, the Vedic engine — NOT yet pushed
+## 2026-07-09 (night) — oracle fixes, wide grape ledger, the Vedic engine — pushed
 
 | # | Change | How to verify live | Demo | Live |
 |---|--------|--------------------|------|------|
 | 1 | Oracle refetches on tab focus/visibility (backfilling in the codex then returning now updates the Unexplored) + loading spinner ("Consulting the oracle…") until themes/polls/annals land | Backfill grapes, switch back to the Oracle | ✓ (mount path; focus listener wired) | [ ] |
 | 2 | Grape ledger widened to 177 entries (obscure varietals, Cape locals, 12 blend/style categories incl. Cape Blend, GSM, Sparkling/MCC, Orange); 22 detection tests pass; **NEVER_SUGGEST decree**: Hanepoot + all dessert pours banned from every suggestion surface; Unexplored draws from a curated 42-entry NOTABLE list | Unexplored chips read like real theme nights, never dessert | ✓ | [ ] |
-| 3 | **The Vedic engine** (src/lib/vedic.ts, no libraries): Lahiri ayanamsa (verified vs published 1950/2000/2026 values), mean-node Rahu/Ketu (Meeus), sidereal chart on the verified tropical engine, whole-sign houses from the Lagna, 27 nakshatras + padas, Navamsa D9 (proven equal to the classical movable/fixed/dual rule across all 108 padas), Vimshottari maha+antar dashas with dates (hand-computed worked example + tiling invariants). **scripts/verify-vedic.ts: 24/24.** UI + interpretation passages: next turn, pending Keiser's placement pick | Run npx tsx scripts/verify-vedic.ts | ✓ 24/24 | n/a (engine) |
+| 3 | **The Vedic engine** (src/lib/vedic.ts, no libraries): Lahiri ayanamsa (verified vs published 1950/2000/2026 values), mean-node Rahu/Ketu (Meeus), sidereal chart on the verified tropical engine, whole-sign houses from the Lagna, 27 nakshatras + padas, Navamsa D9 (proven equal to the classical movable/fixed/dual rule across all 108 padas), Vimshottari maha+antar dashas with dates (hand-computed worked example + tiling invariants). **scripts/verify-vedic.ts: 24/24.** UI + interpretation passages: next batch, designs approved | Run npx tsx scripts/verify-vedic.ts | ✓ 24/24 | n/a (engine) |
+
+---
+
+## 2026-07-09 — convene never shows the past; codex owner dropdown; unscored/DQ history — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **Convene never shows a past event.** The top card only ever shows a night that is today-or-later AND unrevealed; when none exists it reads "The table is bare" (with the summon form right below for the Keiser). Previously, once every gathering had passed, the most recent OLD night was displayed as "This moon's theme" (Enter-the-rite button and all) — which also made a fresh summon look broken. The reveal/rite/reckoning pages keep their fallback to the most recent night (they need it after the night ends) | Convene with no future gathering: bare table, no old event; summon one: it appears as the current card immediately | ✓ (repro'd the old event showing, then the fix, in a scripted browser run) | [ ] |
+| 2 | Summon hardening: in live mode the member list starts empty until the real roster loads (the demo seed ids like "m-larissa" could otherwise be picked as host and make the insert fail with an invalid-uuid error); every convene mutation (summon, edit, cancel, RSVP) now also updates the local snapshot so navigating away and back never repaints the pre-edit list | Summon on live; also summon, go to codex, come back — the new night is still there instantly | ✓ | [ ] |
+| 3 | **Codex: "Brought by" is a dropdown**, not free text — Unclaimed / the roster / the row's existing imported name (departed souls stay selectable) / "Another name…" (prompts for a name, for departed members and guests) | Amend a night: the owner field is a select; pick a member; use Another name… | ✓ (screenshot; prompt name persisted + fed the DQ ledger) | [ ] |
+| 4 | **Past nights can be recorded with no wine names and/or no scores.** An empty score now means "never judged": the codex shows "—" (was 0.0), the row is unranked, and it no longer drags down theme averages, the Reliquary, Finest Pours, or the Prophecy's history. Re-editing keeps the score field empty instead of turning it into a real 0. Unnamed wines show as "Bottle II" etc. and stay claimable | Record a past gathering, leave a wine's name/score empty, seal; row shows — and averages ignore it; re-open the editor: score still blank | ✓ (scripted run: annal rows stored votes:0, averages stayed 8.5) | [ ] |
+| 5 | **DQs in past events**: tick "off theme · DQ" (relabelled from "off theme") on any wine row in the codex editor — works with or without a score/name; the owner picked in the dropdown lands in the Disqualifications ledger at the codex foot | Record/amend a night, tick DQ on a row with an owner: ✕ + "disqualified" on the row, ledger counts it | ✓ (ledger showed the DQ'd owner) | [ ] |
+| 6 | **Erasing a night from the codex can no longer half-fail silently.** It deletes the gathering FIRST and surfaces any refusal in the alert (was: annal deleted, gathering delete error swallowed — a live policy refusal would leave the "erased" night lingering to resurface on convene, which is exactly how the test tasting haunted the page) | Erase a test night as Keiser: it vanishes from codex AND never reappears on convene; if the DB refuses you now SEE the error | ✓ (scripted erase: annal + gathering both gone) | [ ] |
 
 ---
 

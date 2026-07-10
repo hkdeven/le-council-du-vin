@@ -62,7 +62,8 @@ export function computeDossier(inp: DossierInputs): DossierStats {
     for (const r of a.rows) {
       if (r.owner !== member.cult_name) continue;
       if (r.rank === 1 && !r.dq) bottlesCrowned++;
-      if (!r.dq) {
+      // votes 0 = a night recorded without scores; not a pour to rank.
+      if (!r.dq && r.votes > 0) {
         pours.push({
           title: r.title || `Cloth ${r.cloth}`,
           score: r.score,

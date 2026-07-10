@@ -107,11 +107,36 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
     );
   };
 
+  // Who brought a wine: a dropdown of the roster, not free text. Imported
+  // history may credit souls no longer on the roster (departed members,
+  // guests) — their names stay selectable, and "Another name…" lets the
+  // Keiser credit a new one.
+  const ownerSelect = (i: number, r: DraftRow) => {
+    const onRoster = members.some((m) => m.cult_name === r.owner);
+    return (
+      <select
+        value={r.owner}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "__other") {
+            const name = window.prompt("Name the soul who brought it (a departed member or a guest):");
+            if (name?.trim()) setRow(i, { owner: name.trim() });
+            return;
+          }
+          setRow(i, { owner: v });
+        }}
+        style={{ flex: 1, colorScheme: "dark" }}
+      >
+        <option value="">Unclaimed</option>
+        {!onRoster && r.owner && <option value={r.owner}>{r.owner}</option>}
+        {members.map((m) => <option key={m.id} value={m.cult_name}>{m.cult_name}</option>)}
+        <option value="__other">Another name…</option>
+      </select>
+    );
+  };
+
   return (
     <div style={{ marginTop: 8, paddingLeft: 24 }}>
-      <datalist id="codex-souls">
-        {members.map((m) => <option key={m.id} value={m.cult_name} />)}
-      </datalist>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 60%" }}>
           <label className="field" style={{ marginTop: 0 }}>Theme</label>
@@ -143,7 +168,7 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
             <span style={{ flex: 1 }} />
             <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: r.dq ? "var(--wine)" : "var(--dim)", cursor: "pointer" }}>
               <input type="checkbox" checked={r.dq} onChange={(e) => setRow(i, { dq: e.target.checked })} style={{ width: "auto" }} />
-              off theme
+              off theme · DQ
             </label>
             <button onClick={() => dropRow(i)} aria-label="Remove wine" style={{ width: "auto", background: "none", border: "none", color: "var(--wine)", cursor: "pointer", padding: 2 }}>
               <i className="ti ti-trash" style={{ fontSize: 14 }} />
@@ -153,7 +178,7 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
             onBlur={() => { const hits = detectVarietals(r.title); if (hits.length) setRow(i, { varietals: [...new Set([...r.varietals, ...hits])] }); }}
             placeholder="The wine…" style={{ marginBottom: 6 }} />
           <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-            <input list="codex-souls" value={r.owner} onChange={(e) => setRow(i, { owner: e.target.value })} placeholder="Brought by…" style={{ flex: 1 }} />
+            {ownerSelect(i, r)}
             <input type="number" step="0.1" min="0" max="10" value={r.score} onChange={(e) => setRow(i, { score: e.target.value })} placeholder="Score" style={{ width: 84 }} />
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -408,7 +433,10 @@ export default function Codex() {
       title: r.title.trim(),
       owner: r.owner.trim(),
       score: r.score === "" ? 0 : Number(r.score),
-      votes: r.votes || 1,
+      // An empty score means "never judged", not zero: votes drop to 0 so the
+      // codex shows "—" and averages/records skip the row (a votes:1 zero
+      // would read as a real 0.0 and drag every statistic down).
+      votes: r.score === "" ? 0 : r.votes || 1,
       dq: r.dq,
       rank: r.dq || r.score === "" ? null : 1 + scored.filter((s) => s > Number(r.score)).length,
       varietals: r.varietals.length ? r.varietals : undefined,
@@ -435,9 +463,13 @@ export default function Codex() {
     await refresh();
   };
 
+  // Gathering first, and loudly: if the live DB refuses the delete (e.g. a
+  // missing policy), the error surfaces in the editor's alert BEFORE the annal
+  // is touched — a silently surviving gathering would keep resurfacing (it was
+  // exactly what left an erased night haunting the convene page).
   const eraseGathering = async (gatheringId: string) => {
+    if (gatherings.some((g) => g.id === gatheringId)) await deleteGathering(gatheringId);
     await deleteAnnal(gatheringId);
-    if (gatherings.some((g) => g.id === gatheringId)) await deleteGathering(gatheringId).catch(() => {});
     await refresh();
   };
 
