@@ -108,5 +108,6 @@ export interface Application {
   birth_lat?: number | null;
   birth_lon?: number | null;
   birth_tz?: string | null;
-  tally?: { anoint: number; cast_out: number; abstain: number };
+  tally?: { anoint: number; cast_out: number; abstain: number }; // legacy seed tallies
+  votes?: Record<string, "anoint" | "cast_out" | "abstain">; // member id -> counsel; kept forever
 }

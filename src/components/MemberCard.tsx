@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { sunSign, moonSign, ascendant, shengxiao, wuXing, venusSign, moonPhase, dayMaster, lifePath, birthArcana, VENUS_IN } from "@/lib/astrology";
+import { sunSign, moonSign, ascendant, shengxiao, wuXing, venusSign, moonPhase, dayMaster, lifePath, birthArcana, tzolkin, VENUS_IN } from "@/lib/astrology";
 import { fetchAnnals, championsOf } from "@/lib/annals";
 import { dossierFor, type DossierStats } from "@/lib/dossier";
 import { useAuth } from "./AuthProvider";
@@ -40,6 +40,7 @@ const DM_TIP = "The Bazi day-master: the element of the day of birth in the Chin
 const LP_TIP = "Numerology: the whole birth date reduced to its ruling number.";
 const VENUS_TIP = "Venus, the planet of taste, pleasure, and desire: how they savour.";
 const ARC_TIP = "The tarot birth card: the Major Arcana card hidden in the digits of the birth date. It names the archetype a soul carries for life, the lesson and power that keep returning.";
+const TZ_TIP = "The Tzolk'in, the Maya sacred round of 260 days: thirteen tones crossed with twenty day signs. The day sign names the face a soul wears; the tone, its rhythm.";
 
 const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
@@ -73,6 +74,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   const dm = dob ? dayMaster(dob) : null;
   const lp = dob ? lifePath(dob) : null;
   const arc = dob ? birthArcana(dob) : null;
+  const daySign = dob ? tzolkin(dob) : null;
 
   // The Palate Dossier: derived from real ballots + annals (needs an id).
   const [dossier, setDossier] = useState<DossierStats | null>(null);
@@ -179,6 +181,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             <Row label="Life path" tip={LP_TIP} value={lp ? String(lp.number) : "—"} valueTip={lp?.meaning} />
             <Row label="Venus sign" tip={VENUS_TIP} value={venus ? `${venus.symbol} ${venus.name}` : "—"} valueTip={venus ? VENUS_IN[venus.name] : undefined} />
             <Row label="Birth arcana" tip={ARC_TIP} value={arc ? arc.name : "—"} valueTip={arc?.meaning} />
+            <Row label="Day sign" tip={TZ_TIP} value={daySign ? `${daySign.tone} ${daySign.sign}` : "—"} valueTip={daySign ? `${daySign.meaning} ${daySign.toneMeaning}` : undefined} />
           </div>
         ) : (
           <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made {isSelf ? "you" : "them"} are unrecorded.</p>

@@ -29,11 +29,13 @@ export interface AnnalEntry {
 
 // Who truly took a night. The crowned are rank 1 and never disqualified;
 // when a scored night's first place fell to disqualification, the best
-// surviving score is promoted; and a night recorded WITHOUT scores still
-// crowns when the cloths fell on disqualifications: if exactly one wine
-// survives the DQs, it takes the night. Every surface that counts victories
-// (codex crownings, chalices, the dossier, the prophecy's grade) must go
-// through this, so a disqualified first place is never credited anywhere.
+// surviving score is promoted. A night recorded WITHOUT scores follows the
+// Keiser's convention: the CLOTH ORDER carries the standing, so the
+// qualified wine with the lowest cloth takes the crown (phantom rows, with
+// no owner and no title, are recording debris and never contend). Every
+// surface that counts victories (codex crownings, chalices, the dossier,
+// the prophecy's grade) must go through this, so a disqualified first
+// place is never credited anywhere.
 export function championsOf(a: AnnalEntry): AnnalRow[] {
   const crowned = a.rows.filter((r) => r.rank === 1 && !r.dq);
   if (crowned.length) return crowned;
@@ -44,11 +46,10 @@ export function championsOf(a: AnnalEntry): AnnalRow[] {
     const top = Math.max(...scored.map((r) => r.score));
     return scored.filter((r) => r.score === top);
   }
-  // Phantom rows (no owner, no title, never judged) are recording debris,
-  // not contenders; they must not block the sole survivor's crown.
-  const substantial = qualified.filter((r) => r.owner || r.title || r.votes > 0);
-  if (substantial.length === 1 && a.rows.some((r) => r.dq)) return substantial;
-  return [];
+  const substantial = qualified.filter((r) => r.owner || r.title);
+  if (!substantial.length) return [];
+  const first = substantial.reduce((a2, b) => (b.cloth < a2.cloth ? b : a2));
+  return [first];
 }
 
 const ANNALS_KEY = "lcv_annals";

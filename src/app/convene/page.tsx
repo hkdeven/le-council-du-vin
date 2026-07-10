@@ -369,7 +369,7 @@ function MeetingBody({
             <div className="disp" style={{ fontSize: 20, margin: "8px 0 4px" }}>{m.theme_title}</div>
             {m.theme_description && <p className="whisper" style={{ margin: 0, fontSize: 15 }}>{m.theme_description}</p>}
             {/* full-bleed rule under the theme, kin to the member card's bands */}
-            <div style={{ borderTop: "2px solid var(--gold)", margin: "14px -16px" }} />
+            <div style={{ borderTop: "1px solid var(--gold)", margin: "14px -16px" }} />
             {showRite && (
               <Link href="/rite" className="btn gold" style={{ display: "block", textDecoration: "none", fontSize: 16, textAlign: "center", margin: "16px 0 4px" }}>
                 Enter the rite

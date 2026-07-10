@@ -496,7 +496,9 @@ export default function Codex() {
   const dqMax = Math.max(DQ_THRESHOLD, ...dqList.map(([, n]) => n));
 
   // Everything below is derived from committed reckonings only.
-  const bottlesJudged = annals.reduce((n, a) => n + a.rows.length, 0);
+  // A bottle counts as judged when it was scored or cast out; a night
+  // recorded without scores poured bottles that were never judged.
+  const bottlesJudged = annals.reduce((n, a) => n + a.rows.filter((r) => r.votes > 0 || r.dq).length, 0);
   const victories: Record<string, number> = {};
   for (const a of annals) {
     // Co-champions each count as a victory.

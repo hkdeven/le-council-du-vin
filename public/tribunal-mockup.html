@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the tribunal, opened</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:420px;margin:0 auto;padding:26px 16px 70px;display:flex;flex-direction:column;gap:12px;}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:6px 0 0;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:0 0 6px;line-height:1.5;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:11px;color:var(--gold2);margin:26px 0 2px;text-align:center;}
+  .page{background:#0a0908;border:1px solid var(--line);border-radius:14px;padding:18px 16px 20px;}
+  .modal{background:linear-gradient(180deg,#12100e,#0a0908);border:1px solid var(--gold);border-radius:14px;box-shadow:0 0 0 1px rgba(0,0,0,0.6),0 20px 60px rgba(0,0,0,0.7);padding:22px 18px 24px;text-align:center;}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  .disp{font-family:"Cinzel",serif;color:var(--parch);}
+  .body{font-size:15px;line-height:1.58;text-align:left;color:var(--bright);margin:0 0 10px;}
+  .moons{display:flex;justify-content:center;gap:11px;color:var(--gold);opacity:0.55;font-size:14px;margin:14px 0 10px;}
+  .i{color:var(--dim);font-size:12px;}
+  .av{width:42px;height:42px;border-radius:50%;border:1px solid var(--gold);display:inline-flex;align-items:center;justify-content:center;font-family:"Cinzel",serif;font-size:14px;color:var(--gold2);background:#0d0b0a;flex:none;}
+  .rowk{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);text-align:left;}
+  .tag{font-family:"Cinzel",serif;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;border:1px solid var(--line2);border-radius:10px;padding:3px 9px;color:var(--gold2);}
+  .tag.out{color:#c17b80;border-color:var(--wine);}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:1px solid var(--line2);border-radius:10px;color:var(--parch);font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.08em;padding:11px 0;cursor:default;}
+  .btn.gold{background:var(--gold2);color:#0a0908;border-color:var(--gold2);font-weight:600;}
+  .btn.danger{color:#c17b80;border-color:var(--wine);}
+  .qa{text-align:left;background:#0d0b0a;border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px;}
+  .qa .q{font-family:"Cinzel",serif;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:3px;}
+  .qa .a{font-size:14.5px;color:var(--parch);line-height:1.5;}
+  .tally{display:flex;gap:12px;margin:12px 0;padding:11px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .tally .t{flex:1;}
+  .tally .n{font-family:"Cinzel",serif;font-size:19px;}
+  /* the turn of the card */
+  .scene{perspective:1500px;}
+  .card3d{position:relative;transform-style:preserve-3d;transition:transform 0.65s cubic-bezier(0.4,0.1,0.2,1),height 0.4s ease;}
+  .card3d .face{position:absolute;top:0;left:0;width:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+  .card3d .back{transform:rotateY(180deg);}
+  .card3d.flipped{transform:rotateY(180deg);}
+  .card3d.flipped .front{pointer-events:none;}
+  .card3d:not(.flipped) .back{pointer-events:none;}
+  @keyframes augury-pop{0%,100%{box-shadow:0 0 0 0 rgba(203,189,147,0.0);transform:scale(1);}50%{box-shadow:0 0 18px 2px rgba(203,189,147,0.35);transform:scale(1.02);}}
+  .augury{animation:augury-pop 2.6s ease-in-out infinite;background:var(--gold2);color:#0a0908;border-color:var(--gold2);font-weight:600;cursor:pointer;}
+  .aug-shimmer{background:var(--gold2);color:#0a0908;border-color:var(--gold2);font-weight:600;position:relative;overflow:hidden;cursor:pointer;}
+  .aug-shimmer::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent);animation:aug-sweep 3s ease-in-out infinite;}
+  @keyframes aug-sweep{0%,55%{left:-60%;}85%,100%{left:120%;}}
+  .aug-ember{background:none;color:var(--gold2);border-color:var(--line2);font-weight:600;cursor:pointer;animation:aug-ignite 3.4s ease-in-out infinite;}
+  @keyframes aug-ignite{0%,100%{border-color:var(--line2);box-shadow:none;color:var(--gold);}50%{border-color:var(--gold2);box-shadow:0 0 16px 1px rgba(203,189,147,0.3),inset 0 0 10px rgba(203,189,147,0.12);color:var(--gold2);}}
+  .aug-ring{background:var(--gold2);color:#0a0908;border-color:var(--gold2);font-weight:600;position:relative;cursor:pointer;}
+  .aug-ring::before{content:"";position:absolute;inset:-1px;border-radius:10px;border:1px solid rgba(203,189,147,0.9);animation:aug-bell 3.2s ease-out infinite;}
+  @keyframes aug-bell{0%,60%{transform:scale(1);opacity:0.9;}100%{transform:scale(1.18,1.7);opacity:0;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The tribunal, opened to the Council</h1>
+  <p class="note">Every member sees the tribunal and votes; the decree stays the Keiser&rsquo;s. Petitioners open as animated cards (the member-card pattern), emails hidden everywhere, the anointment date editable by the Keiser alone. Past petitioners live under their own heading.</p>
+
+  <!-- 1: the page, as a member sees it -->
+  <div class="plabel">1 · The page, as any member sees it</div>
+  <div class="page">
+    <div class="disp" style="font-size:18px">The tribunal</div>
+    <p style="color:var(--dim);font-size:14px;margin:2px 0 14px">Souls stand before the Council. Your vote counsels the Keiser; the decree is his alone.</p>
+
+    <div class="eyebrow" style="margin-bottom:6px">Awaiting judgement</div>
+    <div class="rowk" style="border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <span class="av">NT</span>
+      <span style="flex:1;text-align:left">
+        <span class="disp" style="font-size:15px;display:block">Neophyte Testerson</span>
+        <span class="whisper">Born 12 Mar 1991 · ♓︎ Pisces · petitioned 4 days ago</span>
+      </span>
+      <span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+        <span class="tag">3 votes in</span>
+        <i class="ti ti-chevron-right" style="color:var(--gold)"></i>
+      </span>
+    </div>
+    <p class="whisper" style="margin:2px 0 0">tap a petitioner and their card rises, animated, like a member&rsquo;s</p>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="eyebrow" style="margin-bottom:2px">Past petitioners</div>
+    <p class="whisper" style="margin:0 0 6px">judged and recorded; tap to revisit their petition</p>
+    <div class="rowk"><img src="/site-mark.png" alt="" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--gold);object-fit:cover;background:#0d0b0a;flex:none"><span style="flex:1">Priestess Larissa</span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span class="tag">anointed</span><span class="whisper" style="font-size:11px">3 Feb 2026</span></span></div>
+    <div class="rowk"><span class="av" style="width:34px;height:34px;font-size:12px">SS</span><span style="flex:1">Scribe Scott</span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span class="tag">anointed</span><span class="whisper" style="font-size:11px">19 Apr 2026</span></span></div>
+    <div class="rowk" style="border-bottom:none"><span class="av" style="width:34px;height:34px;font-size:12px">??</span><span style="flex:1">A Nameless Soul</span><span class="tag out">cast out</span></div>
+  </div>
+
+  <!-- 2: the petitioner card -->
+  <div class="plabel">2 · The petitioner&rsquo;s card: tap the Augury</div>
+  <p class="note">The card rises animated; the Augury button pulses at its foot. Tapping it turns the card over to the reading; the arrow or the footer turns it back.</p>
+  <div class="scene">
+    <div class="card3d" id="card3d">
+      <div class="face front modal" id="pFront">
+        <div class="moons" style="margin-top:0"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+        <div style="display:flex;justify-content:center"><img src="/site-mark.png" alt="" style="width:72px;height:72px;border-radius:50%;border:1px solid var(--gold);object-fit:cover;background:#0d0b0a"></div>
+        <p class="whisper" style="margin:6px 0 0;font-size:11px">their portrait shows whenever one exists; initials otherwise</p>
+        <div class="disp" style="font-size:19px;margin-top:10px">Neophyte Testerson</div>
+        <p class="whisper" style="margin:2px 0 0">Born 12 March 1991 · ♓︎ Pisces · petitioned 4 days ago</p>
+
+        <div style="border-top:1px solid var(--line);margin:14px 0 12px"></div>
+        <div class="qa"><div class="q">Their wine sin</div><div class="a">I once decanted a Jerepigo to impress a date. I am ready to atone.</div></div>
+        <div class="qa"><div class="q">If they were a wine</div><div class="a">A skin-contact Chenin: orange, divisive, better after an hour of air.</div></div>
+        <div class="qa"><div class="q">What draws them to the Council</div><div class="a">A friend spoke of cloths and reckonings. I want wine with consequences.</div></div>
+
+        <div class="tally">
+          <div class="t"><div class="n" style="color:var(--gold2)">3</div><span class="whisper">anoint</span></div>
+          <div class="t"><div class="n" style="color:#c17b80">1</div><span class="whisper">cast out</span></div>
+          <div class="t"><div class="n" style="color:var(--dim)">1</div><span class="whisper">abstain</span></div>
+        </div>
+
+        <div class="eyebrow" style="font-size:10px;margin-bottom:8px">Your counsel</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn gold" style="flex:1">Anoint</button>
+          <button class="btn danger" style="flex:1">Cast out</button>
+          <button class="btn" style="flex:1">Abstain</button>
+        </div>
+        <div style="border-top:2px solid var(--gold);margin:14px -18px 16px"></div>
+        <button class="btn aug-shimmer" onclick="flip(true)"><i class="ti ti-eye" style="font-size:15px"></i>Consult the Augury</button>
+        <p class="whisper" style="margin:10px 0 0">the decree is the Keiser&rsquo;s alone</p>
+      </div>
+
+      <div class="face back modal" id="pBack">
+        <button onclick="flip(false)" aria-label="Back" style="position:absolute;top:6px;left:6px;width:auto;background:none;border:none;color:var(--dim);cursor:pointer;padding:12px;font-size:18px"><i class="ti ti-arrow-back-up"></i></button>
+        <div class="disp" style="font-size:19px;margin-top:6px">The Augury</div>
+        <p class="whisper" style="margin:2px 0 12px">what the sky says of Neophyte Testerson, computed against the Council&rsquo;s</p>
+
+        <div class="rowk" style="padding:6px 0"><span style="flex:1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold)">Accord with the table</span><span style="font-family:'Cormorant Garamond',serif;color:var(--gold2);font-size:15px">23 of 36 · workable</span></div>
+        <div class="rowk" style="padding:6px 0"><span style="flex:1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold)">Sits easiest beside</span><span style="font-family:'Cormorant Garamond',serif;color:var(--gold2);font-size:15px">Seer Matthew · 29 of 36</span></div>
+        <div class="rowk" style="padding:6px 0;border-bottom:none"><span style="flex:1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold)">Hardest beside</span><span style="font-family:'Cormorant Garamond',serif;color:var(--dim);font-size:15px">Elder Martin · 14 of 36</span></div>
+
+        <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+        <p class="body"><span style="color:var(--gold2)">The palate omen:</span> a taste for texture and generosity; they will forgive a rustic wine long before a thin one.</p>
+        <p class="body" style="margin-bottom:0"><span style="color:var(--gold2)">The shadow:</span> the tide runs strong and unwitnessed in this one. Expect passionate verdicts, softly retracted the next morning.</p>
+
+        <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:10px">
+          <button onclick="flip(false)" style="display:inline-flex;align-items:center;gap:8px;width:auto;background:none;border:none;color:var(--dim);cursor:pointer;font-family:'Cinzel',serif;font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:6px 10px"><i class="ti ti-arrow-back-up" style="color:var(--gold);font-size:14px"></i>Turn the card back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3: the Keiser's additions -->
+  <div class="plabel">3 · The same card, the Keiser&rsquo;s eyes</div>
+  <p class="note">Everything the member sees, plus the decree; on past petitioners, the anointment date field shows for him alone. The email stays hidden even from this view (it lives in the roster, where accounts are managed).</p>
+  <div class="modal">
+    <p class="whisper" style="margin:0 0 10px">…the card as above, then at the foot:</p>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <button class="btn gold" style="flex:1">Anoint as initiate</button>
+      <button class="btn danger" style="flex:1">Cast out</button>
+    </div>
+    <div style="border-top:1px solid var(--line);padding-top:12px;text-align:left">
+      <div class="eyebrow" style="font-size:10px;margin-bottom:6px">Date of anointment · Keiser only</div>
+      <div style="border:1px solid var(--line2);border-radius:8px;padding:9px 12px;max-width:220px;font-family:'Cormorant Garamond',serif;color:var(--gold2)">3 February 2026 <i class="ti ti-pencil i" style="margin-left:6px"></i></div>
+    </div>
+  </div>
+
+  <div class="plabel">4 · The past petitioner&rsquo;s card: the record</div>
+  <p class="note">Only AFTER the decree falls does the vote record appear; while a petition is pending, members see the tally alone. All members may read the record; the date stays the Keiser&rsquo;s to edit.</p>
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:10px">
+      <img src="/site-mark.png" alt="" style="width:44px;height:44px;border-radius:50%;border:1px solid var(--gold);object-fit:cover;background:#0d0b0a">
+      <span style="text-align:left"><span class="disp" style="font-size:16px;display:block">Priestess Larissa</span><span class="tag">anointed · 3 Feb 2026</span></span>
+    </div>
+    <div class="qa"><div class="q">Their wine sin</div><div class="a">I chilled a Pinotage on purpose. Twice.</div></div>
+    <div class="qa"><div class="q">If they were a wine</div><div class="a">An old-vine Grenache: pale, deceptive, stronger than it looks.</div></div>
+    <div class="qa" style="margin-bottom:12px"><div class="q">What drew them to the Council</div><div class="a">The cloths. Everything should be judged blind at least once.</div></div>
+    <div style="border-top:1px solid var(--line);padding-top:12px;text-align:left;margin-bottom:14px">
+      <div class="eyebrow" style="font-size:10px;margin-bottom:8px">How the Council counselled</div>
+      <div class="rowk" style="padding:5px 0"><span style="flex:1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold2)">Anoint</span><span style="font-family:'Cormorant Garamond',serif;color:var(--parch);font-size:14px">Seer Matthew, Priestess Larissa, Scribe Scott</span></div>
+      <div class="rowk" style="padding:5px 0"><span style="flex:1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#c17b80">Cast out</span><span style="font-family:'Cormorant Garamond',serif;color:var(--parch);font-size:14px">Elder Martin</span></div>
+      <div class="rowk" style="padding:5px 0;border-bottom:none"><span style="flex:1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim)">Abstain</span><span style="font-family:'Cormorant Garamond',serif;color:var(--parch);font-size:14px">Adept Wernardt</span></div>
+      <p class="whisper" style="margin:6px 0 0">the record is kept forever once the decree falls; votes are open, as the Council votes in the light</p>
+    </div>
+  </div>
+
+  <div class="plabel">5 · The gate tightens</div>
+  <p class="note" style="margin:0 0 6px">Moving forward the petition REQUIRES date, time, and place of birth; the form refuses to submit without them, so every future petitioner arrives with a full sky and the vine&rsquo;s counsel is never blank. Existing petitions are untouched.</p>
+
+  <div class="plabel">6 · The Augury button: four temperaments</div>
+  <p class="note">The current pulse, and three others. Tap nothing; just watch them breathe. Pick one.</p>
+  <div class="modal">
+    <button class="btn augury" style="margin-bottom:12px"><i class="ti ti-eye" style="font-size:15px"></i>1 · The pulse (current)</button>
+    <button class="btn aug-shimmer" style="margin-bottom:12px"><i class="ti ti-eye" style="font-size:15px"></i>2 · The shimmer</button>
+    <button class="btn aug-ember" style="margin-bottom:12px"><i class="ti ti-eye" style="font-size:15px"></i>3 · The ember</button>
+    <button class="btn aug-ring"><i class="ti ti-eye" style="font-size:15px"></i>4 · The summons</button>
+    <p class="whisper" style="margin:12px 0 0;text-align:left">1 swells with a soft glow · 2 stays still while a light sweeps across the gold · 3 is unlit until it slowly ignites, border and glow inhaling like a coal · 4 sends a slow ring outward every few breaths, like a bell struck once</p>
+  </div>
+
+  <p class="note" style="margin-top:18px">Needs one line of SQL (a votes column on applications, keyed per member so nobody votes twice; the tally derives from it). The nav shows the Tribunal to members and initiates see nothing, as before. Petition answers keep the gate&rsquo;s Q&amp;A style; expulsion hearings stay as they are, already member-voted.</p>
+</div>
+<script>
+  function syncHeight() {
+    const c = document.getElementById("card3d");
+    const active = c.classList.contains("flipped") ? document.getElementById("pBack") : document.getElementById("pFront");
+    c.style.height = active.scrollHeight + "px";
+  }
+  function flip(to) {
+    const c = document.getElementById("card3d");
+    c.classList.toggle("flipped", to);
+    syncHeight();
+    c.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  window.addEventListener("load", () => setTimeout(syncHeight, 300));
+</script>
+</body>
+</html>

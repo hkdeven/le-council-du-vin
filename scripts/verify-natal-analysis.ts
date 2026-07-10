@@ -5,6 +5,7 @@
 
 import { temperamentOf, figuresOf, bearerOf, birthMoonOf } from "../src/lib/natal-analysis";
 import { fullChart } from "../src/lib/natal";
+import { tzolkin } from "../src/lib/astrology";
 
 let pass = 0, fail = 0;
 const check = (label: string, ok: boolean, detail = "") => {
@@ -56,6 +57,16 @@ const K = fullChart("1988-11-05", "03:30", "Africa/Johannesburg", -26.95, 24.73)
   const s = fullChart("1962-02-05", "12:00", "UTC", 0, 0)!;
   const f = figuresOf(s, V);
   check("1962-02-05: Aquarius stellium detected", f.some((x) => x.name === "Stellium in Aquarius"), f.map((x) => x.name).join(" | "));
+}
+
+// ── the day sign (Tzolk'in, GMT correlation) ────────────────────────────────
+{
+  const k = tzolkin("1988-11-05")!;
+  check("Keiser's day sign: 6 Lamat", k.tone === 6 && k.sign === "Lamat", `${k.tone} ${k.sign}`);
+  const b = tzolkin("2012-12-21")!;
+  check("13.0.0.0.0 anchor: 4 Ahau", b.tone === 4 && b.sign === "Ahau", `${b.tone} ${b.sign}`);
+  const c = tzolkin("2026-07-10")!;
+  check("260-day round: today minus 260 days matches today", JSON.stringify(c) === JSON.stringify(tzolkin("2025-10-23")));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

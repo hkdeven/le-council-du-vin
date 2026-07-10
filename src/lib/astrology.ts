@@ -286,6 +286,60 @@ export function dayMaster(dateStr: string): DayMaster | null {
   return STEMS[(jdn + 9) % 10]; // anchored: 2000-01-01 was a 戊 (Yang Earth) day
 }
 
+// --- The Tzolk'in day sign (Maya sacred round) ----------------------------
+// 260 days: 13 tones crossed with 20 day signs, counted by the GMT
+// correlation (JDN 584283 = 4 Ahau; 2012-12-21 = 4 Ahau checks it).
+export interface Tzolkin { tone: number; sign: string; meaning: string; toneMeaning: string }
+const TZOLKIN_SIGNS: [string, string][] = [
+  ["Imix", "the crocodile, the first waters: raw beginnings and the nourishing deep."],
+  ["Ik", "the wind, the breath of spirit: quick, unseen, and impossible to hold."],
+  ["Akbal", "the night, the dreaming house: comfort with darkness others fear."],
+  ["Kan", "the seed, the young lizard: ripeness waiting; abundance that must be planted."],
+  ["Chicchan", "the serpent, the body's lightning: instinct, vitality, and charm."],
+  ["Cimi", "the transformer, the good death: endings handled gracefully; the ancestors near."],
+  ["Manik", "the deer, the healing hand: gentle strength and the craft of the healer."],
+  ["Lamat", "the star of Venus, the rabbit of abundance: ripening and generous excess."],
+  ["Muluc", "the offering, the moon-water: emotion given freely; the debt repaid."],
+  ["Oc", "the dog, the loyal heart: love without accounts; the companion on the road."],
+  ["Chuen", "the monkey, the weaver of time: play, artistry, and clever hands."],
+  ["Eb", "the road, the humble grass: the long walk; service that wears well."],
+  ["Ben", "the reed, the standing corn: authority at home; the pillar of the house."],
+  ["Ix", "the jaguar, the night's magician: earth magic and the patience of the hunt."],
+  ["Men", "the eagle, the far sight: ambition on wings; the view others climb for."],
+  ["Cib", "the owl, the old wisdom: pardon, karma settled, and counsel from the dead."],
+  ["Caban", "the earth, the thinking mountain: reason in motion; the quake that clears."],
+  ["Etznab", "the flint, the obsidian mirror: truth with an edge; what cuts also reveals."],
+  ["Cauac", "the storm, the washing rain: catharsis and renewal; family under one roof."],
+  ["Ahau", "the sun, the flowering lord: completion, mastery, and the open face of light."],
+];
+const TZOLKIN_TONES = [
+  "One is the tone of unity: the initiating spark.",
+  "Two is the tone of duality: the choice that shapes the path.",
+  "Three is the tone of rhythm: movement begins.",
+  "Four is the tone of measure: form and stability.",
+  "Five is the tone of the centre: gathered power.",
+  "Six is the tone of flow, the rhythm that steadies.",
+  "Seven is the tone of the summit: reflection at the mirror's edge.",
+  "Eight is the tone of justice: harmony by balance.",
+  "Nine is the tone of patience: the greater cycles honoured.",
+  "Ten is the tone of manifestation: intention made solid.",
+  "Eleven is the tone of release: what loosens, liberates.",
+  "Twelve is the tone of understanding: the parts seen whole.",
+  "Thirteen is the tone of transcendence: the carry into the next round.",
+];
+export function tzolkin(dateStr: string): Tzolkin | null {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const a = Math.floor((14 - m) / 12);
+  const yy = y + 4800 - a;
+  const mm = m + 12 * a - 3;
+  const jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  const delta = jdn - 584283;
+  const tone = ((((delta + 3) % 13) + 13) % 13) + 1;
+  const idx = (((delta + 19) % 20) + 20) % 20;
+  return { tone, sign: TZOLKIN_SIGNS[idx][0], meaning: `${TZOLKIN_SIGNS[idx][0]}, ${TZOLKIN_SIGNS[idx][1]}`, toneMeaning: TZOLKIN_TONES[tone - 1] };
+}
+
 // --- Life path number (numerology) ---------------------------------------
 // Year, month, and day each reduce, then their sum reduces, preserving the
 // master numbers 11, 22, and 33.

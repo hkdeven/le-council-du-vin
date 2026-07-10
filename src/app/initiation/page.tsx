@@ -31,6 +31,12 @@ export default function Initiation() {
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
+    // The sky is required at the gate now (Keiser's decree): no petition
+    // without date, time, and place of birth.
+    if (!dob || !tob || !place.trim()) {
+      setError("The Council reads the sky before the soul: date, time, and place of birth are required.");
+      return;
+    }
     setBusy(true);
     setError(null);
     // Pin the birth town quietly (first atlas match); the chart uses its
@@ -175,7 +181,7 @@ export default function Initiation() {
         <button
           className="btn gold"
           style={{ marginTop: error ? 10 : 18 }}
-          disabled={busy || !cultName || !email}
+          disabled={busy || !cultName || !email || !dob || !tob || !place.trim()}
           onClick={submit}
         >
           {busy ? "Sealing…" : "Offer yourself to the Council"}

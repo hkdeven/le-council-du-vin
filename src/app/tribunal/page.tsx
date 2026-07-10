@@ -10,7 +10,13 @@ import { sendEmail } from "@/lib/sendEmail";
 import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import MemberCard from "@/components/MemberCard";
+import Avatar from "@/components/Avatar";
+import { useBodyLock } from "@/components/NatalChart";
+import { castCounsel } from "@/lib/applications";
+import { computeAugury } from "@/lib/augury";
+import { seedMembers } from "@/lib/seed";
 import type { Application, Member } from "@/lib/types";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -75,36 +81,257 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 // The answers a petitioner gave at the gate — shown on the pending card and,
 // once decided, when their row is expanded.
 function PetitionAnswers({ a }: { a: Application }) {
+  const block = (q: string, ans: string) => (
+    <div style={{ textAlign: "left", background: "#0d0b0a", border: "1px solid var(--line)", borderRadius: 10, padding: "11px 14px", marginBottom: 8 }}>
+      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>{q}</div>
+      <div style={{ fontSize: 14.5, color: "var(--parch)", lineHeight: 1.5 }}>{ans}</div>
+    </div>
+  );
+  if (!a.wine_sin && !a.if_wine && !a.draw_reason) {
+    return <p className="whisper" style={{ margin: 0, fontSize: 14 }}>No answers were recorded with this petition.</p>;
+  }
   return (
     <>
-      {a.wine_sin && (
-        <p style={{ margin: "0 0 4px" }}>
-          <span className="scr">Gravest wine sin:</span> &ldquo;{a.wine_sin}&rdquo;
-        </p>
-      )}
-      {a.if_wine && (
-        <p style={{ margin: 0 }}>
-          <span className="scr">If a wine:</span> &ldquo;{a.if_wine}&rdquo;
-        </p>
-      )}
-      {a.draw_reason && (
-        <p style={{ margin: "4px 0 0" }}>
-          <span className="scr">What draws them:</span> &ldquo;{a.draw_reason}&rdquo;
-        </p>
-      )}
+      {a.wine_sin && block("Their gravest wine sin", a.wine_sin)}
+      {a.if_wine && block("If they were a wine", a.if_wine)}
+      {a.draw_reason && block("What draws them to the Council", a.draw_reason)}
     </>
   );
 }
 
+const chartComplete = (x: { date_of_birth?: string | null; time_of_birth?: string | null; birth_lat?: number | null; birth_lon?: number | null }) =>
+  !!x.date_of_birth && !!x.time_of_birth && x.birth_lat != null && x.birth_lon != null;
+
+// The tally, derived from the kept votes (legacy seed tallies as fallback).
+function tallyOf(a: Application): { anoint: number; cast_out: number; abstain: number } {
+  const votes = Object.values(a.votes || {});
+  if (!votes.length && a.tally) return a.tally;
+  return {
+    anoint: votes.filter((v) => v === "anoint").length,
+    cast_out: votes.filter((v) => v === "cast_out").length,
+    abstain: votes.filter((v) => v === "abstain").length,
+  };
+}
+
+// The petitioner's card: rises animated; the Augury turns it over.
+function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecree, onCounsel, onSetDate }: {
+  a: Application;
+  portrait: string | null;
+  members: Member[];
+  isKeiser: boolean;
+  myId: string | null;
+  onClose: () => void;
+  onDecree: (a: Application, status: "anointed" | "cast_out") => void;
+  onCounsel: (a: Application, vote: "anoint" | "cast_out" | "abstain") => void;
+  onSetDate: (a: Application, dateStr: string) => void;
+}) {
+  useBodyLock();
+  const [shown, setShown] = useState(false);
+  const [flipped, setFlipped] = useState(false);
+  const [auguryOnce, setAuguryOnce] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const close = () => { setShown(false); setTimeout(onClose, 240); };
+
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const [faceHeight, setFaceHeight] = useState<number | undefined>(undefined);
+  const flipTo = (to: boolean) => {
+    if (to) setAuguryOnce(true);
+    setFlipped(to);
+    overlayRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  useLayoutEffect(() => {
+    const active = flipped ? backRef.current : frontRef.current;
+    if (!active) return;
+    const sync = () => setFaceHeight(active.offsetHeight);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(active);
+    return () => ro.disconnect();
+  }, [flipped, auguryOnce]);
+  const faceStyle: React.CSSProperties = {
+    position: "absolute", top: 0, left: 0, width: "100%",
+    backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+    background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14,
+    boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 18px 24px", textAlign: "center",
+  };
+
+  const augury = useMemo(
+    () => (auguryOnce ? computeAugury(a, members, Date.now()) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [auguryOnce, a.id]
+  );
+  const tally = tallyOf(a);
+  const myVote = myId ? a.votes?.[myId] : undefined;
+  const pending = a.status === "pending";
+  const s = a.date_of_birth ? sunSign(a.date_of_birth) : null;
+  const nameOf = (id: string) => members.find((m) => m.id === id)?.cult_name || null;
+  const votedNames = (v: "anoint" | "cast_out" | "abstain") =>
+    Object.entries(a.votes || {}).filter(([, x]) => x === v).map(([id]) => nameOf(id)).filter(Boolean).join(", ") || "—";
+
+  const counselBtn = (v: "anoint" | "cast_out" | "abstain", label: string, danger?: boolean) => (
+    <button
+      className={`btn${myVote === v ? " gold" : danger ? " danger" : ""}`}
+      style={{ flex: 1 }}
+      onClick={() => onCounsel(a, v)}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div ref={overlayRef} className="modal-scroll" onClick={close} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", overflowY: "auto", display: "flex", padding: 18, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 340, margin: "auto", transformStyle: "preserve-3d", transform: `perspective(1500px) ${shown ? "scale(1)" : "scale(0.9)"} rotateY(${flipped ? 180 : 0}deg)`, transition: "transform 0.65s cubic-bezier(0.4,0.1,0.2,1), height 0.4s ease", transformOrigin: "center", height: faceHeight }}>
+
+        {/* FRONT: the petition. */}
+        <div ref={frontRef} style={{ ...faceStyle, pointerEvents: flipped ? "none" : undefined }}>
+          <button onClick={close} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
+            <i className="ti ti-x" style={{ fontSize: 16 }} />
+          </button>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+            <Avatar src={portrait} initials={initialsOf(a.cult_name)} size={72} />
+          </div>
+          <div className="disp" style={{ fontSize: 19 }}>{a.cult_name}</div>
+          {a.date_of_birth && (
+            <p className="whisper" style={{ margin: "2px 0 0" }}>
+              Born {fmtDate(a.date_of_birth)}{s ? ` · ${s.symbol} ${s.name}` : ""}
+            </p>
+          )}
+
+          <div style={{ borderTop: "1px solid var(--line)", margin: "14px 0 12px" }} />
+          <PetitionAnswers a={a} />
+
+          <div style={{ display: "flex", gap: 12, margin: "14px 0", padding: "11px 0", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+            <Tally n={tally.anoint} label="anoint" color="var(--gold2)" />
+            <Tally n={tally.cast_out} label="cast out" color="var(--wine)" />
+            <Tally n={tally.abstain} label="abstain" color="var(--dim)" />
+          </div>
+
+          {pending && myId && (
+            <>
+              <div className="eyebrow" style={{ fontSize: 10, marginBottom: 8 }}>Your counsel</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                {counselBtn("anoint", "Anoint")}
+                {counselBtn("cast_out", "Cast out", true)}
+                {counselBtn("abstain", "Abstain")}
+              </div>
+            </>
+          )}
+
+          {pending && isKeiser && (
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              <button className="btn gold" style={{ flex: 1 }} onClick={() => onDecree(a, "anointed")}>Anoint as initiate</button>
+              <button className="btn danger" style={{ flex: 1 }} onClick={() => onDecree(a, "cast_out")}>Cast out</button>
+            </div>
+          )}
+
+          {!pending && (
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12, textAlign: "left", marginBottom: 12 }}>
+              <div className="eyebrow" style={{ fontSize: 10, marginBottom: 8 }}>How the Council counselled</div>
+              {(["anoint", "cast_out", "abstain"] as const).map((v) => (
+                <div key={v} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "5px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
+                  <span style={{ flex: "none", width: 76, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: v === "anoint" ? "var(--gold2)" : v === "cast_out" ? "#c17b80" : "var(--dim)" }}>{v.replace("_", " ")}</span>
+                  <span style={{ flex: 1, fontFamily: "'Cormorant Garamond',serif", fontSize: 14, color: "var(--parch)" }}>{votedNames(v)}</span>
+                </div>
+              ))}
+              <p className="whisper" style={{ margin: "6px 0 0", fontSize: 12 }}>the record is kept once the decree falls; the Council votes in the light</p>
+            </div>
+          )}
+
+          {!pending && a.status === "anointed" && isKeiser && (
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12, textAlign: "left", marginBottom: 12 }}>
+              <div className="eyebrow" style={{ fontSize: 10, marginBottom: 6 }}>Date of anointment · Keiser only</div>
+              <input type="date" value={(a.anointed_at || "").slice(0, 10)} onChange={(e) => onSetDate(a, e.target.value)} style={{ colorScheme: "dark", maxWidth: 220 }} />
+            </div>
+          )}
+
+          <div style={{ borderTop: "2px solid var(--gold)", margin: "14px -18px 16px" }} />
+          {chartComplete(a) ? (
+            <button className="btn lcv-shimmer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => flipTo(true)}>
+              <i className="ti ti-eye" style={{ fontSize: 15 }} />Consult the Augury
+            </button>
+          ) : (
+            <p className="whisper" style={{ margin: 0, fontSize: 13 }}>the sky is veiled for this petition; the Augury needs a full birth record</p>
+          )}
+          {pending && <p className="whisper" style={{ margin: "10px 0 0", fontSize: 13 }}>the decree is the Keiser&rsquo;s alone</p>}
+        </div>
+
+        {/* BACK: the Augury. */}
+        <div ref={backRef} style={{ ...faceStyle, transform: "rotateY(180deg)", pointerEvents: flipped ? undefined : "none" }}>
+          <button onClick={() => flipTo(false)} aria-label="Back to the petition" title="Back to the petition" style={{ position: "absolute", top: 6, left: 6, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 12, zIndex: 2 }}>
+            <i className="ti ti-arrow-back-up" style={{ fontSize: 18 }} />
+          </button>
+          <button onClick={close} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
+            <i className="ti ti-x" style={{ fontSize: 16 }} />
+          </button>
+          <div className="disp" style={{ fontSize: 19, marginTop: 6 }}>The Augury</div>
+          <p className="whisper" style={{ margin: "2px 0 12px" }}>what the sky says of {a.cult_name}, computed against the Council&rsquo;s</p>
+
+          {!augury ? (
+            <p className="whisper" style={{ margin: 0, fontSize: 14 }}>the sky is veiled; the Augury needs a full birth record</p>
+          ) : (
+            <>
+              {augury.accord && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
+                  <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)" }}>Accord with the table</span>
+                  <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 15 }}>{augury.accord.total % 1 ? `${Math.floor(augury.accord.total)}½` : augury.accord.total} of 36 · {augury.accord.verdict}</span>
+                </div>
+              )}
+              {augury.easiest && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
+                  <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)" }}>Sits easiest beside</span>
+                  <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 15 }}>{augury.easiest.name} · {augury.easiest.total % 1 ? `${Math.floor(augury.easiest.total)}½` : augury.easiest.total} of 36</span>
+                </div>
+              )}
+              {augury.hardest && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", textAlign: "left" }}>
+                  <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)" }}>Hardest beside</span>
+                  <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--dim)", fontSize: 15 }}>{augury.hardest.name} · {augury.hardest.total % 1 ? `${Math.floor(augury.hardest.total)}½` : augury.hardest.total} of 36</span>
+                </div>
+              )}
+              {!augury.accord && (
+                <p className="whisper" style={{ margin: "0 0 4px", fontSize: 13 }}>no complete member charts to compare against yet</p>
+              )}
+              <MoonDivider />
+              <p style={{ fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'EB Garamond',serif", margin: "0 0 10px" }}>
+                <span style={{ color: "var(--gold2)" }}>The palate omen:</span> {augury.palate}
+              </p>
+              <p style={{ fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'EB Garamond',serif", margin: 0 }}>
+                <span style={{ color: "var(--gold2)" }}>The shadow:</span> {augury.shadow}
+              </p>
+            </>
+          )}
+
+          <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 10 }}>
+            <button onClick={() => flipTo(false)} style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", padding: "6px 10px" }}>
+              <i className="ti ti-arrow-back-up" style={{ color: "var(--gold)", fontSize: 14 }} />Turn the card back
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Tribunal() {
-  const { mode } = useAuth();
+  const { mode, role, member } = useAuth();
+  const isKeiser = role === "keiser";
   const [apps, setApps] = useState<Application[]>([]);
   const [dq, setDq] = useState<Record<string, number>>({});
-  // Emails of members who still exist, so an anointed petition whose member has
-  // since been cast from the Council no longer lingers on the decided list.
-  const [memberEmails, setMemberEmails] = useState<Set<string>>(new Set());
-  // Which decided petitioner's original answers are expanded.
-  const [openDecided, setOpenDecided] = useState<string | null>(null);
+  // The roster, in full: names the vote record, feeds the Augury, and tells
+  // us which anointed petitions still belong to living members.
+  const [members, setMembers] = useState<Member[]>([]);
+  const memberEmails = new Set(members.map((m) => m.email.toLowerCase()));
+  const myId = mode === "live" ? member?.id || null : seedMembers.find((sm) => sm.role === role)?.id || null;
+  // Which petitioner's card is risen.
+  const [openApp, setOpenApp] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDqCounts().then(setDq);
@@ -119,14 +346,22 @@ export default function Tribunal() {
           if (error) console.error("Could not load petitions:", error.message);
           else if (data) setApps(data as Application[]);
         });
-      supabase.from("members").select("email").then(({ data }) => {
-        if (data) setMemberEmails(new Set(data.map((m) => (m.email as string).toLowerCase())));
+      supabase.from("members").select("id,email,cult_name,short_name,role,active,avatar_url,date_of_birth,time_of_birth,birth_place,birth_lat,birth_lon,birth_tz").then(({ data }) => {
+        if (data) setMembers(data as Member[]);
       });
     } else {
       setApps(loadApplications());
-      setMemberEmails(new Set(loadMembers().map((m) => m.email.toLowerCase())));
+      setMembers(loadMembers());
     }
   }, [mode]);
+
+  // A member's counsel: optimistic locally, the RPC (or demo store) behind it.
+  const counsel = async (a: Application, vote: "anoint" | "cast_out" | "abstain") => {
+    if (!myId || a.status !== "pending") return;
+    setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, votes: { ...(x.votes || {}), [myId]: vote } } : x)));
+    const err = await castCounsel(a.id, myId, vote);
+    if (err) alert(`The counsel would not take: ${err}`);
+  };
 
   const decree = async (a: Application, status: "anointed" | "cast_out") => {
     // Anointing grants limited access: a new initiate joins the roster, whom the
@@ -175,9 +410,11 @@ export default function Tribunal() {
     }
     setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, ...patch } : x)));
     // The decided list filters anointed rows to current members; add the new
-    // initiate's email locally so they appear at once, without a refresh.
+    // initiate locally so they appear at once, without a refresh.
     if (status === "anointed" && a.email) {
-      setMemberEmails((prev) => new Set(prev).add(a.email.toLowerCase()));
+      setMembers((prev) => prev.some((m) => m.email.toLowerCase() === a.email.toLowerCase())
+        ? prev
+        : [...prev, { id: `pending-${a.id}`, email: a.email, cult_name: a.cult_name, short_name: "", role: "initiate", active: true } as Member]);
     }
     window.dispatchEvent(new Event("lcv-applications")); // refresh the nav badge
     // Welcome the newly anointed by email (no-ops until Resend is configured).
@@ -200,108 +437,84 @@ export default function Tribunal() {
   };
 
   const pending = apps.filter((a) => a.status === "pending");
+  const decided = apps
+    .filter((a) => a.status !== "pending")
+    .filter((a) => a.status === "cast_out" || memberEmails.has(a.email.toLowerCase()));
   const summoned = Object.entries(dq).filter(([, n]) => n >= DQ_THRESHOLD);
+  const opened = apps.find((a) => a.id === openApp) || null;
+  // A petitioner who became (or already is) a member wears their portrait.
+  const portraitOf = (a: Application) =>
+    members.find((m) => m.email.toLowerCase() === a.email.toLowerCase())?.avatar_url || null;
+
+  const row = (a: Application, sub: React.ReactNode, right: React.ReactNode) => (
+    <button key={a.id} onClick={() => setOpenApp(a.id)}
+      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", background: "none", border: "1px solid var(--line2)", borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left", color: "inherit" }}>
+      <Avatar src={portraitOf(a)} initials={initialsOf(a.cult_name)} size={40} />
+      <span style={{ flex: 1 }}>
+        <span className="disp" style={{ fontSize: 15, display: "block" }}>{a.cult_name}</span>
+        <span className="whisper" style={{ fontSize: 13 }}>{sub}</span>
+      </span>
+      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flex: "none" }}>
+        {right}
+        <i className="ti ti-chevron-right" style={{ color: "var(--gold)" }} />
+      </span>
+    </button>
+  );
 
   return (
     <section>
       <h1 className="disp" style={{ fontSize: 18, fontWeight: 500 }}>The tribunal</h1>
       <p style={{ color: "var(--dim)", fontSize: 14, marginTop: 2, marginBottom: 18 }}>
-        A petitioner stands before the Council.{" "}
-        <span className="tag" style={{ color: "var(--wine)", borderColor: "var(--wine)" }}>Keiser only</span>
+        Souls stand before the Council. Your vote counsels the Keiser; the decree is his alone.
       </p>
 
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Awaiting judgement</div>
       {pending.length === 0 && (
-        <p className="whisper" style={{ fontSize: 16 }}>No souls await judgement. The gate is quiet.</p>
+        <p className="whisper" style={{ fontSize: 15, marginTop: 0 }}>No souls await judgement. The gate is quiet.</p>
+      )}
+      {pending.map((a) => {
+        const t = tallyOf(a);
+        const n = t.anoint + t.cast_out + t.abstain;
+        const s = a.date_of_birth ? sunSign(a.date_of_birth) : null;
+        return row(
+          a,
+          <>{a.date_of_birth ? `Born ${fmtDate(a.date_of_birth)}${s ? ` · ${s.symbol} ${s.name}` : ""}` : "the sky unrecorded"}</>,
+          <span className="tag">{n === 1 ? "1 vote in" : `${n} votes in`}</span>
+        );
+      })}
+
+      <MoonDivider />
+      <div className="eyebrow" style={{ marginBottom: 2 }}>Past petitioners</div>
+      <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>judged and recorded; tap to revisit their petition</p>
+      {decided.length === 0 && (
+        <p className="whisper" style={{ fontSize: 14, marginTop: 0 }}>None yet stand in the record.</p>
+      )}
+      {decided.map((a) =>
+        row(
+          a,
+          a.status === "anointed" ? "welcomed as an initiate" : "turned from the gate",
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+            <span className="tag" style={a.status === "cast_out" ? { color: "#c17b80", borderColor: "var(--wine)" } : undefined}>
+              {a.status === "anointed" ? "anointed" : "cast out"}
+            </span>
+            {a.status === "anointed" && a.anointed_at && <span className="whisper" style={{ fontSize: 11 }}>{fmtDate(a.anointed_at)}</span>}
+          </span>
+        )
       )}
 
-      {pending.map((a) => (
-        <div key={a.id} className="card" style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth, birth_place: a.birth_place, birth_lat: a.birth_lat, birth_lon: a.birth_lon, birth_tz: a.birth_tz }} size={40} />
-            <div>
-              <div className="disp" style={{ fontSize: 16 }}>{a.cult_name}</div>
-              <div className="whisper" style={{ fontSize: 14 }}>
-                {a.date_of_birth ? (() => { const s = sunSign(a.date_of_birth!); return `Born ${fmtDate(a.date_of_birth!)}${s ? ` · ${s.symbol} ${s.name}` : ""}`; })() : a.email}
-              </div>
-            </div>
-          </div>
-
-          <PetitionAnswers a={a} />
-
-          {a.tally && (
-            <div style={{ display: "flex", gap: 16, margin: "16px 0", padding: "12px 0", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
-              <Tally n={a.tally.anoint} label="anoint" color="var(--gold2)" />
-              <Tally n={a.tally.cast_out} label="cast out" color="var(--wine)" />
-              <Tally n={a.tally.abstain} label="abstain" color="var(--dim)" />
-            </div>
-          )}
-
-          <p className="whisper" style={{ margin: "0 0 12px", fontSize: 15 }}>
-            The Council has spoken. The decree is yours alone, Keiser.
-          </p>
-          <p className="whisper" style={{ margin: "0 0 12px", fontSize: 13 }}>
-            To anoint grants an <b style={{ color: "var(--gold2)" }}>initiate&rsquo;s</b> access — the gatherings, the rite, the reveal. Elevate them to full member later from your profile roster.
-          </p>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn gold" style={{ flex: 1 }} onClick={() => decree(a, "anointed")}>Anoint as initiate</button>
-            <button className="btn danger" style={{ flex: 1 }} onClick={() => decree(a, "cast_out")}>Cast out</button>
-          </div>
-        </div>
-      ))}
-
-      {apps
-        .filter((a) => a.status !== "pending")
-        // Keep cast-out records; drop anointed ones whose member was later deleted.
-        .filter((a) => a.status === "cast_out" || memberEmails.has(a.email.toLowerCase()))
-        .map((a) => {
-          const openD = openDecided === a.id;
-          return (
-            <div key={a.id} style={{ borderBottom: "1px solid var(--line)" }}>
-              <div className="rk" style={{ borderBottom: "none" }}>
-                <MemberCard member={{ cult_name: a.cult_name, date_of_birth: a.date_of_birth, time_of_birth: a.time_of_birth, birth_place: a.birth_place, birth_lat: a.birth_lat, birth_lon: a.birth_lon, birth_tz: a.birth_tz }} size={34} />
-                <button
-                  onClick={() => setOpenDecided(openD ? null : a.id)}
-                  style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0, color: "inherit" }}
-                >
-                  <span style={{ flex: 1 }}>{a.cult_name}</span>
-                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flex: "none" }}>
-                    <span className="tag" style={{ color: a.status === "anointed" ? "var(--gold2)" : "var(--wine)", borderColor: a.status === "anointed" ? "var(--line2)" : "var(--wine)" }}>
-                      {a.status === "anointed" ? "anointed" : "cast out"}
-                    </span>
-                    {a.status === "anointed" && a.anointed_at && (
-                      <span className="whisper" style={{ fontSize: 11 }}>{fmtDate(a.anointed_at)}</span>
-                    )}
-                  </span>
-                  <i className={`ti ti-chevron-${openD ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
-                </button>
-              </div>
-              {openD && (
-                <div style={{ paddingLeft: 46, paddingBottom: 12 }}>
-                  {a.status === "anointed" && (
-                    <div style={{ marginBottom: 8 }}>
-                      <label className="field" style={{ marginTop: 0 }}>Date of anointment</label>
-                      <input
-                        type="date"
-                        value={(a.anointed_at || "").slice(0, 10)}
-                        onChange={(e) => setAnointDate(a, e.target.value)}
-                        style={{ colorScheme: "dark", maxWidth: 220 }}
-                      />
-                    </div>
-                  )}
-                  <div className="whisper" style={{ fontSize: 13, marginBottom: 6 }}>
-                    {a.date_of_birth ? (() => { const s = sunSign(a.date_of_birth!); return `Born ${fmtDate(a.date_of_birth!)}${s ? ` · ${s.symbol} ${s.name}` : ""}`; })() : null}
-                    {a.email ? `${a.date_of_birth ? " · " : ""}${a.email}` : ""}
-                  </div>
-                  {(a.wine_sin || a.if_wine || a.draw_reason) ? (
-                    <PetitionAnswers a={a} />
-                  ) : (
-                    <p className="whisper" style={{ margin: 0, fontSize: 14 }}>No answers were recorded with this petition.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {opened && (
+        <PetitionerModal
+          a={opened}
+          portrait={portraitOf(opened)}
+          members={members}
+          isKeiser={isKeiser}
+          myId={myId}
+          onClose={() => setOpenApp(null)}
+          onDecree={decree}
+          onCounsel={counsel}
+          onSetDate={setAnointDate}
+        />
+      )}
 
       {summoned.length > 0 && (
         <>

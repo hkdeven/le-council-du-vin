@@ -1,5 +1,53 @@
 # Le Council — Test Log
 
+## 2026-07-10 (small hours) — THE TRIBUNAL OPENS: member voting, the Augury, the tightened gate — pushed
+
+**SQL for the live DB before this deploys (safe to run right now):**
+```sql
+alter table applications add column if not exists votes jsonb not null default '{}';
+drop policy if exists "members may read petitions" on applications;
+create policy "members may read petitions" on applications for select using (is_member());
+create or replace function cast_counsel(app_id uuid, vote text)
+returns void language sql security definer set search_path = public as $$
+  update applications
+  set votes = votes || jsonb_build_object(
+    (select id::text from members where lower(email) = lower(auth.jwt()->>'email')), vote)
+  where id = app_id and status = 'pending'
+    and vote in ('anoint','cast_out','abstain')
+    and exists (select 1 from members where lower(email) = lower(auth.jwt()->>'email')
+                and active and role in ('member','keiser'));
+$$;
+```
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **The tribunal opens to members** (nav min role member; initiates still see nothing): pending petitions as teaser rows ("N votes in"), then a moon divider and **Past petitioners** with anointed/cast-out tags and dates | Any member opens /tribunal | tsc + suites (UI walkthrough pending, see note) | [ ] |
+| 2 | **Member voting**: Your counsel (Anoint / Cast out / Abstain) on every pending petition; one vote per member keyed in applications.votes, changeable until the decree, written live through the cast_counsel RPC so members can touch nothing but their own key | Vote, revote, second member sees the tally move | " | [ ] |
+| 3 | **The petitioner's card**: rises animated (member-card pattern), portrait/pyramid, born + sun + petitioned-ago, gate answers as styled Q&A blocks, live tally, decree buttons (Keiser, pending only), **no email anywhere** | Open any petitioner | " | [ ] |
+| 4 | **The Augury**: a shimmering gold button (lcv-shimmer) flips the card to the reading: accord with the table (mean kuta vs every complete full member), sits easiest/hardest beside, the palate omen (12 plain wine-taste passages by the pleasure planet's sign), the shadow (plain rewrites of the Kundli's pitfall detections; lunation line when the chart is clean). Veiled without a full birth record. **scripts/verify-augury.ts 10/10** | Consult the Augury on a complete petition | " | [ ] |
+| 5 | **After the decree**: "How the Council counselled" names every vote forever (the Council votes in the light); the anointment date stays Keiser-only to edit | Open a past petitioner | " | [ ] |
+| 6 | **The gate tightens**: date, time, AND place of birth are required to petition (submit refuses without them); existing petitions untouched | Try petitioning without a birth time | " | [ ] |
+
+Seven suites: 146/146. Production build clean. NOTE: the in-browser UI walkthrough could not run this session (the preview tooling changed shape and the Chrome extension lacks localhost permission); logic is suite-covered, but eyes on /tribunal in demo before pushing is owed.
+
+---
+
+## 2026-07-10 (later still) — the codex maths quadruple-checked — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **Moons stood now counts bringers**: standing a moon is proven by a sealed ballot OR by owning a bottle in the night's annal (imported/unscored nights have no ballots, but their bringers still stood). The Keiser's 15-vs-17 resolves to 17 | Card: moons stood equals every night you brought or judged | ✓ (suite reproduces the exact 15-ballots/17-bottles case; UI shows 2/2 on injected ballot-less nights) | [ ] |
+| 2 | **A summoned future gathering no longer breaks anyone's longest communion** (the run only walks nights already gathered); a true absence still breaks it | Summon a future night: nobody's streak resets | ✓ | [ ] |
+| 3 | **Bottles judged** counts only bottles that were scored or cast out; bottles poured on a scoreless night are no longer "judged" | Codex metrics after an unscored night | ✓ | [ ] |
+| 4 | **KEISER'S CONVENTION: on an unscored night the cloth order carries the standing.** championsOf crowns the qualified wine with the LOWEST cloth when no scores exist (DQ'd cloths are skipped; phantom rows never contend; scored nights still rank by score with DQ'd first places never credited). Consequence for the French reds AS CURRENTLY SAVED (all four qualified): cloth 1's owner would be crowned, so the three DQ ticks are still required for Matthew (cloth 4) to take the night | Unscored night: crown follows the first qualified cloth | ✓ (both shapes verified in UI: all-qualified crowns cloth 1; DQs ticked crowns Matthew; suite 10/10) | [ ] |
+| 5 | **Day sign on the card** (approved mockup C): the Tzolk'in row beside the birth arcana, e.g. "6 Lamat", label + value tooltips hand-written for all 20 signs and 13 tones; computed by the GMT correlation (verified vs the 13.0.0.0.0 anchor, 4 Ahau on 2012-12-21, plus the 260-day round-trip); natal-analysis suite now 18/18 | Any card with a birth date | ✓ (Keiser card shows 6 Lamat) | [ ] |
+| 6 | **The pyramid mark is the default portrait**: every user without a photo now wears the all-seeing-eye mark app-wide (initials retired; Avatar fallback). **Convene**: the full-width rule under the active meeting's theme thinned 2px to 1px | Roster/cards without photos show the mark; convene card rule is hairline | ✓ (10 pyramid avatars on the demo roster, zero initials; rule measures 1px on a summoned test night, since removed) | [ ] |
+| 7 | New suite **scripts/verify-dossier.ts 6/6**; all seven suites now total **133 checks**. Audited clean on the same pass: theme averages, the Reliquary's highest pour, split cloth, victories/chalice (championsOf), palate temper, the hosting wheel | npx tsx scripts/verify-dossier.ts | ✓ 6/6 | n/a |
+
+---
+
 ## 2026-07-10 (late night) — THE HEAVENS: one door, the card turns over — pushed
 
 No new SQL needed.

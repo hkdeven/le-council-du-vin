@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · The Pillars, the Persian clock, the day sign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&family=Great+Vibes&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:420px;margin:0 auto;padding:26px 16px 70px;display:flex;flex-direction:column;gap:12px;}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:6px 0 0;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:0 0 6px;line-height:1.5;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:11px;color:var(--gold2);margin:26px 0 2px;text-align:center;}
+  .modal{background:linear-gradient(180deg,#12100e,#0a0908);border:1px solid var(--gold);border-radius:14px;box-shadow:0 0 0 1px rgba(0,0,0,0.6),0 20px 60px rgba(0,0,0,0.7);padding:22px 18px 24px;text-align:center;}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .seyebrow{font-size:14px;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:8px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  .disp{font-family:"Cinzel",serif;color:var(--parch);}
+  .body{font-size:15px;line-height:1.58;text-align:left;color:var(--bright);margin:0 0 10px;}
+  .moons{display:flex;justify-content:center;gap:11px;color:var(--gold);opacity:0.55;font-size:14px;margin:18px 0 12px;}
+  .fullrule{border-top:2px solid var(--gold);margin:18px -18px 16px;}
+  .pillrow{display:inline-flex;border:1px solid var(--line2);border-radius:16px;overflow:hidden;margin:12px 0 4px;}
+  .pillrow span{padding:7px 9px;font-family:"Cinzel",serif;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);cursor:default;white-space:nowrap;}
+  .pillrow span.on{background:var(--gold2);color:#0a0908;}
+  .i{color:var(--dim);font-size:12px;}
+  .gv{font-family:"Great Vibes",cursive;color:var(--gold2);}
+  .grow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px;text-align:left;}
+  .grow .g{display:inline-flex;align-items:center;gap:5px;font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.08em;color:var(--parch);}
+  .fav{color:var(--gold2);font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14px;}
+  .unfav{color:var(--dim);font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14px;}
+  .pillars{display:flex;gap:8px;justify-content:center;margin:14px 0 6px;}
+  .pillar{flex:1;max-width:78px;border:1px solid var(--line2);border-radius:10px;padding:10px 4px 8px;background:#0d0b0a;}
+  .pillar .cap{font-family:"Cinzel",serif;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+  .pillar .hz{font-family:"Noto Serif SC",serif;font-size:26px;color:var(--gold2);line-height:1.15;}
+  .pillar .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:11px;color:var(--dim);margin-top:4px;line-height:1.3;}
+  .elrow{display:flex;align-items:center;gap:10px;padding:4px 0;text-align:left;}
+  .elrow .name{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;font-size:10px;color:var(--gold);width:64px;flex:none;}
+  .elrow .track{flex:1;height:4px;background:rgba(160,150,120,0.14);border-radius:2px;overflow:hidden;}
+  .elrow .fill{height:100%;background:var(--gold2);border-radius:2px;display:block;}
+  .elrow .n{font-family:"Cormorant Garamond",serif;color:var(--gold2);font-size:15px;width:16px;flex:none;text-align:right;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;text-align:left;}
+  .lab{display:inline-flex;align-items:center;gap:4px;font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold);font-size:10px;}
+  .val{font-family:"Cormorant Garamond",serif;color:var(--gold2);font-size:16px;text-align:right;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The East and the old Persians</h1>
+  <p class="note">Three additions, per the pattern: charts are stops, time is horizons, small facts are card rows. Every number below is real, computed for the Keiser by the same engines (the year and day agree exactly with the card&rsquo;s Dragon and Yang Wood).</p>
+
+  <!-- A: The Pillars stop -->
+  <div class="plabel">A · The Pillars: a fourth stop in the Heavens</div>
+  <p class="note">Bazi, the Four Pillars of Destiny. The stop labels shorten so four fit the pill.</p>
+  <div class="modal">
+    <div class="moons" style="margin-top:0"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="disp" style="font-size:19px">The Heavens</div>
+    <p class="whisper" style="margin:2px 0 0">the sky at your first breath, and the sky to come</p>
+    <div class="pillrow"><span>Wheel</span><span>Foretelling</span><span>Kundli</span><span class="on">Pillars</span></div>
+
+    <div class="pillars">
+      <div class="pillar"><div class="cap">Hour</div><div class="hz">丙<br>寅</div><div class="en">Fire<br>Tiger</div></div>
+      <div class="pillar" style="border-color:var(--gold)"><div class="cap" style="color:var(--gold2)">Day · you</div><div class="hz">甲<br>子</div><div class="en">Wood<br>Rat</div></div>
+      <div class="pillar"><div class="cap">Month</div><div class="hz">壬<br>戌</div><div class="en">Water<br>Dog</div></div>
+      <div class="pillar"><div class="cap">Year</div><div class="hz">戊<br>辰</div><div class="en">Earth<br>Dragon</div></div>
+    </div>
+    <p class="whisper" style="margin:0 0 4px">the eight characters of your birth, hour to year <i class="ti ti-info-circle i"></i></p>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="eyebrow seyebrow">The day master <i class="ti ti-info-circle i"></i></div>
+    <div class="gv" style="font-size:28px;line-height:1.2">Jia, the tall tree</div>
+    <p class="whisper" style="margin:2px 0 10px">Yang Wood, born in the Dog month, the dry autumn earth</p>
+    <p class="body">Yang Wood is the standing tree: upright, principled, slow to bend and slower to uproot. Born into the Dog month, your tree stands in autumn earth: firm ground, thin water. The chart carries strong Earth to hold your roots and enough Water to feed them; what it lacks entirely is Metal, the pruning blade. Nobody trims this tree but you, which is its freedom and its danger.</p>
+
+    <div class="eyebrow seyebrow" style="margin-top:14px">The five elements <i class="ti ti-info-circle i"></i></div>
+    <div class="elrow"><span class="name">Earth</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="n">3</span></div>
+    <div class="elrow"><span class="name">Wood</span><span class="track"><span class="fill" style="width:67%;opacity:0.8"></span></span><span class="n">2</span></div>
+    <div class="elrow"><span class="name">Water</span><span class="track"><span class="fill" style="width:67%;opacity:0.8"></span></span><span class="n">2</span></div>
+    <div class="elrow"><span class="name">Fire</span><span class="track"><span class="fill" style="width:33%;opacity:0.6"></span></span><span class="n">1</span></div>
+    <div class="elrow"><span class="name">Metal</span><span class="track"></span><span class="n" style="color:var(--wine)">0</span></div>
+    <p class="whisper" style="margin:8px 0 0;text-align:left">a missing element is not a flaw; it is the chart&rsquo;s open question, and the luck pillars sometimes answer it</p>
+
+    <div class="fullrule"></div>
+    <div class="eyebrow seyebrow" style="margin-top:10px">The luck pillars <i class="ti ti-info-circle i"></i></div>
+    <p class="whisper" style="margin:0 0 8px">the ten-year seasons of the life, walked forward from the month</p>
+    <div class="grow"><span class="g" style="color:var(--faint)">癸亥 WATER PIG</span><span class="unfav">age 1 to 11</span></div>
+    <div class="grow"><span class="g" style="color:var(--faint)">甲子 WOOD RAT</span><span class="unfav">age 11 to 21</span></div>
+    <div class="grow"><span class="g" style="color:var(--faint)">乙丑 WOOD OX</span><span class="unfav">age 21 to 31</span></div>
+    <div class="grow"><span class="g" style="color:var(--gold2)">丙寅 FIRE TIGER · NOW</span><span class="fav">age 31 to 41</span></div>
+    <div class="grow"><span class="g">丁卯 FIRE RABBIT</span><span class="unfav">age 41 to 51</span></div>
+    <div class="grow" style="border-bottom:none"><span class="g">戊辰 EARTH DRAGON</span><span class="unfav">age 51 to 61</span></div>
+    <p class="body" style="margin-top:10px;margin-bottom:0">You walk the Fire Tiger decade: your own hour pillar returned as a season. Wood feeds Fire, so the tree burns bright these years; output, expression, and visibility come easily, and the discipline is not to burn what should be built.</p>
+  </div>
+
+  <!-- B: the Persian clock in the Foretelling year -->
+  <div class="plabel">B · The Persian clock: two sections in the year view</div>
+  <p class="note">Not a new stop. The Foretelling&rsquo;s year view (Western lens) gains the Firdaria and the year&rsquo;s lord, beside the omens it already speaks. Three ancient clocks then read the same life.</p>
+  <div class="modal">
+    <div class="pillrow" style="margin-top:0"><span>This day</span><span>This moon</span><span class="on">The year</span></div>
+    <div style="opacity:0.35"><p class="body" style="text-align:center;margin:8px 0">…the western year&rsquo;s omens, as today…</p></div>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="eyebrow seyebrow">The year&rsquo;s lord <i class="ti ti-info-circle i"></i></div>
+    <div class="gv" style="font-size:26px;line-height:1.2">A second-house year, under Mars</div>
+    <p class="whisper" style="margin:2px 0 10px">the annual profection · your 38th year, November to November</p>
+    <p class="body" style="margin-bottom:0">Each year of life hands the chart to one house and its lord. This year the wheel rests on your second house, the stores and the table, and Mars keeps it: a year to earn boldly and defend what is yours, with the old warning against spending like a soldier on leave.</p>
+
+    <div class="moons"><i class="ti ti-moon-stars"></i><i class="ti ti-moon"></i><i class="ti ti-circle"></i><i class="ti ti-moon-2"></i><i class="ti ti-moon-stars"></i></div>
+    <div class="eyebrow seyebrow">The Persian clock <i class="ti ti-info-circle i"></i></div>
+    <p class="whisper" style="margin:0 0 8px">the Firdaria: seventy-five years divided among the seven and the nodes, in the night-born order</p>
+    <div class="grow"><span class="g" style="color:var(--faint)">MOON</span><span class="unfav">1988 to 1997</span></div>
+    <div class="grow"><span class="g" style="color:var(--faint)">SATURN</span><span class="unfav">1997 to 2008</span></div>
+    <div class="grow"><span class="g" style="color:var(--faint)">JUPITER</span><span class="unfav">2008 to 2020</span></div>
+    <div class="grow"><span class="g" style="color:var(--gold2)">MARS · NOW</span><span class="fav">2020 to 2027</span></div>
+    <div class="grow"><span class="g">THE NODES</span><span class="unfav">2027 to 2032</span></div>
+    <div class="grow" style="border-bottom:none"><span class="g">SUN</span><span class="unfav">2032 to 2042</span></div>
+    <p class="body" style="margin-top:10px;margin-bottom:0">The Persians hand these years to Mars, and the profection agrees: two clocks of two empires both name the soldier. The Vimshottari alone reads softer, Rahu tempered by the Moon. When the clocks argue, the year is asking which of them you will prove right.</p>
+  </div>
+
+  <!-- C: the card row -->
+  <div class="plabel">C · One exotic row on the card: the day sign</div>
+  <p class="note">The Mayan Tzolk&rsquo;in, the 260-day sacred round: one row beside the birth arcana, tooltipped like its neighbours.</p>
+  <div class="modal">
+    <div style="opacity:0.35">
+      <div class="row"><span class="lab">Life path</span><span class="val">6</span></div>
+      <div class="row"><span class="lab">Venus sign</span><span class="val">♎︎ Libra</span></div>
+      <div class="row"><span class="lab">Birth arcana</span><span class="val">The Lovers</span></div>
+    </div>
+    <div class="row"><span class="lab">Day sign <i class="ti ti-info-circle i"></i></span><span class="val">6 Lamat <i class="ti ti-info-circle i"></i></span></div>
+    <p class="whisper" style="margin:6px 0 0;text-align:left">Lamat, the star of Venus, the rabbit of abundance: a sign of ripening and generous excess. Six is the tone of flow, the rhythm that steadies. (Both tooltips hand-written for all 20 signs and 13 tones.)</p>
+  </div>
+
+  <p class="note" style="margin-top:18px">All of it computable in-house: the pillars from the sexagenary cycle the card already uses (the month pillar from our own sun engine&rsquo;s solar terms), the luck pillars from the month walked forward, the Firdaria and profection from birth date and the night-born rule, the Tzolk&rsquo;in from day arithmetic on the old Maya correlation. Hand passages per element, day master, luck season, fardar lord, profected house, day sign, and tone. Zi Wei Dou Shu, the Chinese kundli, stays on the shelf unless wanted: it is a Kundli-sized build of its own.</p>
+</div>
+</body>
+</html>

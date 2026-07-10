@@ -22,9 +22,12 @@ check("unscored night, 3 DQs: sole survivor crowned",
 check("leftover blank row does not block the crown",
   owners(night([r("A", { dq: true }), r("B", { dq: true }), r("C", { dq: true }), r("Seer Matthew"), r("", { title: "" })])) === "Seer Matthew");
 
-// A named-but-unclaimed second survivor is a real contender: no crown.
-check("a second real unscored survivor: no crown",
-  championsOf(night([r("A", { dq: true }), r("Seer Matthew"), r("", { title: "Mystery Syrah" })])).length === 0);
+// KEISER'S CONVENTION: on an unscored night the cloth order carries the
+// standing, so the lowest qualified cloth takes the crown.
+check("unscored night, two survivors: the lower cloth is crowned",
+  owners(night([r("A", { dq: true, cloth: 1 }), r("Seer Matthew", { cloth: 2 }), r("", { title: "Mystery Syrah", cloth: 3 })])) === "Seer Matthew");
+check("unscored night, DQ'd cloth 1 skipped: cloth 2 crowned",
+  owners(night([r("A", { dq: true, cloth: 1 }), r("B", { cloth: 2 }), r("C", { cloth: 3 })])) === "B");
 
 // Scored night, normal: rank 1 non-DQ wins.
 check("scored night: rank 1 crowned",
@@ -37,13 +40,10 @@ check("scored night: rank 1 crowned",
   check("DQ'd first place: DQ member never credited", !champs.some((x) => x.owner === "A"));
 }
 
-// Unscored night, two substantial survivors: ambiguous, no crown.
-check("unscored night, two survivors: no crown",
-  championsOf(night([r("A", { dq: true }), r("B"), r("C")])).length === 0);
-
-// Unscored night, no DQs at all: no crown invented.
-check("unscored night, no DQs: no crown invented",
-  championsOf(night([r("A"), r("B")])).length === 0);
+// Unscored night, no DQs at all: the first cloth takes it (the cloth order
+// IS the recorded standing).
+check("unscored night, no DQs: cloth 1 is crowned",
+  owners(night([r("A", { cloth: 1 }), r("B", { cloth: 2 })])) === "A");
 
 // All DQ'd: nobody.
 check("all disqualified: no champion",

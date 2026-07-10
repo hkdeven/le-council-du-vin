@@ -43,15 +43,28 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   const { member, members, gatherings, annals, ballots, dq, nowMs } = inp;
   const mine = ballots.filter((b) => b.memberId === member.id && b.sealed);
 
-  // Moons stood + longest communion (consecutive gatherings with a sealed ballot).
-  const ordered = [...gatherings]
-    .filter((g) => g.gather_date)
-    .sort((a, b) => (a.gather_date! < b.gather_date! ? -1 : 1));
+  // Moons stood + longest communion. Standing a moon is proven by EITHER a
+  // sealed ballot OR owning a bottle in that night's annal (nobody's cloth
+  // reaches the table without them): imported and unscored nights have no
+  // ballots, but their bringers still stood. Only nights already gathered
+  // count; a summoned future night must not break anyone's run.
+  const today = new Date(nowMs).toISOString().slice(0, 10);
+  const nightDates = new Map<string, string>();
+  for (const g of gatherings) {
+    if (g.gather_date && g.gather_date <= today) nightDates.set(g.id, g.gather_date);
+  }
+  for (const a of annals) {
+    if (!nightDates.has(a.gatheringId) && a.date && a.date <= today) nightDates.set(a.gatheringId, a.date);
+  }
+  const nights = [...nightDates.entries()].sort((x, y) => (x[1] < y[1] ? -1 : 1));
   const stoodSet = new Set(mine.map((b) => b.gatheringId));
-  const moonsStood = ordered.filter((g) => stoodSet.has(g.id)).length;
+  for (const a of annals) {
+    if (a.rows.some((r) => r.owner === member.cult_name)) stoodSet.add(a.gatheringId);
+  }
+  const moonsStood = nights.filter(([id]) => stoodSet.has(id)).length;
   let communion = 0, run = 0;
-  for (const g of ordered) {
-    run = stoodSet.has(g.id) ? run + 1 : 0;
+  for (const [id] of nights) {
+    run = stoodSet.has(id) ? run + 1 : 0;
     communion = Math.max(communion, run);
   }
 
@@ -128,7 +141,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
 
   // The wheel: moons since they last hosted (gatherings first, profile fallback).
   let lastHosted: string | null = member.last_hosted || null;
-  for (const g of ordered) {
+  for (const g of gatherings) {
     if (!g.gather_date || new Date(g.gather_date).getTime() > nowMs) continue;
     const hosted = g.host_id === member.id || g.host_name === member.cult_name ||
       (g as Gathering & { host2_id?: string | null; host2_name?: string | null }).host2_id === member.id ||

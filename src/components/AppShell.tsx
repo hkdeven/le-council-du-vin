@@ -16,7 +16,7 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
   { href: "/rite", label: "The rite", icon: "ti-glass-full", min: "initiate" },
   { href: "/reveal", label: "Reveal", icon: "ti-eye", min: "initiate" },
   { href: "/oracle", label: "Oracle", icon: "ti-crystal-ball", min: "member" },
-  { href: "/tribunal", label: "Tribunal", icon: "ti-gavel", min: "keiser" },
+  { href: "/tribunal", label: "Tribunal", icon: "ti-gavel", min: "member" },
   { href: "/codex", label: "Codex", icon: "ti-chart-radar", min: "member" },
 ];
 
@@ -58,7 +58,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // initiates on login. Refreshes as they move around and on submit/decree.
   const [pending, setPending] = useState(0);
   useEffect(() => {
-    if (role !== "keiser") { setPending(0); return; }
+    if (role !== "keiser" && role !== "member") { setPending(0); return; }
     const refresh = () => fetchPendingCount().then(setPending).catch(() => {});
     refresh();
     window.addEventListener("lcv-applications", refresh);
