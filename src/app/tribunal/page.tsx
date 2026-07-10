@@ -50,7 +50,7 @@ function ExpulsionCard({ name, count }: { name: string; count: number }) {
       </div>
       {verdict ? (
         <p className="scr" style={{ margin: 0, fontSize: 16 }}>
-          {verdict === "kept" ? "The Council shows mercy — they remain, on thinnest ice." : "The seat is forfeit. Their glass is emptied."}
+          {verdict === "kept" ? "The Council shows mercy: they remain, on thinnest ice." : "The seat is forfeit. Their glass is emptied."}
         </p>
       ) : (
         <>
@@ -145,7 +145,11 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
   const flipTo = (to: boolean) => {
     if (to) setAuguryOnce(true);
     setFlipped(to);
-    overlayRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    // Snap the overlay to the top at mid-flip, while the card is edge-on:
+    // an instant jump the eye never sees. Smooth scrolling fired with the
+    // flip was dropped on mobile (the height and rotate transitions run at
+    // the same moment), which left the reader mid-card.
+    setTimeout(() => { const el = overlayRef.current; if (el) el.scrollTop = 0; }, 330);
   };
   useLayoutEffect(() => {
     const active = flipped ? backRef.current : frontRef.current;
@@ -437,9 +441,22 @@ export default function Tribunal() {
   };
 
   const pending = apps.filter((a) => a.status === "pending");
-  const decided = apps
-    .filter((a) => a.status !== "pending")
-    .filter((a) => a.status === "cast_out" || memberEmails.has(a.email.toLowerCase()));
+  // One row per soul: a petitioner who filed twice appears once, wearing the
+  // anointed record if any, otherwise the most recent word on them.
+  const decided = (() => {
+    const best = new Map<string, Application>();
+    for (const a of apps) {
+      if (a.status === "pending") continue;
+      if (a.status !== "cast_out" && !memberEmails.has(a.email.toLowerCase())) continue;
+      const key = a.email.toLowerCase() || a.id;
+      const prev = best.get(key);
+      const wins = !prev
+        || (a.status === "anointed" && prev.status !== "anointed")
+        || (a.status === prev.status && (a.created_at || "") > (prev.created_at || ""));
+      if (wins) best.set(key, a);
+    }
+    return [...best.values()];
+  })();
   const summoned = Object.entries(dq).filter(([, n]) => n >= DQ_THRESHOLD);
   const opened = apps.find((a) => a.id === openApp) || null;
   // A petitioner who became (or already is) a member wears their portrait.

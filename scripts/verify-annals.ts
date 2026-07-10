@@ -22,11 +22,12 @@ check("unscored night, 3 DQs: sole survivor crowned",
 check("leftover blank row does not block the crown",
   owners(night([r("A", { dq: true }), r("B", { dq: true }), r("C", { dq: true }), r("Seer Matthew"), r("", { title: "" })])) === "Seer Matthew");
 
-// KEISER'S CONVENTION: on an unscored night the cloth order carries the
-// standing, so the lowest qualified cloth takes the crown.
-check("unscored night, two survivors: the lower cloth is crowned",
+// KEISER'S CONVENTION: on an unscored night the LISTED order carries the
+// standing, so the first qualified wine in the record takes the crown
+// (the cloth is the pour number, never the standing).
+check("unscored night, two survivors: the first listed is crowned",
   owners(night([r("A", { dq: true, cloth: 1 }), r("Seer Matthew", { cloth: 2 }), r("", { title: "Mystery Syrah", cloth: 3 })])) === "Seer Matthew");
-check("unscored night, DQ'd cloth 1 skipped: cloth 2 crowned",
+check("unscored night, DQ'd first row skipped: second row crowned",
   owners(night([r("A", { dq: true, cloth: 1 }), r("B", { cloth: 2 }), r("C", { cloth: 3 })])) === "B");
 
 // Scored night, normal: rank 1 non-DQ wins.
@@ -40,9 +41,8 @@ check("scored night: rank 1 crowned",
   check("DQ'd first place: DQ member never credited", !champs.some((x) => x.owner === "A"));
 }
 
-// Unscored night, no DQs at all: the first cloth takes it (the cloth order
-// IS the recorded standing).
-check("unscored night, no DQs: cloth 1 is crowned",
+// Unscored night, no DQs at all: the first listed wine takes it.
+check("unscored night, no DQs: first listed is crowned",
   owners(night([r("A", { cloth: 1 }), r("B", { cloth: 2 })])) === "A");
 
 // All DQ'd: nobody.
@@ -54,13 +54,14 @@ check("tied survivors share the crown",
   owners(night([r("A", { rank: 1, score: 9, votes: 5, dq: true }), r("B", { rank: 2, score: 8, votes: 5 }), r("C", { rank: 2, score: 8, votes: 5 })])) === "B,C");
 
 // Unscored night whose cloths were never recorded (hand-entered history):
-// nothing can carry the standing, so nobody is crowned.
-check("unscored night, cloths unknown: no champion",
-  championsOf(night([r("A", { cloth: null as unknown as number }), r("B", { cloth: null as unknown as number })])).length === 0);
+// the listed order still carries the standing (the French reds regression:
+// blanking pour numbers must never move the crown).
+check("unscored night, cloths unknown: first listed is crowned",
+  owners(night([r("Harrison", { cloth: null as unknown as number }), r("The Keiser", { cloth: null as unknown as number })])) === "Harrison");
 
-// ...but a survivor who DOES know its cloth still takes it over the unknowns.
-check("unscored night, one known cloth: it is crowned",
-  owners(night([r("A", { cloth: null as unknown as number }), r("B", { cloth: 4 })])) === "B");
+// The cloth is the pour number, not the standing: listed order beats it.
+check("unscored night, listed order beats the cloth number",
+  owners(night([r("Harrison", { cloth: 5 }), r("The Keiser", { cloth: 1 })])) === "Harrison");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

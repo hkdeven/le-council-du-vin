@@ -421,3 +421,15 @@ select option {
   0%, 55% { left: -60%; }
   85%, 100% { left: 120%; }
 }
+
+/* Number inputs lose the native up/down spinners everywhere (the Keiser's
+   decree): typing is the only entry, on every browser. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

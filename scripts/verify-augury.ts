@@ -19,6 +19,8 @@ const app = (over: Partial<Application> = {}): Application => ({
   date_of_birth: "1991-03-12", time_of_birth: "14:15", birth_place: "Cape Town", birth_lat: -33.92, birth_lon: 18.42, birth_tz: "Africa/Johannesburg",
   ...over,
 });
+// Fixture members with fixed test charts; no field below is anyone's real
+// birth record.
 const KEISER: Member = { id: "m1", email: "k@c", cult_name: "The Keiser", short_name: "TK", role: "keiser", active: true, date_of_birth: "1988-11-05", time_of_birth: "03:30", birth_place: "Vryburg", birth_lat: -26.95, birth_lon: 24.73, birth_tz: "Africa/Johannesburg" };
 const MATTHEW: Member = { ...KEISER, id: "m2", email: "m@c", cult_name: "Seer Matthew", short_name: "SM", role: "member", date_of_birth: "1990-06-14", time_of_birth: "09:45", birth_lat: -25.75, birth_lon: 28.19 };
 const BARE: Member = { ...KEISER, id: "m3", email: "b@c", cult_name: "Elder Bare", role: "member", date_of_birth: null, time_of_birth: null, birth_lat: null, birth_lon: null };

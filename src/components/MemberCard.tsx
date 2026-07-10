@@ -167,27 +167,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         ) : null}
         {member.role && <div style={{ marginTop: 4 }}><span className="tag">{member.role}</span></div>}
 
-        <div style={{ borderTop: "1px solid var(--line)", margin: "16px 0 6px" }} />
-
-        {dob ? (
-          <div style={{ textAlign: "left" }}>
-            <Row label="Element" tip={ELEMENT_TIP} value={sun?.element || "—"} />
-            <Row label="Sun sign" tip={SUN_TIP} value={sun ? `${sun.symbol} ${sun.name}` : "—"} />
-            <Row label="Moon sign" tip={MOON_TIP} value={moon ? `${moon.symbol} ${moon.name}` : "—"} />
-            <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : !tob ? "unknown hour" : "unknown place"} />
-            <Row label="Shengxiao" tip={SX_TIP} value={animal ? `${animal.symbol} ${animal.name}` : "—"} />
-            <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} valueTip={wx?.meaning} />
-            <Row label="Day-master" tip={DM_TIP} value={dm ? `${dm.hanzi} ${dm.polarity} ${dm.element}` : "—"} valueTip={dm?.meaning} />
-            <Row label="Life path" tip={LP_TIP} value={lp ? String(lp.number) : "—"} valueTip={lp?.meaning} />
-            <Row label="Venus sign" tip={VENUS_TIP} value={venus ? `${venus.symbol} ${venus.name}` : "—"} valueTip={venus ? VENUS_IN[venus.name] : undefined} />
-            <Row label="Birth arcana" tip={ARC_TIP} value={arc ? arc.name : "—"} valueTip={arc?.meaning} />
-            <Row label="Day sign" tip={TZ_TIP} value={daySign ? `${daySign.tone} ${daySign.sign}` : "—"} valueTip={daySign ? `${daySign.meaning} ${daySign.toneMeaning}` : undefined} />
-          </div>
-        ) : (
-          <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made {isSelf ? "you" : "them"} are unrecorded.</p>
-        )}
-
-        <div style={{ borderTop: "2px solid var(--gold)", margin: "26px -20px" }} />
+        <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -20px 26px" }} />
 
         <div className="disp" style={{ fontSize: 15 }}>The Palate Dossier</div>
         <p className="whisper" style={{ fontSize: 13, margin: "2px 0 18px" }}>what the vine has learned of {isSelf ? "you" : "them"}</p>
@@ -262,6 +242,26 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         ) : (
           <p className="whisper" style={{ fontSize: 14, margin: 0 }}>No moons yet crowned.</p>
         )}
+        <div style={{ borderTop: "2px solid var(--gold)", margin: "16px -20px" }} />
+
+        {dob ? (
+          <div style={{ textAlign: "left" }}>
+            <Row label="Element" tip={ELEMENT_TIP} value={sun?.element || "—"} />
+            <Row label="Sun sign" tip={SUN_TIP} value={sun ? `${sun.symbol} ${sun.name}` : "—"} />
+            <Row label="Moon sign" tip={MOON_TIP} value={moon ? `${moon.symbol} ${moon.name}` : "—"} />
+            <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : !tob ? "unknown hour" : "unknown place"} />
+            <Row label="Shengxiao" tip={SX_TIP} value={animal ? `${animal.symbol} ${animal.name}` : "—"} />
+            <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} valueTip={wx?.meaning} />
+            <Row label="Day-master" tip={DM_TIP} value={dm ? `${dm.hanzi} ${dm.polarity} ${dm.element}` : "—"} valueTip={dm?.meaning} />
+            <Row label="Life path" tip={LP_TIP} value={lp ? String(lp.number) : "—"} valueTip={lp?.meaning} />
+            <Row label="Venus sign" tip={VENUS_TIP} value={venus ? `${venus.symbol} ${venus.name}` : "—"} valueTip={venus ? VENUS_IN[venus.name] : undefined} />
+            <Row label="Birth arcana" tip={ARC_TIP} value={arc ? arc.name : "—"} valueTip={arc?.meaning} />
+            <Row label="Day sign" tip={TZ_TIP} value={daySign ? `${daySign.tone} ${daySign.sign}` : "—"} valueTip={daySign ? `${daySign.meaning} ${daySign.toneMeaning}` : undefined} />
+          </div>
+        ) : (
+          <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made {isSelf ? "you" : "them"} are unrecorded.</p>
+        )}
+
         <div style={{ borderTop: "2px solid var(--gold)", margin: "16px -20px 30px" }} />
 
         <button className="btn gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }} onClick={() => flipTo(true)}>

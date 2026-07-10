@@ -18,6 +18,9 @@ const V = { obj: "you", pos: "your", subj: "you" };
 // A fixed instant: Friday 2026-07-10 noon SAST, cross-checked against
 // DrikPanchang's published Pretoria panchang during the audit.
 const NOW = new Date(2026, 6, 10, 12, 0).getTime();
+// A FIXED TEST CHART, not the Keiser's real birth record. Every expected
+// value below was calibrated to this fixture; never read it as anyone's
+// live reading (that mistake once "moved" the Keiser out of his Shani years).
 const KEISER = vedicChart("1988-11-05", "03:30", "Africa/Johannesburg", -26.95, 24.73, NOW)!;
 
 // ── panchang ────────────────────────────────────────────────────────────────

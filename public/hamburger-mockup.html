@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the hamburger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:420px;margin:0 auto;padding:26px 16px 70px;}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:6px 0 0;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:0 0 18px;line-height:1.5;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:11px;color:var(--gold2);margin:28px 0 8px;text-align:center;}
+  .phone{border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:#060505;position:relative;}
+  .topbar{border-bottom:1px solid var(--line);background:#0a0908;display:flex;align-items:center;gap:12px;padding:14px 14px;}
+  .mark{width:34px;height:34px;display:block}
+  .brand{font-family:"Cinzel",serif;font-size:13px;letter-spacing:0.12em;color:var(--parch);white-space:nowrap;}
+  .burger{margin-left:auto;background:none;border:none;color:var(--gold2);cursor:pointer;padding:6px;display:inline-flex;font-size:22px;}
+  .avatar{width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:#0d0b0a;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none;}
+  .avatar img{width:70%;height:70%;object-fit:contain;opacity:0.9}
+  .page{padding:20px 16px 30px;min-height:210px;}
+  .card{background:linear-gradient(180deg,#100e0c,#0a0908);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  /* the drawer */
+  .veil{position:absolute;inset:0;background:rgba(0,0,0,0.62);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:5;}
+  .drawer{position:absolute;top:0;bottom:0;right:0;width:240px;background:linear-gradient(180deg,#12100e,#0a0908);border-left:1px solid var(--gold);box-shadow:-18px 0 50px rgba(0,0,0,0.7);transform:translateX(102%);transition:transform .3s cubic-bezier(0.4,0.1,0.2,1);z-index:6;display:flex;flex-direction:column;padding:14px 0 18px;}
+  .open .veil{opacity:1;pointer-events:auto}
+  .open .drawer{transform:translateX(0)}
+  .dhead{display:flex;align-items:center;gap:10px;padding:2px 16px 12px;border-bottom:1px solid var(--line);margin-bottom:8px;}
+  .dhead .x{margin-left:auto;background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;padding:4px;display:inline-flex}
+  .nitem{display:flex;align-items:center;gap:12px;padding:13px 18px;color:var(--dim);font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;border-left:2px solid transparent;}
+  .nitem i{font-size:17px;width:20px;text-align:center}
+  .nitem.on{color:var(--gold2);background:rgba(160,150,120,0.08);border-left-color:var(--gold);}
+  .badge{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--wine);color:#fff;font-family:"EB Garamond",serif;font-size:11px;letter-spacing:0;display:inline-flex;align-items:center;justify-content:center;margin-left:auto;}
+  .dfoot{margin-top:auto;padding:12px 18px 0;border-top:1px solid var(--line);}
+  .dfoot .nitem{padding:11px 0}
+  /* variant B: curtain */
+  .curtain{overflow:hidden;max-height:0;transition:max-height .32s ease;background:#080706;border-bottom:0 solid var(--line);z-index:4;position:relative;}
+  .openB .curtain{max-height:340px;border-bottom-width:1px;}
+  .curtain .nitem{padding:13px 20px;border-left:none;border-bottom:1px solid var(--line);}
+  .curtain .nitem:last-child{border-bottom:none}
+  .curtain .nitem.on{border-left:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The tabs, folded away</h1>
+  <p class="note">The nav row is gone; the whole second bar of the app returns to the wine. The topbar keeps only the mark, the name of the house, the hamburger, and the profile ring: the role text beside it is retired. Both are tappable.</p>
+
+  <div class="plabel">A · The side drawer</div>
+  <div class="phone" id="pA">
+    <div class="topbar">
+      <img class="mark" src="/site-mark.png" alt="">
+      <span class="brand">Le Council du Vin</span>
+      <button class="burger" onclick="document.getElementById('pA').classList.add('open')" aria-label="The chambers"><i class="ti ti-menu-2"></i></button>
+      <span class="avatar"><img src="/site-mark.png" alt=""></span>
+    </div>
+    <div class="page">
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:6px">The convening</div>
+        <p class="whisper" style="margin:0">the page beneath, undisturbed; one bar taller than before</p>
+      </div>
+    </div>
+    <div class="veil" onclick="document.getElementById('pA').classList.remove('open')"></div>
+    <nav class="drawer">
+      <div class="dhead">
+        <span class="eyebrow">The chambers</span>
+        <button class="x" onclick="document.getElementById('pA').classList.remove('open')" aria-label="Close"><i class="ti ti-x"></i></button>
+      </div>
+      <a class="nitem on" href="#"><i class="ti ti-moon"></i>Convene</a>
+      <a class="nitem" href="#"><i class="ti ti-glass-full"></i>The rite</a>
+      <a class="nitem" href="#"><i class="ti ti-eye"></i>Reveal</a>
+      <a class="nitem" href="#"><i class="ti ti-crystal-ball"></i>Oracle</a>
+      <a class="nitem" href="#"><i class="ti ti-gavel"></i>Tribunal<span class="badge">1</span></a>
+      <a class="nitem" href="#"><i class="ti ti-chart-radar"></i>Codex</a>
+      <div class="dfoot">
+        <a class="nitem" href="#" style="padding-left:0"><i class="ti ti-user"></i>Your profile</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="plabel">B · The curtain, dropping beneath the bar</div>
+  <div class="phone" id="pB">
+    <div class="topbar">
+      <img class="mark" src="/site-mark.png" alt="">
+      <span class="brand">Le Council du Vin</span>
+      <button class="burger" onclick="document.getElementById('pB').classList.toggle('openB')" aria-label="The chambers"><i class="ti ti-menu-2"></i></button>
+      <span class="avatar"><img src="/site-mark.png" alt=""></span>
+    </div>
+    <div class="curtain">
+      <a class="nitem on" href="#"><i class="ti ti-moon"></i>Convene</a>
+      <a class="nitem" href="#"><i class="ti ti-glass-full"></i>The rite</a>
+      <a class="nitem" href="#"><i class="ti ti-eye"></i>Reveal</a>
+      <a class="nitem" href="#"><i class="ti ti-crystal-ball"></i>Oracle</a>
+      <a class="nitem" href="#"><i class="ti ti-gavel"></i>Tribunal<span class="badge">1</span></a>
+      <a class="nitem" href="#"><i class="ti ti-chart-radar"></i>Codex</a>
+    </div>
+    <div class="page">
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:6px">The convening</div>
+        <p class="whisper" style="margin:0">tap the hamburger to drop and lift the curtain</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:20px">Both keep the Tribunal's petition badge (it would also sit as a small dot on the hamburger itself when the drawer is closed, so a waiting petition is never invisible). The rite and the reveal still appear only when the rite is open.</p>
+</div>
+</body>
+</html>

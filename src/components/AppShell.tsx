@@ -54,6 +54,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [mode, bare]);
   const riteOpen = useRiteOpen(gathering);
 
+  // The chambers menu: the tabs folded behind a hamburger. Any navigation
+  // (or a tap on the hamburger again) lifts the curtain.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
+
   // Pending petitions → a badge on the Tribunal tab so the Keiser sees new
   // initiates on login. Refreshes as they move around and on submit/decree.
   const [pending, setPending] = useState(0);
@@ -128,61 +133,77 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
 
+        <button
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="The chambers"
+          aria-expanded={menuOpen}
+          style={{ marginLeft: "auto", position: "relative", width: "auto", background: "none", border: "none", color: "var(--gold2)", cursor: "pointer", padding: 6, display: "inline-flex", flex: "none" }}
+        >
+          <i className={`ti ${menuOpen ? "ti-x" : "ti-menu-2"}`} style={{ fontSize: 22 }} aria-hidden="true" />
+          {pending > 0 && !menuOpen && (
+            <span aria-label={`${pending} petition${pending === 1 ? "" : "s"} awaiting`} style={{ position: "absolute", top: 4, right: 3, width: 8, height: 8, borderRadius: 4, background: "var(--wine)" }} />
+          )}
+        </button>
+
         <Link
           href="/profile"
           aria-label="Your profile"
           title="Your profile"
-          style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: "none" }}
+          style={{ display: "flex", alignItems: "center", textDecoration: "none", flex: "none" }}
         >
-          <span className="eyebrow" style={{ fontSize: 9 }}>{role}</span>
           <Avatar src={avatar} initials={initials} size={34} />
         </Link>
         </div>
       </header>
 
       <nav
+        aria-label="The chambers"
         style={{
-          borderBottom: "1px solid var(--line)",
+          overflow: "hidden",
+          maxHeight: menuOpen ? 340 : 0,
+          transition: "max-height 0.32s ease",
+          borderBottom: menuOpen ? "1px solid var(--line)" : "none",
           background: "#080706",
         }}
       >
-        <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 2, padding: "8px 12px" }}>
-        {NAV.filter((n) => ROLE_RANK[role] >= ROLE_RANK[n.min])
-          .filter((n) => (n.href !== "/rite" && n.href !== "/reveal") || riteOpen)
-          .map((n) => {
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+        {(() => { const items = NAV.filter((n) => ROLE_RANK[role] >= ROLE_RANK[n.min])
+          .filter((n) => (n.href !== "/rite" && n.href !== "/reveal") || riteOpen);
+        return items.map((n, i) => {
           const on = pathname.startsWith(n.href);
+          const last = i === items.length - 1;
           return (
             <Link
               key={n.href}
               href={n.href}
               style={{
                 color: on ? "var(--gold2)" : "var(--dim)",
-                background: on ? "rgba(160,150,120,0.1)" : "none",
+                background: on ? "rgba(160,150,120,0.08)" : "none",
                 fontFamily: "'Cinzel', serif",
-                fontSize: 10,
-                letterSpacing: "0.12em",
+                fontSize: 11,
+                letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                padding: "7px 10px",
-                borderRadius: 6,
+                padding: "13px 20px",
+                borderBottom: last ? "none" : "1px solid var(--line)",
                 display: "flex",
                 alignItems: "center",
-                gap: 5,
+                gap: 12,
                 textDecoration: "none",
               }}
             >
-              <i className={`ti ${n.icon}`} aria-hidden="true" />
+              <i className={`ti ${n.icon}`} style={{ fontSize: 17, width: 20, textAlign: "center" }} aria-hidden="true" />
               {n.label}
               {n.href === "/tribunal" && pending > 0 && (
                 <span
                   aria-label={`${pending} petition${pending === 1 ? "" : "s"} awaiting`}
-                  style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--wine)", color: "#fff", fontFamily: "'EB Garamond', serif", fontSize: 11, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 1 }}
+                  style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--wine)", color: "#fff", fontFamily: "'EB Garamond', serif", fontSize: 11, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
                 >
                   {pending}
                 </span>
               )}
             </Link>
           );
-        })}
+        }); })()}
         </div>
       </nav>
 
