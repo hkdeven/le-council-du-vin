@@ -1,5 +1,34 @@
 # Le Council — Test Log
 
+## 2026-07-10 (later) — the quadruple-check audit applied; daily horoscope in both foretelling emails — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **Independent audit passed** (research agent, cross-checked vs JPL Horizons, Meeus reference code, DrikPanchang live values, Saravali/classical tables, Ernst Wilhelm's gochara compilation): ayanamsa, mean node, tropical engine (Moon within 0.006° of JPL), nakshatra/pada/navamsa, Vimshottari incl. balance-antar logic, kuta building blocks, yogas, mangal dosha, panchang methods, gochara lists (exact), Sade Sati method, tara bala all CONFIRMED. Three corrections applied: **tara kuta now uses the dominant even-remainder rule** (Janma pairs score 0 in the kuta; muhurta unchanged, Janma stays mixed), **gana matrix transposed to the classical Saravali orientation**, **vashya's two asymmetric cells swapped to groom-rows orientation**. Displayed kindred scores are unchanged by the two transposes (the accord averages both directions); identical-moon pairs drop 28 → 25 under the tara rule. Dead code removed (VARNA, mahaYears). **verify-kundli.ts now 45/45**, verify-vedic 24/24 | npx tsx scripts/verify-kundli.ts | ✓ 45/45 | n/a |
+| 2 | **Both foretelling emails carry the daily horoscope**: foretellingEmail gains a "This Day" section (dayLabel + day omens, wired from the profile envelope), vedicForetellingEmail gains "The Day's Star" (tara + passage + the five-limb almanac); previews 8 and 10 regenerated and verified | Open email-previews/8 and /10 | ✓ | [ ] |
+| 3 | **Crowns survive disqualifications** (new championsOf() in src/lib/annals.ts, the single source of truth for who took a night): a scored night crowns rank 1 non-DQ as before; if the raw first place carries a DQ, the best surviving score is promoted and the DQ'd member is NEVER credited; an unscored night (like the French reds import) still crowns when exactly one wine survives the DQs. Wired through every victory surface: codex night line + victory ledger + chalice champion, member-card chalices, the dossier's bottles crowned, and the prophecy's grade. 8/8 hostile-data cases pass | Codex: the French reds night reads "crowned: Seer Matthew"; his card carries the chalice | ✓ (injected the exact French-reds shape in demo: night line + chalice champion both credited Matthew; test data removed) | [ ] |
+| 4 | Build requirements recorded from the audit for the Heavens build: panchang **yoga must sum sidereal longitudes** (tropical shifts it by ~3-4 yogas; tithi/karana may use the tropical difference since ayanamsa cancels); gochara ships without vedha but the methodology note must say so; panchang boundary times shown to the hour at most; optional later: mangal dosha also from Moon/Venus for calculator parity | n/a (build notes) | n/a | n/a |
+
+---
+
+## 2026-07-10 — The Kundli: modal, kindred stars, muhurta, yogas, profile door — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **The Kundli modal** (src/components/Kundli.tsx), built to the approved mockup: North/South chart toggle (remembered per device, both SVGs generated from the live VedicChart), Lagna/nakshatra/navamsa rows with tooltips (12 lagna natures + all 27 nakshatra characters hand-written), the age you are living (mahadasha + antardasha passage with true dates + next-age line), the full turning (9 rows, per-lord tooltips, NOW in gold), the pillars and the pits (lagna lord, 10th lord, top-2 pitfall conditions), Muhurta · Favourable Hours (real tara-bala day chips), the marriage bond (7th lord house + Shukra + navamsa + honest mangal-dosha note), the yogas (only those truly present), natal-style methodology | Open The Kundli from your card or profile | ✓ (walked the whole modal; Keiser chart matches the verified sample: Kanya 8.7°, Rahu maha → Moon antar, Gajakesari + Budhaditya) | [ ] |
+| 2 | **Kindred stars**: classical ashta-koota accord out of 36, moon to moon, symmetric mean of both directions; full members only, both charts complete, sorted desc, verdict labels | Two live members with complete birth records: open either's Kundli | ✓ (injected a complete demo member: "26½ of 36 · strong" appeared; section correctly hidden when no other complete chart) | [ ] |
+| 3 | **Voice flips**: your/their across every passage and the veiled gate ("The heavens ask three more truths of them") | Open another member's Kundli | ✓ (Larissa override: "their first breath", "The age they are living", "Their strength"; gate in third person) | [ ] |
+| 4 | **Profile: third door under Your sky** — The Kundli + envelope; the kundli email (bands: rows, the age, the turning, pillars, muhurta, marriage, yogas, methodology footer) sends only to self like natal/foretelling | Profile → Your sky → The Kundli / envelope | ✓ (door + modal; email no-ops until Resend, template renders) | [ ] |
+| 5 | **Member card: third button** The Kundli under The Foretelling (ti-north-star) | Any member card | ✓ | [ ] |
+| 6 | **The heavens emails**: kundliEmail refined + NEW vedicForetellingEmail template (the wandering sky ledger, the year's turnings, the clock within, the iron passage); real-data previews generated as public/email-previews/9-kundli.html and 10-vedic-foretelling.html; the doctrine note ("No astrology API of any kind is consulted...") added to the Foretelling modal methodology, both new email howMade footers, and the heavens demo | Open the two preview files | ✓ (rendered + verified in preview; local send impossible: RESEND_API_KEY lives only in Netlify, route returns "not configured") | [ ] |
+| 7 | **The calculators** (src/lib/kundli.ts): ashta-koota (varna/vashya with half-sign rules/tara/yoni/graha-maitri/gana/bhakoot/nadi), tara-bala muhurta crossed with day-lord friendship, yoga detection (Gajakesari, Budhaditya, Chandra-Mangala, Kemadruma, the five Mahapurusha), mangal dosha, pillars. **scripts/verify-kundli.ts: 43/43** (classical facts, 729-pair invariants, the Keiser's independently confirmed chart, muhurta shape, and a published AstroSage worked example reproduced kuta-by-kuta: 10/36 exactly). Vashya/yoni/gana tables cross-checked against DrikPanchang + Saravali + two others by a research pass; three table corrections landed before ship | npx tsx scripts/verify-kundli.ts | ✓ 33/33 | n/a |
+
+---
+
 ## 2026-07-09 (night) — oracle fixes, wide grape ledger, the Vedic engine — pushed
 
 | # | Change | How to verify live | Demo | Live |

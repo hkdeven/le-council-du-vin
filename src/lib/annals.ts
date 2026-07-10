@@ -27,6 +27,27 @@ export interface AnnalEntry {
   committed_at: string;
 }
 
+// Who truly took a night. The crowned are rank 1 and never disqualified;
+// when a scored night's first place fell to disqualification, the best
+// surviving score is promoted; and a night recorded WITHOUT scores still
+// crowns when the cloths fell on disqualifications: if exactly one wine
+// survives the DQs, it takes the night. Every surface that counts victories
+// (codex crownings, chalices, the dossier, the prophecy's grade) must go
+// through this, so a disqualified first place is never credited anywhere.
+export function championsOf(a: AnnalEntry): AnnalRow[] {
+  const crowned = a.rows.filter((r) => r.rank === 1 && !r.dq);
+  if (crowned.length) return crowned;
+  const qualified = a.rows.filter((r) => !r.dq);
+  if (!qualified.length) return [];
+  const scored = qualified.filter((r) => r.votes > 0);
+  if (scored.length) {
+    const top = Math.max(...scored.map((r) => r.score));
+    return scored.filter((r) => r.score === top);
+  }
+  if (qualified.length === 1 && a.rows.some((r) => r.dq)) return qualified;
+  return [];
+}
+
 const ANNALS_KEY = "lcv_annals";
 
 // Disqualifications per member name, threshold five: at five the member is

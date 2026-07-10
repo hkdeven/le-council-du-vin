@@ -239,8 +239,10 @@ export function natalChartEmail(np: NatalEmailParams): Email {
 export interface OmenEntry { glyphs: string; title: string; when: string; body: string }
 export interface ForetellingEmailParams {
   name?: string;
+  dayLabel?: string; // "Friday 10 July"
   moonLabel?: string; // "14 July to 11 August"
   yearLabel?: string; // "2026"
+  day?: OmenEntry[]; // the daily reading
   entries?: OmenEntry[];
   warning?: string; // e.g. Mercury retrograde note
   year?: OmenEntry[];
@@ -309,6 +311,8 @@ export function reckoningEmail(rp: ReckoningEmailParams): Email {
 }
 
 export function foretellingEmail(fp: ForetellingEmailParams): Email {
+  const dayEntries = (fp.day || []).map(omenBlock).join("");
+  const daySection = dayEntries ? sectionBand("This Day", fp.dayLabel) + dayEntries : "";
   const entries = (fp.entries || []).map(omenBlock).join("");
   const warning = fp.warning
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 10px;"><tr>
@@ -323,18 +327,163 @@ export function foretellingEmail(fp: ForetellingEmailParams): Email {
     : "";
   const howMade =
     `<span style="font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6f6653;">How this reading is made</span><br>` +
-    `The positions of the planets for the month and year ahead are computed by the same astronomical engine as your natal chart, then compared against your own chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council's voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet.`;
+    `The positions of the planets for the month and year ahead are computed by the same astronomical engine as your natal chart, then compared against your own chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council's voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet. No astrology API of any kind is consulted: every chart, transit, dasha, and kuta is computed in-house by the Council's own verified engines. That is the whole doctrine.`;
   return {
     subject: `The Foretelling: what this moon intends`,
     html: layout(
       moons() +
       heading("The Foretelling") +
       p(`${fp.name || "Member of the Council"}, this is what the sky intends for you. Computed, never invented.`) +
+      daySection +
       moonSection +
       yearSection +
       p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">The vine calculates, it does not flatter.</span>`) +
       button(`${SITE}/profile`, "Read it in the Council"),
       "What the sky intends for you this moon.",
+      howMade
+    ),
+  };
+}
+
+export interface KundliEmailParams {
+  name?: string;
+  lagna?: string;
+  nakshatra?: string;
+  navamsa?: string;
+  ageTitle?: string; // "The years of Rahu"
+  ageDates?: string;
+  agePassage?: string;
+  nextLine?: string;
+  turning?: { lord: string; range: string; now?: boolean }[];
+  strength?: string;
+  dharma?: string;
+  pitfalls?: string;
+  marriage?: string;
+  yogas?: { name: string; text: string }[];
+  muhurtaGood?: string[];
+  muhurtaBad?: string[];
+}
+
+export function kundliEmail(kp: KundliEmailParams): Email {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const rows =
+    detailRow("Lagna", esc(kp.lagna || "")) +
+    detailRow("Moon's nakshatra", esc(kp.nakshatra || "")) +
+    detailRow("Navamsa lagna", esc(kp.navamsa || ""));
+  const turning = (kp.turning || [])
+    .map((t) => `<tr>
+      <td style="padding:5px 0;font-family:${HEAD_FONT};font-size:11px;letter-spacing:2px;color:${t.now ? "#cbbd93" : "#6f6653"};">${esc(t.lord.toUpperCase())}${t.now ? " · NOW" : ""}</td>
+      <td align="right" style="padding:5px 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:${t.now ? "#cbbd93" : "#8a7f66"};">${esc(t.range)}</td>
+    </tr>`).join("");
+  const yogas = (kp.yogas || [])
+    .map((y) => p(`<strong style="color:#cbbd93;">${esc(y.name)}</strong>: ${esc(y.text)}`))
+    .join("");
+  const chips = (list: string[], bright: boolean) =>
+    `<p style="margin:0 0 10px;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:${bright ? "#cbbd93" : "#5a554c"};">${list.map(esc).join(" · ")}</p>`;
+  const muhurta = (kp.muhurtaGood || []).length
+    ? sectionBand("Muhurta · Favourable Hours") +
+      p(`<span style="text-align:center;display:block;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:#9c8a5f;">sign, ask, and begin on these days</span>`) +
+      chips(kp.muhurtaGood || [], true) +
+      ((kp.muhurtaBad || []).length ? p(`<span style="text-align:center;display:block;font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6f6653;">Let pass quietly</span>`) + chips(kp.muhurtaBad || [], false) : "")
+    : "";
+  const howMade =
+    `<span style="font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6f6653;">How this chart is drawn</span><br>` +
+    `Positions come from the Council's verified natal engine, shifted by the Lahiri ayanamsa to give the Vedic sky. Rahu and Ketu are the mean lunar node; houses are whole-sign from the Lagna; the Vimshottari dasha is timed from the Moon's nakshatra at birth. Every passage is written once, by hand, and chosen by the chart itself. No astrology API of any kind is consulted: every chart, transit, dasha, and kuta is computed in-house by the Council's own verified engines. That is the whole doctrine.`;
+  return {
+    subject: "The Kundli: the Vedic sky at your first breath",
+    html: layout(
+      moons() +
+      heading("The Kundli") +
+      p(`${esc(kp.name || "Member of the Council")}, this is the Vedic sky at your first breath. Computed, never invented.`) +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>` +
+      (kp.ageTitle ? sectionBand("The age you are living", kp.ageDates) +
+        `<p style="margin:0 0 8px;text-align:center;font-family:'Great Vibes',cursive;font-size:26px;color:#cbbd93;">${esc(kp.ageTitle)}</p>` +
+        (kp.agePassage ? p(esc(kp.agePassage)) : "") +
+        (kp.nextLine ? p(esc(kp.nextLine)) : "") : "") +
+      (turning ? sectionBand("The full turning") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${turning}</table>` : "") +
+      ((kp.strength || kp.dharma || kp.pitfalls) ? sectionBand("The pillars and the pits") +
+        (kp.strength ? p(`<strong style="color:#cbbd93;">Your strength:</strong> ${esc(kp.strength)}`) : "") +
+        (kp.dharma ? p(`<strong style="color:#cbbd93;">Your dharma path:</strong> ${esc(kp.dharma)}`) : "") +
+        (kp.pitfalls ? p(`<strong style="color:#cbbd93;">Your pitfalls:</strong> ${esc(kp.pitfalls)}`) : "") : "") +
+      muhurta +
+      (kp.marriage ? sectionBand("The marriage bond") + p(esc(kp.marriage)) : "") +
+      (yogas ? sectionBand("The yogas") + yogas : "") +
+      p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">The vine calculates, it does not flatter.</span>`) +
+      button(`${SITE}/profile`, "Read it in the Council"),
+      "The Vedic sky at your first breath.",
+      howMade
+    ),
+  };
+}
+
+export interface VedicForetellingEmailParams {
+  name?: string;
+  dayLabel?: string; // "Friday 10 July"
+  dayStar?: string; // "Janma tara"
+  dayPassage?: string;
+  almanac?: { label: string; value: string }[]; // tithi, day lord, nakshatra, yoga, karana
+  monthLabel?: string;
+  gochara?: { lord: string; line: string; favourable?: boolean }[];
+  moonPassage?: string;
+  turnings?: { date: string; text: string }[];
+  clock?: { lord: string; range: string; now?: boolean }[];
+  ironTitle?: string; // "Ashtama Shani" / "Sade Sati"
+  ironWhisper?: string;
+  ironBody?: string;
+  ironNext?: string;
+}
+
+export function vedicForetellingEmail(vp: VedicForetellingEmailParams): Email {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const almanac = (vp.almanac || [])
+    .map((a) => detailRow(esc(a.label), esc(a.value)))
+    .join("");
+  const daySection = vp.dayStar
+    ? sectionBand("The Day's Star", vp.dayLabel) +
+      `<p style="margin:0 0 8px;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#cbbd93;">${esc(vp.dayStar)}</p>` +
+      (vp.dayPassage ? p(esc(vp.dayPassage)) : "") +
+      (almanac ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${almanac}</table>` : "")
+    : "";
+  const gochara = (vp.gochara || [])
+    .map((g) => `<tr>
+      <td style="padding:5px 0;font-family:${HEAD_FONT};font-size:11px;letter-spacing:2px;color:#cbc5b7;">${esc(g.lord.toUpperCase())}</td>
+      <td align="right" style="padding:5px 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:${g.favourable ? "#cbbd93" : "#8a7f66"};">${esc(g.line)}</td>
+    </tr>`).join("");
+  const turnings = (vp.turnings || [])
+    .map((t) => `<tr>
+      <td valign="baseline" style="padding:6px 12px 6px 0;font-family:${HEAD_FONT};font-size:10.5px;letter-spacing:1px;color:#cbbd93;white-space:nowrap;">${esc(t.date)}</td>
+      <td style="padding:6px 0;font-family:${BODY_FONT};font-size:14.5px;color:#cbc5b7;line-height:1.5;">${esc(t.text)}</td>
+    </tr>`).join("");
+  const clock = (vp.clock || [])
+    .map((c) => `<tr>
+      <td style="padding:5px 0;font-family:${HEAD_FONT};font-size:11px;letter-spacing:2px;color:${c.now ? "#cbbd93" : "#6f6653"};">${esc(c.lord.toUpperCase())}${c.now ? " · NOW" : ""}</td>
+      <td align="right" style="padding:5px 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:${c.now ? "#cbbd93" : "#8a7f66"};">${esc(c.range)}</td>
+    </tr>`).join("");
+  const iron = vp.ironTitle
+    ? sectionBand("The iron passage") +
+      `<p style="margin:0 0 4px;text-align:center;font-family:'Great Vibes',cursive;font-size:26px;color:#cbbd93;">${esc(vp.ironTitle)}</p>` +
+      (vp.ironWhisper ? `<p style="margin:0 0 10px;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#8a7f66;">${esc(vp.ironWhisper)}</p>` : "") +
+      (vp.ironBody ? p(esc(vp.ironBody)) : "") +
+      (vp.ironNext ? p(esc(vp.ironNext)) : "")
+    : "";
+  const howMade =
+    `<span style="font-family:${HEAD_FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6f6653;">How this reading is made</span><br>` +
+    `The gochara counts each graha's live sidereal position from the natal Moon, as tradition prescribes; the year's turnings are exact sign entries; the clock within is the Vimshottari's own hand. Every passage is written once, by hand, and chosen by the sky itself. No astrology API of any kind is consulted: every chart, transit, dasha, and kuta is computed in-house by the Council's own verified engines. That is the whole doctrine.`;
+  return {
+    subject: "The Foretelling: the Vedic sky",
+    html: layout(
+      moons() +
+      heading("The Vedic Sky") +
+      p(`${esc(vp.name || "Member of the Council")}, this is what the wandering grahas intend for you. Computed, never invented.`) +
+      daySection +
+      (gochara ? sectionBand("The wandering sky", vp.monthLabel) + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${gochara}</table>` : "") +
+      (vp.moonPassage ? p(esc(vp.moonPassage)) : "") +
+      (turnings ? sectionBand("The year's turnings") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${turnings}</table>` : "") +
+      (clock ? sectionBand("The clock within") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${clock}</table>` : "") +
+      iron +
+      p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">The vine calculates, it does not flatter.</span>`) +
+      button(`${SITE}/profile`, "Read it in the Council"),
+      "What the wandering grahas intend for you.",
       howMade
     ),
   };

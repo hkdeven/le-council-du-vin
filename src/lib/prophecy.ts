@@ -8,7 +8,7 @@
 // Every effect is shrunk toward zero when the history is thin, so one lucky
 // night doesn't crown a favourite. Spoken once, then stored on the gathering.
 
-import type { AnnalEntry } from "./annals";
+import { championsOf, type AnnalEntry } from "./annals";
 import type { HistoryBallot } from "./ballots";
 import type { Offering } from "./bottles";
 import type { Member } from "./types";
@@ -144,7 +144,7 @@ export function prophecyRecord(
     const a = byId.get(g.id);
     if (!a) continue;
     total++;
-    if (a.rows.some((r) => r.rank === 1 && !r.dq && r.owner === g.prophecy!.name)) right++;
+    if (championsOf(a).some((r) => r.owner === g.prophecy!.name)) right++;
   }
   return { right, total };
 }

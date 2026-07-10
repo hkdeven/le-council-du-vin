@@ -15,6 +15,7 @@ import { toRoman } from "@/lib/util";
 import AvatarCropper from "@/components/AvatarCropper";
 import NatalChartModal, { chartReady, wheelSvgString } from "@/components/NatalChart";
 import ForetellingModal from "@/components/Foretelling";
+import KundliModal from "@/components/Kundli";
 import { fullChart, ordinal } from "@/lib/natal";
 import type { CardMember } from "@/components/MemberCard";
 import MemberCard from "@/components/MemberCard";
@@ -806,6 +807,7 @@ function FeatureWish() {
 function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
   const [showChart, setShowChart] = useState(false);
   const [showFore, setShowFore] = useState(false);
+  const [showKundli, setShowKundli] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const ready = chartReady(self);
@@ -843,7 +845,46 @@ function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
     const { foretellingFor } = await import("@/lib/transits");
     const r = foretellingFor({ dateStr: self.date_of_birth, timeStr: self.time_of_birth, tz: self.birth_tz, lat: self.birth_lat, lon: self.birth_lon }, Date.now());
     if (!r) { setBusy(null); setMsg("The sky is veiled; complete your record first."); return; }
-    finish(await sendEmail("foretelling", [email], { name: self.cult_name, moonLabel: r.moonLabel, yearLabel: r.yearLabel, entries: r.entries, warning: r.warning || undefined, year: r.year }));
+    finish(await sendEmail("foretelling", [email], { name: self.cult_name, dayLabel: r.dayLabel, moonLabel: r.moonLabel, yearLabel: r.yearLabel, day: r.day, entries: r.entries, warning: r.warning || undefined, year: r.year }));
+  };
+
+  const emailKundli = async () => {
+    if (!ready || !self.date_of_birth) { setMsg("Give your birth time and place above; then the sky unveils."); return; }
+    if (!email) { setMsg("No inbox is known for you in this mode."); return; }
+    setBusy("kundli"); setMsg(null);
+    const [{ vedicChart, RASHIS, RASHI_WESTERN, NAKSHATRAS }, K, T] = await Promise.all([
+      import("@/lib/vedic"), import("@/lib/kundli"), import("@/lib/kundli-text"),
+    ]);
+    const chart = vedicChart(self.date_of_birth, self.time_of_birth, self.birth_tz, self.birth_lat, self.birth_lon, Date.now());
+    if (!chart) { setBusy(null); setMsg("The sky is veiled; complete your record first."); return; }
+    const my = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const yr = (ms: number) => new Date(ms).getFullYear();
+    const cur = chart.current;
+    const nextMaha = cur ? chart.mahadashas[chart.mahadashas.findIndex((d) => d === cur.maha) + 1] : null;
+    const pillars = K.pillarsOf(chart);
+    const yogas = K.detectYogas(chart);
+    const muhurta = K.muhurtaDays(chart.moonNakshatra, chart.lagna.rashi, Date.now());
+    const v = T.SELF;
+    finish(await sendEmail("kundli", [email], {
+      name: self.cult_name,
+      lagna: `${RASHIS[chart.lagna.rashi]} (${RASHI_WESTERN[chart.lagna.rashi]}) · ${chart.lagna.degInRashi.toFixed(1)}°`,
+      nakshatra: `${NAKSHATRAS[chart.moonNakshatra]} · pada ${chart.moonPada}`,
+      navamsa: `${RASHIS[chart.lagna.navamsaRashi]} (D9)`,
+      ageTitle: cur ? `The years of ${K.sanskritLord(cur.maha.lord)}` : undefined,
+      ageDates: cur ? `${my(cur.maha.fromMs)} to ${my(cur.maha.toMs)}${cur.antar.lord !== cur.maha.lord ? ` · tempered by ${K.sanskritLord(cur.antar.lord)} until ${my(cur.antar.toMs)}` : ""}` : undefined,
+      agePassage: cur ? `${T.DASHA_TEXT[cur.maha.lord](v)}${cur.antar.lord !== cur.maha.lord ? ` ${T.ANTAR_TEXT[cur.antar.lord](v)}` : ""}` : undefined,
+      nextLine: nextMaha ? `Next: the years of ${K.sanskritLord(nextMaha.lord)} from ${my(nextMaha.fromMs)}, ${T.NEXT_CLAUSE[nextMaha.lord]}.` : undefined,
+      turning: chart.mahadashas.slice(0, 9).map((d) => ({ lord: d.lord, range: `${yr(d.fromMs)} to ${yr(d.toMs)}`, now: Date.now() >= d.fromMs && Date.now() < d.toMs })),
+      strength: T.STRENGTH_BY_HOUSE[pillars.lagnaLordHouse - 1](v, K.sanskritLord(pillars.lagnaLord)),
+      dharma: T.DHARMA_BY_LORD[pillars.tenthLord]?.(v, RASHIS[pillars.tenthRashi]),
+      pitfalls: pillars.pitfalls.slice(0, 2).map((k) => T.PITFALL_TEXT[k]?.(v)).filter(Boolean).join(" ") || undefined,
+      marriage: pillars.seventhLordHouse != null
+        ? `${T.SEVENTH_LORD_HOUSE[pillars.seventhLordHouse - 1](v, RASHIS[pillars.seventhRashi], K.sanskritLord(pillars.seventhLord))}${T.venusLine(v, pillars.venusHouse)} The navamsa, chart of the marriage itself, rises in ${RASHIS[chart.lagna.navamsaRashi]}: ${T.NAVAMSA_BOND[chart.lagna.navamsaRashi]}${K.mangalDosha(chart) ? T.MANGAL_NOTE(v) : ""}`
+        : undefined,
+      yogas: yogas.map((y) => ({ name: y.name, text: T.YOGA_TEXT[y.key](v) })),
+      muhurtaGood: muhurta.favourable.map((d) => d.label),
+      muhurtaBad: muhurta.hostile.map((d) => d.label),
+    }));
   };
 
   const rowStyle = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } as React.CSSProperties;
@@ -867,12 +908,21 @@ function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
           <i className={`ti ti-${busy === "fore" ? "loader-2" : "mail"}`} />
         </button>
       </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <button className="btn gold" style={rowStyle} onClick={() => setShowKundli(true)}>
+          <i className="ti ti-north-star" />The Kundli
+        </button>
+        <button className="btn" aria-label="Email me the kundli" title="Email me the kundli" style={mailStyle} disabled={busy !== null} onClick={emailKundli}>
+          <i className={`ti ti-${busy === "kundli" ? "loader-2" : "mail"}`} />
+        </button>
+      </div>
       <p className="whisper" style={{ textAlign: "center", margin: "12px 0 0", fontSize: 13 }}>
         the envelope sends it to your inbox, sealed in the Council&apos;s colours
       </p>
       {msg && <p className="scr" style={{ textAlign: "center", margin: "8px 0 0", fontSize: 14 }}>{msg}</p>}
       {showChart && <NatalChartModal member={self} isSelf onClose={() => setShowChart(false)} />}
       {showFore && <ForetellingModal member={self} isSelf onClose={() => setShowFore(false)} />}
+      {showKundli && <KundliModal member={self} isSelf onClose={() => setShowKundli(false)} />}
     </div>
   );
 }

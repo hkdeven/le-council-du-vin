@@ -5,7 +5,7 @@
 
 import { supabase } from "./supabase";
 import { fetchGatherings, gatheringsLive } from "./gatherings";
-import { fetchAnnals, fetchDqCounts, type AnnalEntry } from "./annals";
+import { fetchAnnals, fetchDqCounts, championsOf, type AnnalEntry } from "./annals";
 import { fetchBallotHistory, type HistoryBallot } from "./ballots";
 import { loadMembers } from "./members";
 import { toRoman } from "./util";
@@ -59,9 +59,10 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   let bottlesCrowned = 0;
   const pours: DossierStats["pours"] = [];
   for (const a of annals) {
+    const champs = championsOf(a);
     for (const r of a.rows) {
       if (r.owner !== member.cult_name) continue;
-      if (r.rank === 1 && !r.dq) bottlesCrowned++;
+      if (champs.includes(r)) bottlesCrowned++;
       // votes 0 = a night recorded without scores; not a pour to rank.
       if (!r.dq && r.votes > 0) {
         pours.push({

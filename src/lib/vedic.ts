@@ -143,8 +143,7 @@ export function vimshottari(moonSidLon: number, birthMs: number, nowMs: number):
   let current: VedicChart["current"] = null;
   if (maha) {
     // Antardashas: sub-periods inside the mahadasha, starting from its own
-    // lord, each lasting mahaYears·subYears/120 of a year.
-    const mahaYears = (maha.toMs - maha.fromMs) / (YEAR_DAYS * dayMs);
+    // lord, each lasting fullMahaYears·subYears/120 of a year.
     const fullMahaYears = DASHA_YEARS[maha.lord];
     const startIdx = DASHA_LORDS.indexOf(maha.lord);
     // In a balance-shortened first mahadasha the antars that fit are the LAST
@@ -163,7 +162,6 @@ export function vimshottari(moonSidLon: number, birthMs: number, nowMs: number):
       sub = to;
     }
     if (!current) current = { maha, antar: { lord: maha.lord, fromMs: maha.fromMs, toMs: maha.toMs, of: maha.lord } };
-    void mahaYears;
   }
   return { mahadashas, current };
 }

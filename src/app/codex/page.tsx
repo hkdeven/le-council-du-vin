@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toRoman } from "@/lib/util";
-import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, AnnalRow } from "@/lib/annals";
+import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, AnnalRow, championsOf } from "@/lib/annals";
 import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
 import { loadMembers } from "@/lib/members";
@@ -242,7 +242,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
     setUploading(false);
   };
   const host = g ? [g.host_name, g.host2_name].filter(Boolean).join(" & ") : null;
-  const champs = a.rows.filter((r) => r.rank === 1);
+  const champs = championsOf(a);
   const crowned = champs.map((c) => c.owner || `Bottle ${toRoman(c.cloth)}`).join(" & ");
   return (
     <div style={{ borderBottom: "1px solid var(--line)", padding: "10px 0" }}>
@@ -497,7 +497,7 @@ export default function Codex() {
   const victories: Record<string, number> = {};
   for (const a of annals) {
     // Co-champions each count as a victory.
-    for (const champ of a.rows.filter((r) => r.rank === 1)) {
+    for (const champ of championsOf(a)) {
       if (champ.owner) victories[champ.owner] = (victories[champ.owner] || 0) + 1;
     }
   }

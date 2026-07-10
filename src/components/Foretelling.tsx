@@ -117,7 +117,7 @@ export default function ForetellingModal({ member, onClose, onLeave, isSelf }: {
 
           <p className="whisper" style={{ margin: "8px 0 0", fontSize: 12 }}>the vine calculates, it does not flatter</p>
           <Methodology title="How this reading is made">
-            The positions of the planets for the day, the month, and the year ahead are computed by the same astronomical engine as the natal chart, then compared against this chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council&apos;s voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet.
+            The positions of the planets for the day, the month, and the year ahead are computed by the same astronomical engine as the natal chart, then compared against this chart. A transit is reported only when a real geometric alignment occurs, with its true dates; moon phases and retrogrades are exact to the day. The words that interpret each alignment are written once, by hand, in the Council&apos;s voice, and chosen by the alignment itself, never at random. Nothing is padded to fill a quiet month: a quiet month reads quiet. No astrology API of any kind is consulted: every chart, transit, dasha, and kuta is computed in-house by the Council&apos;s own verified engines. That is the whole doctrine.
           </Methodology>
         </>
       )}
