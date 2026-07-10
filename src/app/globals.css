@@ -402,6 +402,21 @@ select option {
   background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5), transparent);
   animation: lcvSweep 3s ease-in-out infinite;
 }
+/* The quiet shimmer: the same sweep over a dark button, no gold fill. */
+.lcv-shimmer-quiet {
+  position: relative;
+  overflow: hidden;
+}
+.lcv-shimmer-quiet::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(203, 189, 147, 0.22), transparent);
+  animation: lcvSweep 3s ease-in-out infinite;
+}
 @keyframes lcvSweep {
   0%, 55% { left: -60%; }
   85%, 100% { left: 120%; }

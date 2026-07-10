@@ -287,7 +287,7 @@ export default function Reveal() {
       setBallots(bs);
       setOfferings(offs);
       if (annal) {
-        setRows(annal.rows.map((r) => ({ cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, varietals: r.varietals, price: r.price })));
+        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, varietals: r.varietals, price: r.price })));
         setCommitted(true);
       } else {
         const tally = tallyFromBallots(bs, wineCount);

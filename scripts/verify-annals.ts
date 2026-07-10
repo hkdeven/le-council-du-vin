@@ -53,5 +53,14 @@ check("all disqualified: no champion",
 check("tied survivors share the crown",
   owners(night([r("A", { rank: 1, score: 9, votes: 5, dq: true }), r("B", { rank: 2, score: 8, votes: 5 }), r("C", { rank: 2, score: 8, votes: 5 })])) === "B,C");
 
+// Unscored night whose cloths were never recorded (hand-entered history):
+// nothing can carry the standing, so nobody is crowned.
+check("unscored night, cloths unknown: no champion",
+  championsOf(night([r("A", { cloth: null as unknown as number }), r("B", { cloth: null as unknown as number })])).length === 0);
+
+// ...but a survivor who DOES know its cloth still takes it over the unknowns.
+check("unscored night, one known cloth: it is crowned",
+  owners(night([r("A", { cloth: null as unknown as number }), r("B", { cloth: 4 })])) === "B");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

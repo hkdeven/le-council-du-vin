@@ -7,7 +7,7 @@ import { supabase } from "./supabase";
 import { gatheringsLive } from "./gatherings";
 
 export interface AnnalRow {
-  cloth: number;
+  cloth: number | null; // the pour number; null when a hand-recorded night never knew it
   owner: string;
   title: string;
   score: number;
@@ -46,13 +46,40 @@ export function championsOf(a: AnnalEntry): AnnalRow[] {
     const top = Math.max(...scored.map((r) => r.score));
     return scored.filter((r) => r.score === top);
   }
-  const substantial = qualified.filter((r) => r.owner || r.title);
+  // Only rows that KNOW their cloth can carry the standing; a hand-recorded
+  // night with no cloth numbers crowns no one until scores or cloths arrive.
+  const substantial = qualified.filter((r) => (r.owner || r.title) && r.cloth != null);
   if (!substantial.length) return [];
-  const first = substantial.reduce((a2, b) => (b.cloth < a2.cloth ? b : a2));
+  const first = substantial.reduce((a2, b) => (b.cloth! < a2.cloth! ? b : a2));
   return [first];
 }
 
 const ANNALS_KEY = "lcv_annals";
+
+// The demo codex is never bare: two committed nights (scores, prices,
+// grapes, one disqualification) seed the store on first visit, like the
+// rest of the demo's furniture. Live mode never sees these.
+const SEED_ANNALS: AnnalEntry[] = [
+  {
+    gatheringId: "seed-night-1", number: 1, theme: "Cape Syrah", date: "2026-04-18",
+    committed_at: "2026-04-19T09:00:00.000Z",
+    rows: [
+      { cloth: 1, owner: "Seer Matthew", title: "Porseleinberg 2021", score: 8.6, votes: 6, rank: 1, dq: false, varietals: ["Syrah"], price: 450 },
+      { cloth: 2, owner: "The Keiser", title: "Reyneke Syrah 2022", score: 8.1, votes: 6, rank: 2, dq: false, varietals: ["Syrah"], price: 260 },
+      { cloth: 3, owner: "Priestess Larissa", title: "Mullineux Kloof Street 2022", score: 7.8, votes: 6, rank: 3, dq: false, varietals: ["Syrah"], price: 165 },
+      { cloth: 4, owner: "Elder Martin", title: "A chilled Pinotage", score: 5.9, votes: 6, rank: null, dq: true, varietals: ["Pinotage"], price: 120 },
+    ],
+  },
+  {
+    gatheringId: "seed-night-2", number: 2, theme: "White Blends", date: "2026-06-13",
+    committed_at: "2026-06-14T09:00:00.000Z",
+    rows: [
+      { cloth: 1, owner: "The Keiser", title: "Palladius 2021", score: 8.9, votes: 5, rank: 1, dq: false, varietals: ["White Blend"], price: 780 },
+      { cloth: 2, owner: "Adept Wernardt", title: "Sadie Skerpioen 2022", score: 8.2, votes: 5, rank: 2, dq: false, varietals: ["Chenin Blanc", "Palomino"], price: 420 },
+      { cloth: 3, owner: "Seer Matthew", title: "Alheit Cartology 2022", score: 8.0, votes: 5, rank: 3, dq: false, varietals: ["Chenin Blanc"], price: 395 },
+    ],
+  },
+];
 
 // Disqualifications per member name, threshold five: at five the member is
 // summoned before the tribunal and the Council votes to keep or cast them out.
@@ -61,7 +88,13 @@ export const DQ_THRESHOLD = 5;
 function localAnnals(): AnnalEntry[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(ANNALS_KEY) || "[]") as AnnalEntry[];
+    const raw = localStorage.getItem(ANNALS_KEY);
+    const parsed = raw == null ? null : (JSON.parse(raw) as AnnalEntry[]);
+    if (parsed == null || parsed.length === 0) {
+      localStorage.setItem(ANNALS_KEY, JSON.stringify(SEED_ANNALS));
+      return [...SEED_ANNALS];
+    }
+    return parsed;
   } catch {
     return [];
   }

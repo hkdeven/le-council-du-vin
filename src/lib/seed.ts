@@ -37,6 +37,15 @@ export const DEFAULT_RULES =
 export const DEFAULT_THREAT =
   "Please note — wines that do not follow theme will not be scored or ranked, future invites to wine night and bowls will not be extended, and your seat will be forfeit to another. If you are one of two, both seats may be forfeit at the discretion of the Keiser.";
 
-export const seedGatherings: Gathering[] = [];
+// One committed night rides in the demo so the codex's foresight metric and
+// the reckoning surfaces have furniture; its annal seeds in annals.ts.
+export const seedGatherings: Gathering[] = [
+  {
+    id: "seed-night-1", number: 1, theme_title: "Cape Syrah", gather_date: "2026-04-18",
+    status: "revealed", host_id: "m-matthew", host_name: "Seer Matthew",
+    wine_count: 4, attendees: ["m-matthew", "m-keiser", "m-larissa", "m-martin"],
+    prophecy: { name: "Seer Matthew", spokenAt: "2026-04-18T17:00:00.000Z" },
+  } as unknown as Gathering,
+];
 export const seedPolls: Poll[] = [];
 export const seedApplications: Application[] = [];

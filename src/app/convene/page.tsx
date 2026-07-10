@@ -95,7 +95,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
       ) : (
         <>
           {!editing && (
-            <button onClick={() => setEditing(true)}
+            <button onClick={() => setEditing(true)} className="lcv-shimmer-quiet"
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "12px 20px", cursor: "pointer" }}>
               <i className="ti ti-bottle" style={{ fontSize: 14 }} />
               Log your offering

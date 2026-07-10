@@ -1,5 +1,18 @@
 # Le Council — Test Log
 
+## 2026-07-11 — the gate's atlas, the quiet shimmer, the Tribute, the vine's foresight — NOT yet pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **The gate's place picker**: the petition's place of birth now works like the profile's (Mark it button / Enter, match pills below, "The atlas knows it" confirmation, honest miss message); marked coordinates flow into the petition | Petition with an ambiguous town | ✓ (tsc; serves) | [ ] |
+| 2 | **Log your offering shimmers, quietly**: the original dark button keeps its look with a gold light sweeping across it (lcv-shimmer-quiet; the gold-filled lcv-shimmer stays for the Augury) | Convene, active night, offering unsealed | ✓ | [ ] |
+| 3 | **The Tribute · the Council's coin** (new codex card): coin poured to date across all priced bottles, the dearest cloth ever with the honest record of where it placed ("gold does not buy the crown"), and the shrewdest pour (best score per rand ever judged); hidden until prices exist | Codex, below the Reliquary | ✓ | [ ] |
+| 4 | **The vine's foresight**: a codex metric with the Prophecy's lifetime record ("2 of 3"), silent until a prophecy has been graded | Codex metrics row after a prophesied reveal | ✓ | [ ] |
+
+---
+
 ## 2026-07-10 (small hours) — THE TRIBUNAL OPENS: member voting, the Augury, the tightened gate — pushed
 
 **SQL for the live DB before this deploys (safe to run right now):**

@@ -5,48 +5,25 @@ import { toRoman } from "@/lib/util";
 import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, AnnalRow, championsOf } from "@/lib/annals";
 import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
+import { prophecyRecord } from "@/lib/prophecy";
 import { loadMembers } from "@/lib/members";
 import { uploadRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import Loading from "@/components/Loading";
+import Tip from "@/components/Tip";
 import GrapePicker from "@/components/GrapePicker";
-import { detectVarietals } from "@/lib/varietals";
+import { detectVarietals, GRAPES } from "@/lib/varietals";
 import { swr, writeSwr } from "@/lib/swr";
 import type { Gathering, Member } from "@/lib/types";
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-// A tap-to-open explainer used on the Reliquary rows.
-function RelicTip({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const away = () => setOpen(false);
-    window.addEventListener("pointerdown", away);
-    return () => window.removeEventListener("pointerdown", away);
-  }, [open]);
-  return (
-    <span style={{ position: "relative", display: "inline-flex", marginLeft: 5 }}>
-      <button aria-label="More" onPointerDown={(e) => e.stopPropagation()} onClick={() => setOpen((o) => !o)}
-        style={{ width: "auto", background: "none", border: "none", padding: 4, margin: -4, cursor: "pointer", color: "var(--dim)", display: "inline-flex" }}>
-        <i className="ti ti-info-circle" style={{ fontSize: 12 }} />
-      </button>
-      {open && (
-        <span role="tooltip" onPointerDown={(e) => e.stopPropagation()}
-          style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 30, width: 220, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "9px 11px", color: "var(--parch)", fontSize: 12.5, lineHeight: 1.5, fontFamily: "'EB Garamond', serif", fontStyle: "normal", textTransform: "none", letterSpacing: "normal", boxShadow: "0 6px 20px rgba(0,0,0,0.55)" }}>
-          {text}
-        </span>
-      )}
-    </span>
-  );
-}
-
 // A gathering under the Keiser's pen: everything editable, ranks recomputed
 // from the scores on save (ties share rank 1, DQs unranked) exactly as the
 // reveal would have judged it.
-interface DraftRow { cloth: number; title: string; owner: string; score: string; dq: boolean; votes: number; varietals: string[]; price: string }
+interface DraftRow { cloth: string; title: string; owner: string; score: string; dq: boolean; votes: number; varietals: string[]; price: string }
 interface Draft {
   gatheringId?: string;
   number: number;
@@ -69,7 +46,7 @@ function draftFrom(a: AnnalEntry, g?: Gathering): Draft {
     host_name: g?.host_name || "",
     host2_id: g?.host2_id || null,
     host2_name: g?.host2_name || "",
-    rows: a.rows.map((r) => ({ cloth: r.cloth, title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
+    rows: a.rows.map((r) => ({ cloth: r.cloth != null ? String(r.cloth) : "", title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
   };
 }
 
@@ -86,7 +63,7 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
   const setRow = (i: number, patch: Partial<DraftRow>) =>
     setD((x) => ({ ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   const addRow = () =>
-    setD((x) => ({ ...x, rows: [...x.rows, { cloth: Math.max(0, ...x.rows.map((r) => r.cloth)) + 1, title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }] }));
+    setD((x) => ({ ...x, rows: [...x.rows, { cloth: "", title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }] }));
   const dropRow = (i: number) => setD((x) => ({ ...x, rows: x.rows.filter((_, j) => j !== i) }));
 
   // Hosts from imported history may be a bare name with no member id; keep
@@ -164,7 +141,10 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
       {d.rows.map((r, i) => (
         <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-            <span className="eyebrow" style={{ flex: "none" }}>Cloth {r.cloth}</span>
+            <span className="eyebrow" style={{ flex: "none" }}>Cloth</span>
+            <input type="number" min="1" inputMode="numeric" value={r.cloth} onChange={(e) => setRow(i, { cloth: e.target.value })}
+              placeholder="?" title="The pour number, when known; leave blank if the pouring order was never recorded"
+              style={{ width: 58, padding: "4px 8px", flex: "none" }} />
             <span style={{ flex: 1 }} />
             <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: r.dq ? "var(--wine)" : "var(--dim)", cursor: "pointer" }}>
               <input type="checkbox" checked={r.dq} onChange={(e) => setRow(i, { dq: e.target.checked })} style={{ width: "auto" }} />
@@ -183,7 +163,7 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
-              <GrapePicker value={r.varietals} onChange={(v) => setRow(i, { varietals: v })} listId={`grapes-${r.cloth}`} />
+              <GrapePicker value={r.varietals} onChange={(v) => setRow(i, { varietals: v })} listId={`grapes-${i}`} />
             </div>
             <input type="number" min="0" inputMode="numeric" value={r.price} onChange={(e) => setRow(i, { price: e.target.value })} placeholder="Price · R" style={{ width: 104 }} />
           </div>
@@ -222,7 +202,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
   split?: { cloth: number; min: number; max: number };
   onSave: (d: Draft) => Promise<void>;
   onErase: (gatheringId: string) => Promise<void>;
-  onClaim: (a: AnnalEntry, cloth: number) => Promise<void>;
+  onClaim: (a: AnnalEntry, rowIdx: number) => Promise<void>;
   onAddPhoto: (g: Gathering, file: File) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -243,14 +223,14 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
   };
   const host = g ? [g.host_name, g.host2_name].filter(Boolean).join(" & ") : null;
   const champs = championsOf(a);
-  const crowned = champs.map((c) => c.owner || `Bottle ${toRoman(c.cloth)}`).join(" & ");
+  const crowned = champs.map((c) => c.owner || (c.cloth != null ? `Bottle ${toRoman(c.cloth)}` : "A bottle unrecorded")).join(" & ");
   return (
     <div style={{ borderBottom: "1px solid var(--line)", padding: "10px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button onClick={() => setOpen((o) => !o)} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}>
           <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)" }} />
           <div style={{ flex: 1 }}>
-            <div className="disp" style={{ fontSize: 15 }}>Gathering {toRoman(a.number)} — {a.theme}</div>
+            <div className="disp" style={{ fontSize: 15 }}>Gathering {toRoman(a.number)} · {a.theme}</div>
             <div className="whisper" style={{ fontSize: 13 }}>
               {fmtDate(a.date)}{crowned ? ` · crowned: ${crowned}` : ""}
             </div>
@@ -278,13 +258,13 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
             <span className="whisper" style={{ fontSize: 13 }}><span className="eyebrow" style={{ marginRight: 6 }}>Date</span>{fmtDate(a.date)}</span>
             <span className="whisper" style={{ fontSize: 13 }}><span className="eyebrow" style={{ marginRight: 6 }}>Host</span>{host || "unrecorded"}</span>
           </div>
-          {[...a.rows].sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99)).map((r) => (
-            <div key={r.cloth} style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)", alignItems: "center" }}>
+          {a.rows.map((r, ri) => ({ r, ri })).sort((x, y) => (x.r.rank ?? 99) - (y.r.rank ?? 99)).map(({ r, ri }) => (
+            <div key={ri} style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)", alignItems: "center" }}>
               <span className="disp" style={{ width: 24, fontSize: 11 }}>{r.dq ? "✕" : toRoman(r.rank || 0)}</span>
               <span style={{ flex: 1 }}>
-                <span className="scr" style={{ fontSize: 14 }}>{r.title || `Bottle ${toRoman(r.cloth)}`}</span>
+                <span className="scr" style={{ fontSize: 14 }}>{r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded")}</span>
                 {split?.cloth === r.cloth && <i className="ti ti-bolt" title="The split cloth" style={{ color: "var(--gold2)", fontSize: 12, marginLeft: 5 }} />}
-                {r.owner ? <span style={{ color: "var(--dim)" }}> — {r.owner}</span> : null}
+                {r.owner ? <span style={{ color: "var(--dim)" }}> · {r.owner}</span> : null}
                 {(r.varietals?.length || r.price != null) ? (
                   <span className="whisper" style={{ fontSize: 12 }}>
                     {" "}· {[r.varietals?.join(", "), r.price != null ? `R${r.price}` : null].filter(Boolean).join(" · ")}
@@ -292,12 +272,12 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
                 ) : null}
                 {!r.owner && canClaim && (
                   <button
-                    onClick={() => { if (window.confirm(`Claim ${r.title || `Bottle ${toRoman(r.cloth)}`} as your own pour?`)) onClaim(a, r.cloth).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
+                    onClick={() => { if (window.confirm(`Claim ${r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded")} as your own pour?`)) onClaim(a, ri).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
                     style={{ width: "auto", marginLeft: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "1px 10px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
                     <i className="ti ti-hand-grab" style={{ fontSize: 11, marginRight: 4 }} />claim it
                   </button>
                 )}
-                {!r.owner && !canClaim && <span className="whisper" style={{ fontSize: 12 }}> — unclaimed</span>}
+                {!r.owner && !canClaim && <span className="whisper" style={{ fontSize: 12 }}> · unclaimed</span>}
                 {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--wine)" }}> · disqualified</span>}
               </span>
               <span className="disp" style={{ fontSize: 12 }}>{r.votes > 0 ? r.score.toFixed(1) : "—"}</span>
@@ -432,7 +412,8 @@ export default function Codex() {
     const kept = d.rows.filter((r) => r.title.trim() || r.owner.trim() || r.score !== "" || r.dq || r.varietals.length || r.price !== "");
     const scored = kept.filter((r) => !r.dq && r.score !== "").map((r) => Number(r.score));
     const rows: AnnalRow[] = kept.map((r) => ({
-      cloth: r.cloth,
+      // A blank cloth means the pouring order was never known; record nothing.
+      cloth: r.cloth.trim() !== "" && Number.isFinite(Number(r.cloth)) ? Number(r.cloth) : null,
       title: r.title.trim(),
       owner: r.owner.trim(),
       score: r.score === "" ? 0 : Number(r.score),
@@ -478,9 +459,9 @@ export default function Codex() {
 
   // Claim an unowned bottle as your own (one per soul per night; the
   // AnnalCard hides the button once a wine that night is already yours).
-  const claimWine = async (a: AnnalEntry, cloth: number) => {
+  const claimWine = async (a: AnnalEntry, rowIdx: number) => {
     if (!myName || a.rows.some((r) => r.owner === myName)) return;
-    const rows = a.rows.map((r) => (r.cloth === cloth && !r.owner ? { ...r, owner: myName } : r));
+    const rows = a.rows.map((r, i) => (i === rowIdx && !r.owner ? { ...r, owner: myName } : r));
     await commitAnnal({ ...a, rows });
     await refresh();
   };
@@ -507,6 +488,14 @@ export default function Codex() {
     }
   }
   const victoryList = Object.entries(victories).sort((a, b) => b[1] - a[1]);
+  // The vine's foresight: the Prophecy's lifetime record, graded crowning by
+  // crowning; silent until at least one prophecy has been judged.
+  const foresight = prophecyRecord(gatherings, annals);
+  // Coin poured: every recorded rand across the codex, shown compactly.
+  const coinTotal = annals.reduce((n, a) => n + a.rows.reduce((m, r) => m + (r.price || 0), 0), 0);
+  const coinLabel = coinTotal >= 1000 ? `R${(coinTotal / 1000).toFixed(1)}K` : `R${Math.round(coinTotal)}`;
+  // Grapes tasted: distinct varietals ever recorded, against the full ledger.
+  const grapesTasted = new Set(annals.flatMap((a) => a.rows.flatMap((r) => r.varietals || []))).size;
   const winsMax = Math.max(1, ...victoryList.map(([, n]) => n));
   // The most frequent winner holds the chalice.
   const chaliceChampion = victoryList[0]?.[0] || "—";
@@ -515,7 +504,7 @@ export default function Codex() {
     if (!annals.length) return null;
     let pour: { title: string; score: number; date: string } | null = null;
     for (const a of annals) for (const r of a.rows) {
-      if (!r.dq && r.votes > 0 && (!pour || r.score > pour.score)) pour = { title: r.title || `Bottle ${toRoman(r.cloth)}`, score: r.score, date: a.date };
+      if (!r.dq && r.votes > 0 && (!pour || r.score > pour.score)) pour = { title: r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded"), score: r.score, date: a.date };
     }
     let schism: { title: string; min: number; max: number } | null = null;
     {
@@ -556,7 +545,39 @@ export default function Codex() {
       if (!iron || delta < iron.delta) iron = { name, delta };
       if (!gentle || delta > gentle.delta) gentle = { name, delta };
     }
-    return { pour, schism, iron, gentle };
+    // The crown's habits: the most-crowned grape, and what a crown costs.
+    const grapeCrowns = new Map<string, number>();
+    const crownPrices: number[] = [];
+    for (const a of annals) for (const c of championsOf(a)) {
+      for (const g of c.varietals || []) grapeCrowns.set(g, (grapeCrowns.get(g) || 0) + 1);
+      if (c.price) crownPrices.push(c.price);
+    }
+    const crownedGrape = [...grapeCrowns.entries()].sort((x, y) => y[1] - x[1])[0] || null;
+    const allPrices = annals.flatMap((a) => a.rows.filter((r) => !r.dq && r.price)).map((r) => r.price!);
+    const victoryPrice = crownPrices.length
+      ? { crown: crownPrices.reduce((x, y) => x + y, 0) / crownPrices.length, table: allPrices.reduce((x, y) => x + y, 0) / allPrices.length }
+      : null;
+    return { pour, schism, iron, gentle, crownedGrape, victoryPrice };
+  })();
+
+  // The curse of the first cloth: the average verdict by pouring order,
+  // counted only where a wine knows its cloth AND was truly scored. Positions
+  // must be represented on enough nights to mean anything (at least two, and
+  // at least half the scored nights once the codex grows).
+  const clothCurse = (() => {
+    const byCloth = new Map<number, number[]>();
+    const scoredNights = new Set<string>();
+    for (const a of annals) for (const r of a.rows) {
+      if (r.dq || r.votes === 0 || r.cloth == null) continue;
+      scoredNights.add(a.gatheringId);
+      const l = byCloth.get(r.cloth) || []; l.push(r.score); byCloth.set(r.cloth, l);
+    }
+    const need = Math.max(2, scoredNights.size / 2);
+    const bars = [...byCloth.entries()]
+      .filter(([, xs]) => xs.length >= need)
+      .sort((x, y) => x[0] - y[0])
+      .map(([cloth, xs]) => ({ cloth, avg: xs.reduce((a2, b) => a2 + b, 0) / xs.length }));
+    return bars.length >= 3 ? bars : null;
   })();
 
   const themeAvgs = annals
@@ -571,7 +592,7 @@ export default function Codex() {
     <section>
       <h1 className="disp" style={{ fontSize: 18, fontWeight: 500 }}>The codex</h1>
       <p style={{ color: "var(--dim)", fontSize: 14, marginTop: 2, marginBottom: 18 }}>
-        The annals of the Council — all that has been poured, remembered. Nothing is
+        The annals of the Council: all that has been poured, remembered. Nothing is
         written here until the Keiser commits it.
       </p>
 
@@ -583,9 +604,21 @@ export default function Codex() {
         <Metric value={String(annals.length)} label="gatherings" />
         <Metric value={String(bottlesJudged)} label="bottles judged" />
         <Metric value={chaliceChampion} label="champion of the chalice" />
+        {coinTotal > 0 && <Metric value={coinLabel} label="coin poured" />}
+        <Metric value={foresight.total > 0 ? `${Math.round((foresight.right / foresight.total) * 100)}%` : "NA"} label="prophecies fulfilled" />
       </div>
 
-      {relics && (relics.pour || relics.schism || relics.iron) && (
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>Grapes tasted</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1, height: 6, background: "rgba(160,150,120,0.14)", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: `${Math.min(100, (grapesTasted / GRAPES.length) * 100)}%`, height: "100%", background: "linear-gradient(90deg, var(--gold), var(--gold2))", borderRadius: 3 }} />
+          </div>
+          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: "var(--gold2)", whiteSpace: "nowrap" }}>{grapesTasted} of {GRAPES.length}</span>
+        </div>
+      </div>
+
+      {relics && (relics.pour || relics.schism || relics.iron || relics.crownedGrape || relics.victoryPrice) && (
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="eyebrow" style={{ marginBottom: 10 }}>The Reliquary · records of the Council</div>
           {relics.pour && (
@@ -596,20 +629,32 @@ export default function Codex() {
           )}
           {relics.schism && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
-              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The great schism<RelicTip text="The single wine that split the table widest: the gap between its highest and lowest score across every night in the codex." /></span>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The great schism<Tip align="left" text="The single wine that split the table widest: the gap between its highest and lowest score across every night in the codex." /></span>
               <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.schism.title}, {relics.schism.min} to {relics.schism.max}</span>
             </div>
           )}
           {relics.iron && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
-              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The iron palate<RelicTip text="The harshest judge: the member whose average verdict sits furthest below the table's average, over at least twenty scores." /></span>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The iron palate<Tip align="left" text="The harshest judge: the member whose average verdict sits furthest below the table's average, over at least twenty scores." /></span>
               <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.iron.name}, {relics.iron.delta.toFixed(1)}</span>
             </div>
           )}
           {relics.gentle && relics.gentle.name !== relics.iron?.name && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
-              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The gentle hand<RelicTip text="The kindest judge: the member whose average verdict sits furthest above the table's average, over at least twenty scores." /></span>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The gentle hand<Tip align="left" text="The kindest judge: the member whose average verdict sits furthest above the table's average, over at least twenty scores." /></span>
               <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.gentle.name}, +{relics.gentle.delta.toFixed(1)}</span>
+            </div>
+          )}
+          {relics.crownedGrape && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The crowned grape<Tip align="left" text="The varietal that has taken the most crowns across every night in the codex." /></span>
+              <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>{relics.crownedGrape[0]} · {relics.crownedGrape[1]} {relics.crownedGrape[1] === 1 ? "crown" : "crowns"}</span>
+            </div>
+          )}
+          {relics.victoryPrice && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0" }}>
+              <span className="eyebrow" style={{ fontSize: 10, display: "inline-flex", alignItems: "center" }}>The price of victory<Tip align="left" text={`What a crown costs on average, where the coin was recorded. The table's average bottle sits at R${Math.round(relics.victoryPrice.table)}.`} /></span>
+              <span className="scr" style={{ color: "var(--gold2)", fontSize: 15, textAlign: "right" }}>crowns average R{Math.round(relics.victoryPrice.crown)}</span>
             </div>
           )}
         </div>
@@ -647,6 +692,39 @@ export default function Codex() {
       )}
 
 
+      {clothCurse && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="eyebrow" style={{ marginBottom: 4 }}>The curse of the first cloth</div>
+          <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+            The average verdict by pouring order, counted only where the pour was recorded.
+          </p>
+          {(() => {
+            const W = 360, H = 120, base = 96;
+            const bw = Math.min(34, (W - 40) / clothCurse.length - 8);
+            const step = (W - 30) / clothCurse.length;
+            const lo = Math.min(...clothCurse.map((b) => b.avg));
+            const hi = Math.max(...clothCurse.map((b) => b.avg));
+            const hOf = (v: number) => 24 + (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * 48;
+            return (
+              <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%" }} role="img" aria-label="Average score by pouring position">
+                <line x1={15} y1={base} x2={W - 10} y2={base} stroke="rgba(160,150,120,0.25)" />
+                {clothCurse.map((b, i) => {
+                  const h = hOf(b.avg);
+                  const x = 15 + step * i + (step - bw) / 2;
+                  return (
+                    <g key={b.cloth}>
+                      <rect x={x} y={base - h} width={bw} height={h} fill="#cbbd93" opacity={0.45 + (hi === lo ? 0.5 : (b.avg - lo) / (hi - lo)) * 0.55} />
+                      <text x={x + bw / 2} y={base - h - 6} textAnchor="middle" fontSize={10} fill="#cbbd93" fontFamily="'Cinzel',serif">{b.avg.toFixed(1)}</text>
+                      <text x={x + bw / 2} y={base + 14} textAnchor="middle" fontSize={9} fill="#7c766a" fontFamily="'Cinzel',serif">{toRoman(b.cloth)}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            );
+          })()}
+        </div>
+      )}
+
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 4 }}>Past gatherings</div>
         <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>
@@ -681,7 +759,7 @@ export default function Codex() {
               draft={{
                 number: Math.max(0, ...annals.map((a) => a.number), ...gatherings.map((g) => g.number || 0)) + 1,
                 theme: "", date: "", host_id: null, host_name: "", host2_id: null, host2_name: "",
-                rows: [{ cloth: 1, title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }],
+                rows: [{ cloth: "", title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }],
               }}
               members={members}
               onCancel={() => setAdding(false)}

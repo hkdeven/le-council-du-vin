@@ -1,4 +1,5 @@
 import type { Gathering } from "./types";
+import { seedGatherings } from "./seed";
 import { supabase, isLive, enforceLogin } from "./supabase";
 
 // Gatherings the Keiser has summoned. Live (login enforced + Supabase): the
@@ -14,7 +15,14 @@ const sortG = (list: Gathering[]) =>
 function localAll(): Gathering[] {
   if (typeof window === "undefined") return [];
   try {
-    return sortG(JSON.parse(localStorage.getItem(KEY) || "[]"));
+    const raw = localStorage.getItem(KEY);
+    const parsed: Gathering[] = raw == null ? [] : JSON.parse(raw);
+    // Demo furniture: the committed seed night rides alongside whatever the
+    // browser holds (never duplicated, never persisted over the user's own).
+    for (const g of seedGatherings) {
+      if (!parsed.some((x) => x.id === g.id)) parsed.push(g);
+    }
+    return sortG(parsed);
   } catch {
     return [];
   }

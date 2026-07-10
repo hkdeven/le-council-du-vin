@@ -79,7 +79,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
       // votes 0 = a night recorded without scores; not a pour to rank.
       if (!r.dq && r.votes > 0) {
         pours.push({
-          title: r.title || `Cloth ${r.cloth}`,
+          title: r.title || (r.cloth != null ? `Cloth ${r.cloth}` : "A bottle unrecorded"),
           score: r.score,
           rank: r.rank ?? 99,
           meta: `Gathering ${toRoman(a.number)}${a.theme ? ` · ${a.theme}` : ""}`,

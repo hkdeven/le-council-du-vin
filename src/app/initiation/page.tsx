@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { addApplication } from "@/lib/applications";
-import { geocodePlace } from "@/lib/geo";
+import { geocodePlace, type GeoHit } from "@/lib/geo";
 import { DEFAULT_TZ, curatedTimezones } from "@/lib/astrology";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -22,6 +22,26 @@ export default function Initiation() {
   const [tob, setTob] = useState("");
   const [tz, setTz] = useState(DEFAULT_TZ);
   const [place, setPlace] = useState("");
+  const [placeHits, setPlaceHits] = useState<GeoHit[] | null>(null); // null = not searched
+  const [placeLat, setPlaceLat] = useState<number | null>(null);
+  const [placeLon, setPlaceLon] = useState<number | null>(null);
+  const [placeTz, setPlaceTz] = useState<string | null>(null);
+  const [seeking, setSeeking] = useState(false);
+  const seekPlace = async () => {
+    if (!place.trim()) return;
+    setSeeking(true);
+    const hits = await geocodePlace(place);
+    setSeeking(false);
+    setPlaceHits(hits);
+    if (hits.length === 1) pickPlace(hits[0]);
+  };
+  const pickPlace = (h: GeoHit) => {
+    setPlace(h.label);
+    setPlaceLat(h.latitude);
+    setPlaceLon(h.longitude);
+    setPlaceTz(h.timezone);
+    setPlaceHits([]);
+  };
   const [drawReason, setDrawReason] = useState("");
   const [ifWine, setIfWine] = useState("");
   const [wineSin, setWineSin] = useState("");
@@ -41,8 +61,8 @@ export default function Initiation() {
     setError(null);
     // Pin the birth town quietly (first atlas match); the chart uses its
     // coordinates + timezone. A miss just leaves the typed name.
-    let lat: number | null = null, lon: number | null = null, zone = tz;
-    if (place.trim()) {
+    let lat = placeLat, lon = placeLon, zone = placeTz || tz;
+    if (lat == null && place.trim()) {
       const hits = await geocodePlace(place);
       if (hits[0]) { lat = hits[0].latitude; lon = hits[0].longitude; zone = hits[0].timezone; }
     }
@@ -155,7 +175,33 @@ export default function Initiation() {
         </select>
 
         <label className="field">Place of birth</label>
-        <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Cape Town" />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={place}
+            onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); }}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), seekPlace())}
+            placeholder="Cape Town"
+            style={{ flex: 1 }}
+          />
+          <button type="button" className="btn" style={{ width: "auto", padding: "0 14px" }} onClick={seekPlace} disabled={seeking || !place.trim()}>
+            {seeking ? "Seeking…" : "Mark it"}
+          </button>
+        </div>
+        {placeLat != null && (
+          <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
+            <i className="ti ti-map-pin" style={{ fontSize: 12, marginRight: 4 }} />The atlas knows it. Your sky will be drawn from this place.
+          </p>
+        )}
+        {placeHits && placeHits.length > 1 && (
+          <div className="pills" style={{ marginTop: 8 }}>
+            {placeHits.map((h) => (
+              <span key={h.label} className="pill" onClick={() => pickPlace(h)}>{h.label}</span>
+            ))}
+          </div>
+        )}
+        {placeHits && placeHits.length === 0 && placeLat == null && (
+          <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try adding the region, or the nearest larger town.</p>
+        )}
         <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
           The stars that made you — your chart is drawn from these.
         </p>

@@ -35,7 +35,7 @@ export function speakProphecy(inp: {
   const rows: { owner: string; score: number; varietals: string[]; price: number | null; gid: string; cloth: number }[] = [];
   for (const a of annals) for (const r of a.rows) {
     if (r.dq || r.votes === 0) continue;
-    rows.push({ owner: r.owner, score: r.score, varietals: r.varietals || [], price: r.price ?? null, gid: a.gatheringId, cloth: r.cloth });
+    rows.push({ owner: r.owner, score: r.score, varietals: r.varietals || [], price: r.price ?? null, gid: a.gatheringId, cloth: r.cloth ?? -1 });
   }
   if (!rows.length) return null;
   const tableMean = rows.reduce((s, r) => s + r.score, 0) / rows.length;
