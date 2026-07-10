@@ -44,7 +44,10 @@ export function championsOf(a: AnnalEntry): AnnalRow[] {
     const top = Math.max(...scored.map((r) => r.score));
     return scored.filter((r) => r.score === top);
   }
-  if (qualified.length === 1 && a.rows.some((r) => r.dq)) return qualified;
+  // Phantom rows (no owner, no title, never judged) are recording debris,
+  // not contenders; they must not block the sole survivor's crown.
+  const substantial = qualified.filter((r) => r.owner || r.title || r.votes > 0);
+  if (substantial.length === 1 && a.rows.some((r) => r.dq)) return substantial;
   return [];
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, featureRequestEmail, reckoningEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, reckoningEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -30,7 +30,7 @@ async function callerIdentity(req: Request): Promise<{ email: string | null; nam
   }
 }
 
-const SELF_TYPES = new Set(["natal", "foretelling", "kundli", "reckoning"]);
+const SELF_TYPES = new Set(["natal", "foretelling", "kundli", "vedic-foretelling", "reckoning"]);
 
 export async function POST(req: Request) {
   const key = process.env.RESEND_API_KEY;
@@ -75,6 +75,7 @@ export async function POST(req: Request) {
     case "natal": email = natalChartEmail(params || {}); break;
     case "foretelling": email = foretellingEmail(params || {}); break;
     case "kundli": email = kundliEmail((params || {}) as KundliEmailParams); break;
+    case "vedic-foretelling": email = vedicForetellingEmail((params || {}) as VedicForetellingEmailParams); break;
     case "feature": email = featureRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     case "reckoning": email = reckoningEmail(params || {}); break;
     default: return NextResponse.json({ ok: false, error: "Unknown email type." }, { status: 400 });

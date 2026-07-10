@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { sunSign, moonSign, ascendant, shengxiao, wuXing, venusSign, moonPhase, dayMaster, lifePath, birthArcana, VENUS_IN } from "@/lib/astrology";
 import { fetchAnnals, championsOf } from "@/lib/annals";
@@ -8,9 +8,7 @@ import { dossierFor, type DossierStats } from "@/lib/dossier";
 import { useAuth } from "./AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { useBodyLock } from "./NatalChart";
-import NatalChartModal from "./NatalChart";
-import ForetellingModal from "./Foretelling";
-import KundliModal from "./Kundli";
+import HeavensFace from "./Heavens";
 import Avatar from "./Avatar";
 import Tip from "./Tip";
 
@@ -78,9 +76,8 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
 
   // The Palate Dossier: derived from real ballots + annals (needs an id).
   const [dossier, setDossier] = useState<DossierStats | null>(null);
-  const [showChart, setShowChart] = useState(false);
-  const [showFore, setShowFore] = useState(false);
-  const [showKundli, setShowKundli] = useState(false);
+  // The card turns over to reveal the Heavens; one card, one close.
+  const [flipped, setFlipped] = useState(false);
   useEffect(() => {
     if (!member.id) return;
     let active = true;
@@ -100,13 +97,44 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, photoOpen]);
 
+  // The turn of the card: the container breathes to whichever face shows,
+  // so the overlay never scrolls dead space behind the shorter face.
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const [faceHeight, setFaceHeight] = useState<number | undefined>(undefined);
+  const [flipOnce, setFlipOnce] = useState(false); // mount the Heavens on first turn
+  const flipTo = (to: boolean) => {
+    if (to) setFlipOnce(true);
+    setFlipped(to);
+    overlayRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  useLayoutEffect(() => {
+    const active = flipped ? backRef.current : frontRef.current;
+    if (!active) return;
+    const sync = () => setFaceHeight(active.offsetHeight);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(active);
+    return () => ro.disconnect();
+  }, [flipped, flipOnce]);
+  const faceStyle: React.CSSProperties = {
+    position: "absolute", top: 0, left: 0, width: "100%",
+    backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+    background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14,
+    boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 20px 24px", textAlign: "center",
+  };
+
   return (
     // The OVERLAY scrolls, not the card: the card keeps its natural height and
     // margin:auto centres it when short / top-anchors it when tall. No inner
     // scroll container means nothing to clip, drift, or leave black space on
     // mobile browsers.
-    <div className="modal-scroll" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", overflowY: "auto", display: "flex", padding: 18, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 340, margin: "auto", background: "linear-gradient(180deg,#12100e,#0a0908)", border: "1px solid var(--gold)", borderRadius: 14, boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.7)", padding: "22px 20px 24px", textAlign: "center", transform: shown ? "scale(1) translateY(0)" : "scale(0.9) translateY(10px)", transition: "transform 0.26s cubic-bezier(0.2,0.9,0.3,1)", transformOrigin: "center" }}>
+    <div ref={overlayRef} className="modal-scroll" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", overflowY: "auto", display: "flex", padding: 18, opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 340, margin: "auto", transformStyle: "preserve-3d", transform: `perspective(1600px) ${shown ? "scale(1)" : "scale(0.9)"} rotateY(${flipped ? 180 : 0}deg)`, transition: "transform 0.7s cubic-bezier(0.4,0.1,0.2,1), height 0.45s ease", transformOrigin: "center", height: faceHeight }}>
+        {/* FRONT: the member card. The turned-away face must never intercept
+            a tap (not every browser backface-culls hit-testing). */}
+        <div ref={frontRef} style={{ ...faceStyle, pointerEvents: flipped ? "none" : undefined }}>
         <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6 }}>
           <i className="ti ti-x" style={{ fontSize: 16 }} />
         </button>
@@ -233,19 +261,18 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         )}
         <div style={{ borderTop: "2px solid var(--gold)", margin: "16px -20px 30px" }} />
 
-        <button className="btn" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }} onClick={() => setShowChart(true)}>
-          <i className="ti ti-chart-donut" style={{ fontSize: 15, color: "var(--gold)" }} />Behold the natal chart
+        <button className="btn gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }} onClick={() => flipTo(true)}>
+          <i className="ti ti-moon-stars" style={{ fontSize: 15 }} />The Heavens
         </button>
-        <button className="btn" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 10 }} onClick={() => setShowFore(true)}>
-          <i className="ti ti-sparkles" style={{ fontSize: 15, color: "var(--gold)" }} />The Foretelling
-        </button>
-        <button className="btn" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 10 }} onClick={() => setShowKundli(true)}>
-          <i className="ti ti-north-star" style={{ fontSize: 15, color: "var(--gold)" }} />The Kundli
-        </button>
+        </div>
 
-        {showChart && <NatalChartModal member={member} isSelf={isSelf} onClose={() => setShowChart(false)} onLeave={() => { setShowChart(false); onClose(); }} />}
-        {showFore && <ForetellingModal member={member} isSelf={isSelf} onClose={() => setShowFore(false)} onLeave={() => { setShowFore(false); onClose(); }} />}
-        {showKundli && <KundliModal member={member} isSelf={isSelf} onClose={() => setShowKundli(false)} onLeave={() => { setShowKundli(false); onClose(); }} />}
+        {/* BACK: the Heavens. */}
+        <div ref={backRef} style={{ ...faceStyle, transform: "rotateY(180deg)", pointerEvents: flipped ? undefined : "none" }}>
+          <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
+            <i className="ti ti-x" style={{ fontSize: 16 }} />
+          </button>
+          {flipOnce && <HeavensFace member={member} isSelf={isSelf} onGo={onClose} onBack={() => flipTo(false)} />}
+        </div>
       </div>
       {/* Portrait lightbox: sibling of the card, NOT inside it — the card's
           transform would otherwise become the containing block for fixed. */}
@@ -306,11 +333,14 @@ export default function MemberCard({ member, size = 30 }: { member: CardMember; 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Animate in on the next frame after mounting; animate out then unmount.
+  // Animate in just after mounting; animate out then unmount. A timeout, not
+  // requestAnimationFrame: rAF never fires in throttled/background tabs, which
+  // would leave the card permanently faded out (and an opacity below 1
+  // flattens the card's 3D flip while it lasts).
   useEffect(() => {
     if (!open) return;
-    const id = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(id);
+    const id = setTimeout(() => setShown(true), 10);
+    return () => clearTimeout(id);
   }, [open]);
   const close = () => {
     setShown(false);

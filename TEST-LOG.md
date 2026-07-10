@@ -1,5 +1,34 @@
 # Le Council — Test Log
 
+## 2026-07-10 (late night) — THE HEAVENS: one door, the card turns over — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **The card turns over.** The member card's three sky buttons become one, "The Heavens"; tapping it flips the card in 3D (perspective carried in the card's own transform, NOT on the scrolling overlay, which breaks Chromium hit-testing; the turned-away face gets pointer-events none; container height breathes to the active face via ResizeObserver; flip scrolls to top). Return arrow top-left + "Turn the card back" at the foot; the X on either face closes everything at once | Any member card: tap The Heavens, browse, turn back, close once | ✓ (flip, turn-back by real coordinate taps, front restored; veiled gate + third person on an incomplete member) | [ ] |
+| 2 | **Three stops under one pill**: The Wheel · The Foretelling · The Kundli (bodies extracted from the three modals, which still exist as wrappers). The Wheel gains the approved readings: temperament bars (elements + modes, hand verdict per dominant pair), the figures (stellium/grand trine/T-square/grand cross/yod/exact conjunctions; only what is truly present), the chart bearer (asc ruler + dignity), the birth moon (8 lunation passages). **scripts/verify-natal-analysis.ts 15/15** (incl. Sun-Pluto 0.3° and Saturn-Uranus 0.7° found, nothing invented, 1962 Aquarius stellium detected) | Open The Wheel on your card | ✓ (all four sections render with real data) | [ ] |
+| 3 | **The Foretelling carries both skies**: under the day/moon/year pill a lens pill, The Western sky · The Vedic sky (remembered per device, defaults Western). Vedic day = the day's star (tara + Chandra bala passages) + the five-limb almanac with Ekadashi/Purnima/Amavasya whispers; Vedic moon = the gochara ledger (classical benefic lists, vedha omitted and said so) + woven passage; Vedic year = the year's turnings (exact sign entries), the clock within (pratyantar), and the iron passage (Sade Sati with phases / Ashtama Shani, dates honouring Saturn's retrograde wobbles: Ashtama ends Feb 2028, not the June 2027 first exit). **scripts/verify-gochara.ts 33/33** against the DrikPanchang-confirmed day, JPL-checked positions, and the earlier engine scans | Foretelling stop, flip the lens, walk all three horizons | ✓ (real Janma tara, Krishna Ekadashi, gochara 1st/11th/11th/10th/12th/8th, Guru blessing 31 Oct, Sade Sati 2034) | [ ] |
+| 4 | **One door on the profile too**: Your sky = a single gold Heavens door opening straight onto the Heavens; the three envelopes became **"Email me this view"** at the foot of every stop (owner only, live mode; the Foretelling's envelope follows the lens: Western sends the foretelling email, Vedic the new vedic-foretelling email). Builders moved to src/lib/skyEmails.ts; the vedic-foretelling send type wired through route + client | Profile → The Heavens; each stop's envelope | ✓ (door + stops; envelopes hidden in demo as designed) | [ ] |
+| 5 | The Kundli's age section gains the fine hand ("and within that, the days of Chandra until 17 July, then Mangala"); transits.ts passages cleansed of long dashes; card fade-in uses a timeout (rAF never fires in throttled tabs and an opacity below 1 flattens the 3D flip while it lasts) | Kundli stop; any Foretelling passage | ✓ | [ ] |
+
+| 6 | **Keiser's edits after the walkthrough**: the card's Heavens door wears gold; the Foretelling and Kundli stops lose their inner titles/whispers (the Heavens heading carries them); all pills share one metric (9px Cinzel, 7x10 padding, nowrap; the top pill's "The Foretelling" no longer wraps to two lines); **Email me this view shows for the owner in every mode** (demo answers "No inbox is known for you in this mode" / "heralds not configured" instead of hiding) | Card: gold door; Foretelling stop: three equal pills; every stop: the envelope | ✓ (28px/9px across all three pills, envelopes on all stops) | [ ] |
+| 7 | **Tooltip pass**: the bespoke moon-pill tooltip (predated the shared Tip and ran off-screen) is REMOVED per the Keiser (nested taps in a pill are hostile on mobile); new HARD RULE in memory: every tooltip uses the shared Tip component (viewport nudging, one-at-a-time, tap-outside). Tips ADDED where rows lacked them: each gochara graha (7 hand-written graha tooltips), each almanac limb (tithi/day lord/nakshatra/yoga/karana), each clock-within lord (the dasha tips) | Vedic moon view: tap SHUKRA's info; day view: the five limbs; year view: the clock lords | ✓ (icon gone from the pill; graha tip opens on-screen; 5 almanac + 6 clock tips) | [ ] |
+
+All five suites: verify-vedic 24, verify-kundli 45, verify-annals 10, verify-gochara 33, verify-natal-analysis 15 = **127/127**. Production build clean.
+
+---
+
+## 2026-07-10 (night) — phantom rows can no longer block a crown — pushed
+
+No new SQL needed.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **Leftover blank rows no longer block the sole survivor's crown**: championsOf() ignores phantom rows (no owner, no title, never judged) in the survivor rule, and the codex editor now drops completely empty rows at seal time so they never enter an annal again. Promoted the crowning checks to a permanent suite: **scripts/verify-annals.ts, 10/10** (incl. the exact French-reds shape with and without a trailing blank row, and the guard that a REAL second unscored survivor still blocks the crown) | French reds shows "crowned: Seer Matthew"; amending any night and sealing never keeps blank rows | ✓ (injected the suspected live shape, 4 rows + 1 blank: crown appeared; blank-row drop verified through the editor) | [ ] |
+
+---
+
 ## 2026-07-10 (later) — the quadruple-check audit applied; daily horoscope in both foretelling emails — pushed
 
 No new SQL needed.

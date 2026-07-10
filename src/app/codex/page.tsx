@@ -427,8 +427,11 @@ export default function Codex() {
   // Seal an amended or newly recorded gathering: ranks recomputed from scores
   // (competition style, ties share, DQs unranked), gathering + annal in step.
   const saveDraft = async (d: Draft) => {
-    const scored = d.rows.filter((r) => !r.dq && r.score !== "").map((r) => Number(r.score));
-    const rows: AnnalRow[] = d.rows.map((r) => ({
+    // A row with nothing on it (no name, no owner, no score, no mark) is a
+    // leftover blank, not a wine; sealing it would haunt the annal.
+    const kept = d.rows.filter((r) => r.title.trim() || r.owner.trim() || r.score !== "" || r.dq || r.varietals.length || r.price !== "");
+    const scored = kept.filter((r) => !r.dq && r.score !== "").map((r) => Number(r.score));
+    const rows: AnnalRow[] = kept.map((r) => ({
       cloth: r.cloth,
       title: r.title.trim(),
       owner: r.owner.trim(),

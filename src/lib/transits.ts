@@ -3,7 +3,7 @@
 // houses, which slow planets make real aspects to their natal Sun, Moon, and
 // Ascendant (with true dates), Mercury retrogrades, the year's house
 // ingresses, the numerology personal year, and the Chinese year. The words
-// are written once, by hand, below — chosen by the alignment, never at random.
+// are written once, by hand, below, chosen by the alignment, never at random.
 
 import { sunLongitude, moonLongitude, julianDay, ZODIAC, shengxiao, yearAnimalInfo, DEFAULT_TZ } from "./astrology";
 import { fullChart, planetLongitude, houseOf, angDiff, ordinal, HOUSE_DOMAIN, type Chart } from "./natal";
@@ -264,7 +264,7 @@ export function foretellingFor(
     title: `New moon · ${nmSign.symbol} ${nmSign.name} · your ${ordinal(nmHouse)} house`,
     when: fmtDay(cycleStart),
     body: `${NEW_MOON_VERB} ${HOUSE_DOMAIN[nmHouse]}: set the intention there, and let it root in the dark.`,
-    plain: `A new moon is a monthly fresh start. This one lands in the part of your life about ${HOUSE_DOMAIN[nmHouse]} — a good moment to begin something in that area.`,
+    plain: `A new moon is a monthly fresh start. This one lands in the part of your life about ${HOUSE_DOMAIN[nmHouse]}: a good moment to begin something in that area.`,
   });
   const fmLon = moonLongitude(fullJd);
   const fmSign = ZODIAC[Math.floor(fmLon / 30) % 12];
@@ -311,7 +311,7 @@ export function foretellingFor(
     title: `Full moon · ${fmSign.symbol} ${fmSign.name} · your ${ordinal(fmHouse)} house`,
     when: fmtDay(fullJd),
     body: `${FULL_MOON_VERB} ${HOUSE_DOMAIN[fmHouse]}: what was seeded there comes to light.`,
-    plain: `A full moon is a monthly peak. This one lights up the part of your life about ${HOUSE_DOMAIN[fmHouse]} — something in that area comes to a head, or finally shows results.`,
+    plain: `A full moon is a monthly peak. This one lights up the part of your life about ${HOUSE_DOMAIN[fmHouse]}: something in that area comes to a head, or finally shows results.`,
   });
 
   // Mercury retrograde overlapping the cycle. Scan a little past both ends so

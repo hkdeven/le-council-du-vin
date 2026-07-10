@@ -20,6 +20,7 @@ import {
   sanskritLord, rashiName, type Muhurta,
 } from "@/lib/kundli";
 import * as T from "@/lib/kundli-text";
+import { clockWithin } from "@/lib/gochara";
 import type { Member } from "@/lib/types";
 
 const STYLE_KEY = "lcv_kundli_style"; // north | south
@@ -132,11 +133,8 @@ const fmtScore = (n: number) => (n % 1 === 0.5 ? `${Math.floor(n)}½` : `${n}`);
 
 interface Kin { name: string; total: number; verdict: string }
 
-export default function KundliModal({ member, onClose, onLeave, isSelf }: { member: CardMember; onClose: () => void; onLeave?: () => void; isSelf?: boolean }) {
-  const [shown, setShown] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
-  const close = () => { setShown(false); setTimeout(onClose, 240); };
-
+// The whole kundli, shell-free, so the Heavens can host it.
+export function KundliContent({ member, isSelf, onGo }: { member: CardMember; isSelf?: boolean; onGo: () => void }) {
   const [style, setStyle] = useState<"north" | "south">("north");
   useEffect(() => {
     try { const s = localStorage.getItem(STYLE_KEY); if (s === "south") setStyle("south"); } catch {}
@@ -193,12 +191,23 @@ export default function KundliModal({ member, onClose, onLeave, isSelf }: { memb
   }, [ready]);
 
   return (
-    <AstralShell shown={shown} onClose={close}>
+    <>
       {!ready || !chart ? (
-        <VeiledGate member={member} what="the kundli cannot be drawn" isSelf={isSelf} onGo={onLeave || close} />
+        <VeiledGate member={member} what="the kundli cannot be drawn" isSelf={isSelf} onGo={onGo} />
       ) : (
         <KundliBody chart={chart} v={v} isSelf={isSelf} style={style} pickStyle={pickStyle} kin={subjectFull ? kin : null} muhurta={muhurta} />
       )}
+    </>
+  );
+}
+
+export default function KundliModal({ member, onClose, onLeave, isSelf }: { member: CardMember; onClose: () => void; onLeave?: () => void; isSelf?: boolean }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
+  const close = () => { setShown(false); setTimeout(onClose, 240); };
+  return (
+    <AstralShell shown={shown} onClose={close}>
+      <KundliContent member={member} isSelf={isSelf} onGo={onLeave || close} />
     </AstralShell>
   );
 }
@@ -211,6 +220,11 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
   const pillars = pillarsOf(chart);
   const yogas = detectYogas(chart);
   const cur = chart.current;
+  // The fine hand of the age: the current pratyantar and the next.
+  const clock = clockWithin(chart, Date.now());
+  const fineHand = clock.length >= 2 && clock[0].now
+    ? `and within that, the days of ${clock[0].lord.charAt(0) + clock[0].lord.slice(1).toLowerCase()} ${clock[0].range}, then ${clock[1].lord.charAt(0) + clock[1].lord.slice(1).toLowerCase()}`
+    : null;
   const mahas = chart.mahadashas.slice(0, 9);
   const nextMaha = cur ? chart.mahadashas[chart.mahadashas.findIndex((d) => d === cur.maha) + 1] : null;
   const now = Date.now();
@@ -221,15 +235,9 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "center", gap: 11, color: "var(--gold)", opacity: 0.55, fontSize: 14, marginBottom: 12 }}>
-        <i className="ti ti-moon-stars" /><i className="ti ti-moon" /><i className="ti ti-circle" /><i className="ti ti-moon-2" /><i className="ti ti-moon-stars" />
-      </div>
-      <div className="disp" style={{ fontSize: 19 }}>The Kundli</div>
-      <p className="whisper" style={{ fontSize: 13, margin: "2px 0 0" }}>the Vedic sky at {v.pos} first breath · Lahiri ayanamsa</p>
-
-      <div style={{ display: "inline-flex", border: "1px solid var(--line2)", borderRadius: 16, overflow: "hidden", margin: "12px 0 4px" }}>
+      <div style={{ display: "inline-flex", border: "1px solid var(--line2)", borderRadius: 16, overflow: "hidden", margin: "4px 0 4px" }}>
         {(["north", "south"] as const).map((s) => (
-          <button key={s} onClick={() => pickStyle(s)} style={{ width: "auto", padding: "7px 18px", fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", border: "none", cursor: "pointer", background: style === s ? "var(--gold2)" : "none", color: style === s ? "#0a0908" : "var(--dim)" }}>
+          <button key={s} onClick={() => pickStyle(s)} style={{ width: "auto", padding: "7px 18px", fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", border: "none", cursor: "pointer", background: style === s ? "var(--gold2)" : "none", color: style === s ? "#0a0908" : "var(--dim)" }}>
             {s}
           </button>
         ))}
@@ -277,6 +285,7 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
             {monthYear(cur.maha.fromMs)} to {monthYear(cur.maha.toMs)}
             {cur.antar.lord !== cur.maha.lord && <> · tempered by {sanskritLord(cur.antar.lord)} until {monthYear(cur.antar.toMs)}</>}
           </p>
+          {fineHand && <p className="whisper" style={{ margin: "0 0 10px", color: "var(--parch)" }}>{fineHand}</p>}
           <p style={bodyStyle}>{T.DASHA_TEXT[cur.maha.lord](v)}{cur.antar.lord !== cur.maha.lord && <> {T.ANTAR_TEXT[cur.antar.lord](v)}</>}</p>
           {nextMaha && (
             <p style={{ ...bodyStyle, marginBottom: 0 }}>

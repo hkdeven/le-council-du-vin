@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 // Client helper: asks the server to send one of the Council's branded emails.
 // Attaches the Keiser's Supabase token so the server can verify the sender.
 export async function sendEmail(
-  type: "anoint" | "elevate" | "invite" | "expulsion" | "natal" | "foretelling" | "kundli" | "feature" | "reckoning",
+  type: "anoint" | "elevate" | "invite" | "expulsion" | "natal" | "foretelling" | "kundli" | "vedic-foretelling" | "feature" | "reckoning",
   to: string | string[],
   params: Record<string, unknown> = {}
 ): Promise<{ ok: boolean; sent?: number; failed?: number; skipped?: string; error?: string }> {

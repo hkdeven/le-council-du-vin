@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { fullChart, placementText, ordinal, type Chart } from "@/lib/natal";
+import { temperamentOf, figuresOf, bearerOf, birthMoonOf, type Voice } from "@/lib/natal-analysis";
+import Tip from "./Tip";
 import type { CardMember } from "./MemberCard";
 
 // Lock the page's scroll while any modal is open (counted, so stacked modals
@@ -147,19 +149,17 @@ export function Methodology({ title, children }: { title: string; children: Reac
   );
 }
 
-export default function NatalChartModal({ member, onClose, onLeave, isSelf }: { member: CardMember; onClose: () => void; onLeave?: () => void; isSelf?: boolean }) {
-  const [shown, setShown] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
+// The whole wheel, shell-free, so the Heavens can host it.
+export function NatalContent({ member, isSelf, onGo }: { member: CardMember; isSelf?: boolean; onGo: () => void }) {
   const [openRow, setOpenRow] = useState<string | null>(null);
-  const close = () => { setShown(false); setTimeout(onClose, 240); };
 
   const ready = chartReady(member);
   const chart = ready ? fullChart(member.date_of_birth!, member.time_of_birth, member.birth_tz, member.birth_lat, member.birth_lon) : null;
 
   return (
-    <AstralShell shown={shown} onClose={close}>
+    <>
       {!ready || !chart ? (
-        <VeiledGate member={member} what="the wheel cannot be drawn" isSelf={isSelf} onGo={onLeave || close} />
+        <VeiledGate member={member} what="the wheel cannot be drawn" isSelf={isSelf} onGo={onGo} />
       ) : (
         <>
           <div className="disp" style={{ fontSize: 19 }}>{member.cult_name}</div>
@@ -195,6 +195,7 @@ export default function NatalChartModal({ member, onClose, onLeave, isSelf }: { 
           ))}
           <p className="whisper" style={{ margin: "10px 0 0", fontSize: 13 }}>tap a row to read what the placement signifies</p>
           <p className="whisper" style={{ margin: "4px 0 0", fontSize: 12 }}>whole-sign houses · computed from the true sky</p>
+          <WheelReadings chart={chart} isSelf={isSelf} />
           <Methodology title="How this chart is drawn">
             Nothing here is guessed or generated. The birth moment is first converted from local time to Universal Time using the historical timezone database, so old dates carry the offsets of their era. Each position is then computed from established astronomical formulae: the sun from its true ecliptic longitude, the moon from a perturbed lunar ephemeris, the planets from their orbital elements, and the ascendant from the exact sidereal time at the birthplace&apos;s latitude and longitude. Houses follow the whole-sign tradition.
             <br /><br />
@@ -202,6 +203,113 @@ export default function NatalChartModal({ member, onClose, onLeave, isSelf }: { 
           </Methodology>
         </>
       )}
+    </>
+  );
+}
+
+// The temperament, the figures, the chart bearer, and the birth moon: the
+// wheel's deeper readings, every value computed (natal-analysis.ts) and every
+// passage hand-written.
+function WheelReadings({ chart, isSelf }: { chart: Chart; isSelf?: boolean }) {
+  const v: Voice = isSelf
+    ? { subj: "you", Subj: "You", obj: "you", pos: "your", Pos: "Your" }
+    : { subj: "they", Subj: "They", obj: "them", pos: "their", Pos: "Their" };
+  const temper = temperamentOf(chart, v);
+  const figures = figuresOf(chart, v);
+  const bearer = bearerOf(chart, v);
+  const birthMoon = birthMoonOf(chart, v);
+
+  const eyebrow: React.CSSProperties = { fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 2, marginBottom: 8 };
+  const body: React.CSSProperties = { fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'EB Garamond', serif", margin: "0 0 10px" };
+  const moons = (
+    <div style={{ display: "flex", justifyContent: "center", gap: 11, color: "var(--gold)", opacity: 0.55, fontSize: 14, margin: "18px 0 12px" }}>
+      <i className="ti ti-moon-stars" /><i className="ti ti-moon" /><i className="ti ti-circle" /><i className="ti ti-moon-2" /><i className="ti ti-moon-stars" />
+    </div>
+  );
+  const bar = (b: { name: string; count: number; who: string[] }, max: number, tip: string) => (
+    <div key={b.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0", textAlign: "left" }}>
+      <span style={{ fontFamily: "'Cinzel',serif", textTransform: "uppercase", letterSpacing: "0.1em", fontSize: 10, color: "var(--gold)", width: 96, flex: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+        {b.name}<Tip align="left" text={tip} />
+      </span>
+      <span style={{ flex: 1, height: 4, background: "rgba(160,150,120,0.14)", borderRadius: 2, overflow: "hidden" }}>
+        <span style={{ display: "block", height: "100%", width: `${(b.count / max) * 100}%`, background: "var(--gold2)", borderRadius: 2, opacity: 0.55 + 0.45 * (b.count / max) }} />
+      </span>
+      <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 15, width: 16, flex: "none", textAlign: "right" }}>{b.count}</span>
+    </div>
+  );
+  const ELEM_TIPS: Record<string, string> = {
+    Fire: "Will, drive, and daring: the element of action and appetite. Strong fire acts first and explains after.",
+    Earth: "Patience, sense, and craft: the element of the tangible. Strong earth trusts what it can hold and build.",
+    Air: "Thought, speech, and connection: the element of ideas and judgement. Strong air thinks its way through life.",
+    Water: "Feeling, memory, and instinct: the element of depth. Strong water reads the room before a word is spoken.",
+  };
+  const MODE_TIPS: Record<string, string> = {
+    Cardinal: "The signs that begin each season: initiators. Strong cardinal starts things and sets others in motion.",
+    Fixed: "The signs that hold each season: sustainers. Strong fixed keeps its course and its grudges alike.",
+    Mutable: "The signs that close each season: adapters. Strong mutable bends, blends, and finishes what others start.",
+  };
+  const maxEl = Math.max(...temper.elements.map((e) => e.count), 1);
+  const maxMd = Math.max(...temper.modes.map((m) => m.count), 1);
+
+  return (
+    <>
+      <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 16px" }} />
+      <div className="eyebrow" style={{ ...eyebrow, margin: "20px 0 10px" }}>
+        The temperament<Tip text="Every placement counted by its element and mode; the balance is the weather of the whole chart." />
+      </div>
+      {temper.elements.map((e) => bar(e, maxEl, ELEM_TIPS[e.name]))}
+      <div style={{ height: 8 }} />
+      {temper.modes.map((m) => bar(m, maxMd, MODE_TIPS[m.name]))}
+      <p style={{ ...body, marginTop: 10, marginBottom: 0 }}>{temper.verdict}</p>
+
+      {figures.length > 0 && (
+        <>
+          {moons}
+          <div className="eyebrow" style={eyebrow}>
+            The figures<Tip text="Classical aspect patterns, detected in the chart itself: stelliums, grand trines, T-squares, grand crosses, yods, and exact conjunctions. Only figures truly present are named." />
+          </div>
+          {figures.map((f, i) => (
+            <p key={f.key} style={{ ...body, marginBottom: i === figures.length - 1 ? 0 : 10 }}>
+              <span style={{ color: "var(--gold2)" }}>{f.name}</span>: {f.text}
+            </p>
+          ))}
+        </>
+      )}
+
+      {bearer && (
+        <>
+          {moons}
+          <div className="eyebrow" style={eyebrow}>
+            The chart bearer<Tip text="The planet that rules the rising sign carries the whole chart; its condition colours everything else." />
+          </div>
+          <div style={{ fontFamily: "'Great Vibes',cursive", color: "var(--gold2)", fontSize: 26, lineHeight: 1.2 }}>{bearer.title}</div>
+          <p className="whisper" style={{ margin: "2px 0 10px" }}>{bearer.whisper}</p>
+          <p style={{ ...body, marginBottom: 0 }}>{bearer.text}</p>
+        </>
+      )}
+
+      {birthMoon && (
+        <>
+          {moons}
+          <div className="eyebrow" style={eyebrow}>
+            The birth moon<Tip text="The angle between the sun and moon at birth gives the lunation phase, one of eight, each with its own temperament." />
+          </div>
+          <div style={{ fontFamily: "'Great Vibes',cursive", color: "var(--gold2)", fontSize: 26, lineHeight: 1.2 }}>{birthMoon.title}</div>
+          <p className="whisper" style={{ margin: "2px 0 10px" }}>{birthMoon.whisper}</p>
+          <p style={{ ...body, marginBottom: 0 }}>{birthMoon.text}</p>
+        </>
+      )}
+    </>
+  );
+}
+
+export default function NatalChartModal({ member, onClose, onLeave, isSelf }: { member: CardMember; onClose: () => void; onLeave?: () => void; isSelf?: boolean }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
+  const close = () => { setShown(false); setTimeout(onClose, 240); };
+  return (
+    <AstralShell shown={shown} onClose={close}>
+      <NatalContent member={member} isSelf={isSelf} onGo={onLeave || close} />
     </AstralShell>
   );
 }

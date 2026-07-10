@@ -13,10 +13,8 @@ import { sunSign, DEFAULT_TZ, curatedTimezones } from "@/lib/astrology";
 import { geocodePlace, type GeoHit } from "@/lib/geo";
 import { toRoman } from "@/lib/util";
 import AvatarCropper from "@/components/AvatarCropper";
-import NatalChartModal, { chartReady, wheelSvgString } from "@/components/NatalChart";
-import ForetellingModal from "@/components/Foretelling";
-import KundliModal from "@/components/Kundli";
-import { fullChart, ordinal } from "@/lib/natal";
+import { chartReady, AstralShell } from "@/components/NatalChart";
+import HeavensFace from "@/components/Heavens";
 import type { CardMember } from "@/components/MemberCard";
 import MemberCard from "@/components/MemberCard";
 import Loading from "@/components/Loading";
@@ -738,33 +736,6 @@ export default function Profile() {
   );
 }
 
-// Rasterize the wheel to a PNG and host it (live mode) so the emailed chart
-// can carry the image; mail clients cannot draw SVGs themselves.
-async function wheelPngUrl(chart: NonNullable<ReturnType<typeof fullChart>>): Promise<string | undefined> {
-  try {
-    const svg = wheelSvgString(chart);
-    return await new Promise<string | undefined>((resolve) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const S = 660;
-        const c = document.createElement("canvas");
-        c.width = S; c.height = S;
-        c.getContext("2d")!.drawImage(img, 0, 0, S, S);
-        c.toBlob(async (blob) => {
-          if (!blob || !supabase) return resolve(undefined);
-          const path = `wheel-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
-          const { error } = await supabase.storage.from("charts").upload(path, blob, { contentType: "image/png" });
-          if (error) return resolve(undefined);
-          resolve(supabase.storage.from("charts").getPublicUrl(path).data.publicUrl);
-        }, "image/png");
-      };
-      img.onerror = () => resolve(undefined);
-      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
-    });
-  } catch {
-    return undefined;
-  }
-}
 
 // The two doors to your own sky, each with an envelope that emails it to
 // your own inbox. The send route only ever accepts your own address.
@@ -805,124 +776,29 @@ function FeatureWish() {
 }
 
 function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
-  const [showChart, setShowChart] = useState(false);
-  const [showFore, setShowFore] = useState(false);
-  const [showKundli, setShowKundli] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const ready = chartReady(self);
-
-  const birthLine = self.date_of_birth
-    ? `${new Date(self.date_of_birth).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${self.time_of_birth ? `, ${self.time_of_birth}` : ""}${self.birth_place ? `, ${self.birth_place.split(",")[0]}` : ""}`
-    : undefined;
-
-  const finish = (res: { ok: boolean; skipped?: string; error?: string }) => {
-    setBusy(null);
-    setMsg(res.ok ? "Sent. Consult your inbox." : res.skipped ? "The heralds are not yet configured." : res.error || "The herald failed on the road.");
-  };
-
-  const emailChart = async () => {
-    if (!ready || !self.date_of_birth) { setMsg("Give your birth time and place above; then the sky unveils."); return; }
-    if (!email) { setMsg("No inbox is known for you in this mode."); return; }
-    setBusy("natal"); setMsg(null);
-    const chart = fullChart(self.date_of_birth, self.time_of_birth, self.birth_tz, self.birth_lat, self.birth_lon)!;
-    const wheelUrl = await wheelPngUrl(chart);
-    const sunP = chart.planets.find((x) => x.key === "sun")!;
-    const moonP = chart.planets.find((x) => x.key === "moon")!;
-    finish(await sendEmail("natal", [email], {
-      name: self.cult_name, birthLine, wheelUrl,
-      sun: `${sunP.sign.symbol} ${sunP.sign.name}`,
-      moon: `${moonP.sign.symbol} ${moonP.sign.name}`,
-      rising: chart.ascSign ? `${chart.ascSign.symbol} ${chart.ascSign.name}` : undefined,
-      rows: chart.planets.map((x) => ({ glyph: x.glyph, planet: x.name, value: `${x.sign.symbol} ${x.sign.name} ${x.deg}°${x.house ? ` · ${ordinal(x.house)} house` : ""}` })),
-    }));
-  };
-
-  const emailFore = async () => {
-    if (!ready || !self.date_of_birth) { setMsg("Give your birth time and place above; then the sky unveils."); return; }
-    if (!email) { setMsg("No inbox is known for you in this mode."); return; }
-    setBusy("fore"); setMsg(null);
-    const { foretellingFor } = await import("@/lib/transits");
-    const r = foretellingFor({ dateStr: self.date_of_birth, timeStr: self.time_of_birth, tz: self.birth_tz, lat: self.birth_lat, lon: self.birth_lon }, Date.now());
-    if (!r) { setBusy(null); setMsg("The sky is veiled; complete your record first."); return; }
-    finish(await sendEmail("foretelling", [email], { name: self.cult_name, dayLabel: r.dayLabel, moonLabel: r.moonLabel, yearLabel: r.yearLabel, day: r.day, entries: r.entries, warning: r.warning || undefined, year: r.year }));
-  };
-
-  const emailKundli = async () => {
-    if (!ready || !self.date_of_birth) { setMsg("Give your birth time and place above; then the sky unveils."); return; }
-    if (!email) { setMsg("No inbox is known for you in this mode."); return; }
-    setBusy("kundli"); setMsg(null);
-    const [{ vedicChart, RASHIS, RASHI_WESTERN, NAKSHATRAS }, K, T] = await Promise.all([
-      import("@/lib/vedic"), import("@/lib/kundli"), import("@/lib/kundli-text"),
-    ]);
-    const chart = vedicChart(self.date_of_birth, self.time_of_birth, self.birth_tz, self.birth_lat, self.birth_lon, Date.now());
-    if (!chart) { setBusy(null); setMsg("The sky is veiled; complete your record first."); return; }
-    const my = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    const yr = (ms: number) => new Date(ms).getFullYear();
-    const cur = chart.current;
-    const nextMaha = cur ? chart.mahadashas[chart.mahadashas.findIndex((d) => d === cur.maha) + 1] : null;
-    const pillars = K.pillarsOf(chart);
-    const yogas = K.detectYogas(chart);
-    const muhurta = K.muhurtaDays(chart.moonNakshatra, chart.lagna.rashi, Date.now());
-    const v = T.SELF;
-    finish(await sendEmail("kundli", [email], {
-      name: self.cult_name,
-      lagna: `${RASHIS[chart.lagna.rashi]} (${RASHI_WESTERN[chart.lagna.rashi]}) · ${chart.lagna.degInRashi.toFixed(1)}°`,
-      nakshatra: `${NAKSHATRAS[chart.moonNakshatra]} · pada ${chart.moonPada}`,
-      navamsa: `${RASHIS[chart.lagna.navamsaRashi]} (D9)`,
-      ageTitle: cur ? `The years of ${K.sanskritLord(cur.maha.lord)}` : undefined,
-      ageDates: cur ? `${my(cur.maha.fromMs)} to ${my(cur.maha.toMs)}${cur.antar.lord !== cur.maha.lord ? ` · tempered by ${K.sanskritLord(cur.antar.lord)} until ${my(cur.antar.toMs)}` : ""}` : undefined,
-      agePassage: cur ? `${T.DASHA_TEXT[cur.maha.lord](v)}${cur.antar.lord !== cur.maha.lord ? ` ${T.ANTAR_TEXT[cur.antar.lord](v)}` : ""}` : undefined,
-      nextLine: nextMaha ? `Next: the years of ${K.sanskritLord(nextMaha.lord)} from ${my(nextMaha.fromMs)}, ${T.NEXT_CLAUSE[nextMaha.lord]}.` : undefined,
-      turning: chart.mahadashas.slice(0, 9).map((d) => ({ lord: d.lord, range: `${yr(d.fromMs)} to ${yr(d.toMs)}`, now: Date.now() >= d.fromMs && Date.now() < d.toMs })),
-      strength: T.STRENGTH_BY_HOUSE[pillars.lagnaLordHouse - 1](v, K.sanskritLord(pillars.lagnaLord)),
-      dharma: T.DHARMA_BY_LORD[pillars.tenthLord]?.(v, RASHIS[pillars.tenthRashi]),
-      pitfalls: pillars.pitfalls.slice(0, 2).map((k) => T.PITFALL_TEXT[k]?.(v)).filter(Boolean).join(" ") || undefined,
-      marriage: pillars.seventhLordHouse != null
-        ? `${T.SEVENTH_LORD_HOUSE[pillars.seventhLordHouse - 1](v, RASHIS[pillars.seventhRashi], K.sanskritLord(pillars.seventhLord))}${T.venusLine(v, pillars.venusHouse)} The navamsa, chart of the marriage itself, rises in ${RASHIS[chart.lagna.navamsaRashi]}: ${T.NAVAMSA_BOND[chart.lagna.navamsaRashi]}${K.mangalDosha(chart) ? T.MANGAL_NOTE(v) : ""}`
-        : undefined,
-      yogas: yogas.map((y) => ({ name: y.name, text: T.YOGA_TEXT[y.key](v) })),
-      muhurtaGood: muhurta.favourable.map((d) => d.label),
-      muhurtaBad: muhurta.hostile.map((d) => d.label),
-    }));
-  };
-
-  const rowStyle = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } as React.CSSProperties;
-  const mailStyle = { width: 46, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" } as React.CSSProperties;
+  const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => setShown(true), 10);
+    return () => clearTimeout(t);
+  }, [open]);
+  const close = () => { setShown(false); setTimeout(() => setOpen(false), 240); };
+  void email; // the envelope lives inside the Heavens now
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="eyebrow" style={{ marginBottom: 10, textAlign: "center", fontSize: 12 }}>Your sky</div>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button className="btn gold" style={rowStyle} onClick={() => setShowChart(true)}>
-          <i className="ti ti-chart-donut" />Behold the natal chart
-        </button>
-        <button className="btn" aria-label="Email me the natal chart" title="Email me the natal chart" style={mailStyle} disabled={busy !== null} onClick={emailChart}>
-          <i className={`ti ti-${busy === "natal" ? "loader-2" : "mail"}`} />
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-        <button className="btn gold" style={rowStyle} onClick={() => setShowFore(true)}>
-          <i className="ti ti-sparkles" />The Foretelling
-        </button>
-        <button className="btn" aria-label="Email me the foretelling" title="Email me the foretelling" style={mailStyle} disabled={busy !== null} onClick={emailFore}>
-          <i className={`ti ti-${busy === "fore" ? "loader-2" : "mail"}`} />
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-        <button className="btn gold" style={rowStyle} onClick={() => setShowKundli(true)}>
-          <i className="ti ti-north-star" />The Kundli
-        </button>
-        <button className="btn" aria-label="Email me the kundli" title="Email me the kundli" style={mailStyle} disabled={busy !== null} onClick={emailKundli}>
-          <i className={`ti ti-${busy === "kundli" ? "loader-2" : "mail"}`} />
-        </button>
-      </div>
+      <button className="btn gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => setOpen(true)}>
+        <i className="ti ti-moon-stars" />The Heavens
+      </button>
       <p className="whisper" style={{ textAlign: "center", margin: "12px 0 0", fontSize: 13 }}>
-        the envelope sends it to your inbox, sealed in the Council&apos;s colours
+        the wheel, the foretelling, and the kundli behind one door; every view carries its own envelope
       </p>
-      {msg && <p className="scr" style={{ textAlign: "center", margin: "8px 0 0", fontSize: 14 }}>{msg}</p>}
-      {showChart && <NatalChartModal member={self} isSelf onClose={() => setShowChart(false)} />}
-      {showFore && <ForetellingModal member={self} isSelf onClose={() => setShowFore(false)} />}
-      {showKundli && <KundliModal member={self} isSelf onClose={() => setShowKundli(false)} />}
+      {open && (
+        <AstralShell shown={shown} onClose={close}>
+          <HeavensFace member={self} isSelf onGo={close} />
+        </AstralShell>
+      )}
     </div>
   );
 }
