@@ -1,5 +1,15 @@
 # Le Council — Test Log
 
+## 2026-07-09 (night) — oracle fixes, wide grape ledger, the Vedic engine — NOT yet pushed
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | Oracle refetches on tab focus/visibility (backfilling in the codex then returning now updates the Unexplored) + loading spinner ("Consulting the oracle…") until themes/polls/annals land | Backfill grapes, switch back to the Oracle | ✓ (mount path; focus listener wired) | [ ] |
+| 2 | Grape ledger widened to 177 entries (obscure varietals, Cape locals, 12 blend/style categories incl. Cape Blend, GSM, Sparkling/MCC, Orange); 22 detection tests pass; **NEVER_SUGGEST decree**: Hanepoot + all dessert pours banned from every suggestion surface; Unexplored draws from a curated 42-entry NOTABLE list | Unexplored chips read like real theme nights, never dessert | ✓ | [ ] |
+| 3 | **The Vedic engine** (src/lib/vedic.ts, no libraries): Lahiri ayanamsa (verified vs published 1950/2000/2026 values), mean-node Rahu/Ketu (Meeus), sidereal chart on the verified tropical engine, whole-sign houses from the Lagna, 27 nakshatras + padas, Navamsa D9 (proven equal to the classical movable/fixed/dual rule across all 108 padas), Vimshottari maha+antar dashas with dates (hand-computed worked example + tiling invariants). **scripts/verify-vedic.ts: 24/24.** UI + interpretation passages: next turn, pending Keiser's placement pick | Run npx tsx scripts/verify-vedic.ts | ✓ 24/24 | n/a (engine) |
+
+---
+
 ## 2026-07-09 — the data awakens: split cloth, Reliquary, varietals + prices, the Reckoning, the Prophecy, the Unexplored — pushed
 
 **New SQL for the live DB before this deploys (all three lines, safe to run right now):**

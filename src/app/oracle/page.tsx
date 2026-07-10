@@ -7,7 +7,7 @@ import { fetchThemes, proposeTheme, favourTheme, editTheme, removeTheme, PoolThe
 import { fetchPolls, createPoll, updatePoll, toggleVote } from "@/lib/polls";
 import { fetchGatherings, effectiveLastHosted } from "@/lib/gatherings";
 import { fetchAnnals, type AnnalEntry } from "@/lib/annals";
-import { GRAPES } from "@/lib/varietals";
+import { NOTABLE, NEVER_SUGGEST } from "@/lib/varietals";
 import { toRoman } from "@/lib/util";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
@@ -15,6 +15,7 @@ import { shareToWhatsApp } from "@/lib/share";
 import { swr } from "@/lib/swr";
 import Avatar from "@/components/Avatar";
 import MemberCard from "@/components/MemberCard";
+import Loading from "@/components/Loading";
 import type { Poll, Member, Gathering } from "@/lib/types";
 
 const THEME_ICONS = ["ti-flame", "ti-hourglass", "ti-coin", "ti-grape", "ti-skull", "ti-star"];
@@ -137,13 +138,21 @@ export default function Oracle() {
   const [proposal, setProposal] = useState("");
   const [proposalDesc, setProposalDesc] = useState("");
   const [editingTheme, setEditingTheme] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const reloadThemes = () => fetchThemes(meId).then(setThemes);
 
+  const refetchOracle = () => Promise.all([
+    reloadThemes(),
+    fetchPolls().then(setPolls),
+    fetchAnnals().then(setAnnals).catch(() => {}),
+  ]).finally(() => setLoaded(true));
+
   useEffect(() => {
-    reloadThemes();
-    fetchPolls().then(setPolls);
-    fetchAnnals().then(setAnnals).catch(() => {});
+    refetchOracle();
+    const onVisible = () => { if (document.visibilityState === "visible") refetchOracle(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
     if (mode === "live" && supabase) {
       swr("members", async () => {
         const { data, error } = await supabase!.from("members").select("*");
@@ -155,6 +164,10 @@ export default function Oracle() {
     }
     // The hosting wheel needs gatherings in live mode too (it was demo-only).
     fetchGatherings().then(setAllGatherings).catch(() => {});
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, meId]);
 
@@ -217,10 +230,11 @@ export default function Oracle() {
       }
     }
     if (seen.size < 5) return null;
-    const never = GRAPES.filter((g) => !seen.has(g)).slice(0, 6);
+    const never = NOTABLE.filter((g) => !seen.has(g) && !NEVER_SUGGEST.has(g)).slice(0, 6);
     let neglected: { grape: string; since: string; avg: number } | null = null;
     const cutoff = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
     for (const [grape, e] of seen) {
+      if (NEVER_SUGGEST.has(grape)) continue; // the Keiser's decree: no dessert suggestions, ever
       if (e.last > cutoff || e.scores.length < 2) continue;
       const avg = e.scores.reduce((s, x) => s + x, 0) / e.scores.length;
       if (avg < 6.5) continue;
@@ -239,6 +253,11 @@ export default function Oracle() {
       <p style={{ color: "var(--dim)", fontSize: 14, marginTop: 2, marginBottom: 18 }}>
         What the moons ahead will bring — dates, themes, and the turning of the host.
       </p>
+
+      {!loaded ? (
+        <div className="card" style={{ marginTop: 16 }}><Loading text="Consulting the oracle…" /></div>
+      ) : (
+      <>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <div className="eyebrow" style={{ flex: 1 }}>Date polls · mark every night you can make</div>
@@ -368,6 +387,8 @@ export default function Oracle() {
           );
         })}
       </div>
+      </>
+      )}
     </section>
   );
 }

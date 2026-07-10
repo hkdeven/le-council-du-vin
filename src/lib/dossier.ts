@@ -80,7 +80,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   const all: number[] = [];
   const own: number[] = [];
   for (const b of sealed) {
-    for (const v of Object.values(b.scores)) {
+    for (const v of Object.values(b.scores || {})) {
       if (typeof v === "number" && v > 0) {
         all.push(v);
         if (b.memberId === member.id) own.push(v);
@@ -108,7 +108,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
       if (b.memberId !== other.id) continue;
       const mySc = mineByGathering.get(b.gatheringId);
       if (!mySc) continue;
-      for (const [cloth, v] of Object.entries(b.scores)) {
+      for (const [cloth, v] of Object.entries(b.scores || {})) {
         const m = mySc[Number(cloth)];
         if (typeof v === "number" && v > 0 && typeof m === "number" && m > 0) {
           xs.push(m); ys.push(v);

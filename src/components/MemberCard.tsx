@@ -141,7 +141,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
     let active = true;
     dossierFor({ id: member.id, cult_name: member.cult_name, last_hosted: member.last_hosted }).then((d) => {
       if (active) setDossier(d);
-    }).catch(() => {});
+    }).catch((e) => console.error("The dossier would not open:", e));
     return () => { active = false; };
   }, [member.id, member.cult_name, member.last_hosted]);
 
