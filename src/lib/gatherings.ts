@@ -105,6 +105,19 @@ export function pickUpcoming(all: Gathering[]): Gathering | null {
   return all.find((g) => g.status !== "revealed" && (g.gather_date || "") >= today) ?? null;
 }
 
+// The reveal's visibility window (ticket #7): results stay reachable for
+// exactly one week after the night ends (midnight after gather_date), then
+// the reveal page and its results vanish from the UI entirely — no archive,
+// direct links are turned away. The underlying data is untouched: tallies,
+// the codex, and every history still read it; only this presentation goes.
+export const REVEAL_WINDOW_DAYS = 7;
+export function revealWindowClosed(g: Gathering | null, nowMs = Date.now()): boolean {
+  if (!g?.gather_date) return false;
+  const nightEnd = new Date(`${g.gather_date}T00:00:00`).getTime() + 86400000; // midnight after the night
+  if (Number.isNaN(nightEnd)) return false;
+  return nowMs >= nightEnd + REVEAL_WINDOW_DAYS * 86400000;
+}
+
 // The rite of judgement opens 30 minutes after the scheduled start — time for
 // souls to gather and pour before scoring. Before then no one may enter.
 const RITE_DELAY_MS = 30 * 60 * 1000;

@@ -10,6 +10,7 @@ import { seedMembers } from "@/lib/seed";
 import { useBodyLock } from "./NatalChart";
 import HeavensFace from "./Heavens";
 import Avatar from "./Avatar";
+import PortraitLightbox from "./PortraitLightbox";
 import Tip from "./Tip";
 
 // A card can be shown for a full member OR a lighter subject (e.g. a tribunal
@@ -54,7 +55,8 @@ function Row({ label, tip, value, valueTip }: { label: string; tip: string; valu
 }
 
 // The tarot-style stats card for a member, opened by clicking their avatar.
-function CardModal({ member, chalices, shown, onClose }: { member: CardMember; chalices: number; shown: boolean; onClose: () => void }) {
+// chalices arrives null while it is still being reckoned (loading state).
+function CardModal({ member, chalices, shown, onClose }: { member: CardMember; chalices: number | null; shown: boolean; onClose: () => void }) {
   useBodyLock();
   // Is the viewer looking at their own card? Pronouns bend accordingly.
   const { member: authMember, role, mode } = useAuth();
@@ -78,6 +80,10 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
 
   // The Palate Dossier: derived from real ballots + annals (needs an id).
   const [dossier, setDossier] = useState<DossierStats | null>(null);
+  // Dossier first (ticket #3): for a real member the chalice count IS the
+  // dossier's bottlesCrowned — no second sweep of the annals. Name-only
+  // subjects still get the separately fetched count.
+  const shownChalices = member.id ? (dossier ? dossier.bottlesCrowned : null) : chalices;
   // The card turns over to reveal the Heavens; one card, one close.
   const [flipped, setFlipped] = useState(false);
   useEffect(() => {
@@ -226,15 +232,36 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
               <p className="whisper" style={{ fontSize: 14, margin: 0 }}>No bottles yet stood at the reveal.</p>
             )}
           </>
+        ) : member.id ? (
+          // The dossier is still on its way: its shape, shimmering — never an
+          // empty block masquerading as "no record" (ticket #3).
+          <div aria-hidden="true" role="presentation">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  <span className="lcv-skeleton" style={{ width: 82, height: 82, borderRadius: "50%" }} />
+                  <span className="lcv-skeleton" style={{ width: 48, height: 9 }} />
+                </span>
+              ))}
+            </div>
+            <div style={{ height: 16 }} />
+            {[86, 74, 80, 62].map((w, i) => (
+              <span key={i} className="lcv-skeleton" style={{ display: "block", height: 13, margin: "10px 0", width: `${w}%` }} />
+            ))}
+          </div>
         ) : (
-          <p className="whisper" style={{ fontSize: 14, margin: "4px 0" }}>{member.id ? "The vine is remembering…" : "The vine has no record of them yet."}</p>
+          <p className="whisper" style={{ fontSize: 14, margin: "4px 0" }}>The vine has no record of them yet.</p>
         )}
 
         <div style={{ borderTop: "2px solid var(--gold)", margin: "16px -20px" }} />
         <div className="eyebrow" style={{ fontSize: 12, marginBottom: 10 }}>Chalice count</div>
-        {chalices > 0 ? (
+        {shownChalices == null ? (
+          <div aria-hidden="true" style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+            {[0, 1, 2].map((i) => <span key={i} className="lcv-skeleton" style={{ width: 22, height: 31 }} />)}
+          </div>
+        ) : shownChalices > 0 ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
-            {Array.from({ length: chalices }).map((_, i) => (
+            {Array.from({ length: shownChalices }).map((_, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img key={i} src="/chalice.webp" alt="" width={22} height={31} style={{ display: "block" }} />
             ))}
@@ -280,12 +307,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
       {/* Portrait lightbox: sibling of the card, NOT inside it — the card's
           transform would otherwise become the containing block for fixed. */}
       {photoOpen && member.avatar_url && (
-        <div onClick={(e) => { e.stopPropagation(); setPhotoOpen(false); }}
-          style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={member.avatar_url} alt={`${member.cult_name}'s portrait`}
-            style={{ width: "min(78vw, 340px)", height: "min(78vw, 340px)", objectFit: "cover", borderRadius: 16, border: "1px solid var(--gold)", boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 24px 70px rgba(0,0,0,0.8)" }} />
-        </div>
+        <PortraitLightbox src={member.avatar_url} alt={`${member.cult_name}'s portrait`} onClose={() => setPhotoOpen(false)} />
       )}
     </div>
   );
@@ -332,7 +354,7 @@ function noseSpread(nose: { aroma: string; count: number }[]): { aroma: string; 
 export default function MemberCard({ member, size = 30 }: { member: CardMember; size?: number }) {
   const [open, setOpen] = useState(false);   // mounted (kept during the exit animation)
   const [shown, setShown] = useState(false); // drives the fade + zoom
-  const [chalices, setChalices] = useState(0);
+  const [chalices, setChalices] = useState<number | null>(null); // null while reckoning
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -351,17 +373,22 @@ export default function MemberCard({ member, size = 30 }: { member: CardMember; 
   };
 
   useEffect(() => {
-    if (!open) return;
+    // Only name-only subjects (petitioners, summoned souls) sweep the annals
+    // here; a real member's count rides in with their dossier (ticket #3).
+    if (!open || member.id) return;
     fetchAnnals().then((annals) => {
       const wins = annals.filter((a) => championsOf(a).some((r) => r.owner === member.cult_name)).length;
       setChalices(wins);
     });
-  }, [open, member.cult_name]);
+  }, [open, member.id, member.cult_name]);
 
   return (
     <>
+      {/* flex:none — in a crowded flex row (a long unbreakable email beside
+          it) the wrapper would otherwise shrink and squash the portrait into
+          an ellipse. The circle never gives up its width. */}
       <button onClick={() => setOpen(true)} aria-label={`View ${member.cult_name}'s card`} title={member.cult_name}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", width: "auto", lineHeight: 0 }}>
+        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", width: "auto", flex: "none", lineHeight: 0 }}>
         <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={size} />
       </button>
       {mounted && open && createPortal(<CardModal member={member} chalices={chalices} shown={shown} onClose={close} />, document.body)}

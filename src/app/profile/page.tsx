@@ -204,11 +204,14 @@ function RosterEditor() {
               <MemberCard member={m} size={30} />
               <button
                 onClick={() => isKeiser && setOpenId(open ? null : m.id)}
-                style={{ flex: 1, background: "none", border: "none", cursor: isKeiser ? "pointer" : "default", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+                style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: isKeiser ? "pointer" : "default", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
               >
-                <span style={{ flex: 1 }}>
+                {/* minWidth:0 + ellipsis: a long unbreakable email (the
+                    placeholder addresses) must truncate, not shove the row
+                    wide and squash the portrait beside it. */}
+                <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: "var(--gold2)" }}>{m.cult_name}</span>
-                  {isKeiser && <span className="whisper" style={{ fontSize: 12, display: "block" }}>{m.email}</span>}
+                  {isKeiser && <span className="whisper" style={{ fontSize: 12, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</span>}
                 </span>
                 {isKeiser && <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />}
               </button>
@@ -437,6 +440,91 @@ function HeraldsEditor() {
   );
 }
 
+// The snapshot the dirty-state bar compares against: what the record last
+// held (loaded or saved). Any field drifting from it raises the bar.
+interface ProfileSnapshot {
+  name: string;
+  dob: string;
+  tob: string;
+  tz: string;
+  place: string;
+  lat: number | null;
+  lon: number | null;
+  venue: string;
+  title: string;
+  avatar: string | null;
+}
+
+// Keiser-only: the gate ledger (ticket #12) — who entered, when, and from
+// what vessel. Reads login_events, which RLS opens to the Keiser alone.
+interface LoginEvent {
+  id: string;
+  email: string;
+  at: string;
+  user_agent: string | null;
+  ip: string | null;
+  member: { cult_name: string } | null;
+}
+
+const deviceOf = (ua: string | null): string => {
+  if (!ua) return "an unknown vessel";
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
+  const platform = ua.match(/\(([^)]*)\)/)?.[1].split(";")[0].trim() || "";
+  return [browser, platform].filter(Boolean).join(" · ") || ua.slice(0, 40);
+};
+
+function GateLedger() {
+  const [events, setEvents] = useState<LoginEvent[] | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("login_events")
+      .select("id,email,at,user_agent,ip,member:members(cult_name)")
+      .order("at", { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (error) setFailed(error.message);
+        else setEvents((data as unknown as LoginEvent[]) || []);
+      });
+  }, []);
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="eyebrow" style={{ marginBottom: 4 }}>The gate ledger</div>
+      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+        Every entry through the gate — who, when, and from what vessel. Your eyes alone, Keiser.
+      </p>
+      {failed ? (
+        <p className="whisper" style={{ margin: 0, fontSize: 13, color: "#c98" }}>
+          The ledger would not open: {failed}. (Has the login_events table been created?)
+        </p>
+      ) : !events ? (
+        <Loading text="Opening the ledger…" />
+      ) : events.length === 0 ? (
+        <p className="whisper" style={{ margin: 0, fontSize: 14 }}>No entries yet. The gate has been quiet.</p>
+      ) : (
+        events.map((e) => (
+          <div key={e.id} style={{ display: "flex", alignItems: "baseline", gap: 10, borderTop: "1px solid var(--line)", padding: "7px 0" }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 15, color: "var(--gold2)" }}>
+                {e.member?.cult_name || e.email}
+              </span>
+              <span className="whisper" style={{ display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {deviceOf(e.user_agent)}{e.ip ? ` · ${e.ip}` : ""}
+              </span>
+            </span>
+            <span className="whisper" style={{ fontSize: 12, flex: "none" }}>
+              {new Date(e.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 export default function Profile() {
   const { mode, role, member, email, setRole, signOut } = useAuth();
   const self = mode === "demo" ? seedMembers.find((m) => m.role === role) : member;
@@ -450,18 +538,21 @@ export default function Profile() {
   const [placeLat, setPlaceLat] = useState<number | null>(null);
   const [placeLon, setPlaceLon] = useState<number | null>(null);
   const [placeHits, setPlaceHits] = useState<GeoHit[] | null>(null); // null = not searched
+  const [placeError, setPlaceError] = useState<string | null>(null); // the lookup itself failed
   const [seeking, setSeeking] = useState(false);
   const [venue, setVenue] = useState("");
   const [title, setTitle] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [rawFile, setRawFile] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [baseline, setBaseline] = useState<ProfileSnapshot | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const storeKey = `lcv_profile_${mode === "demo" ? role : email || "me"}`;
 
   useEffect(() => {
-    const base = {
+    const base: ProfileSnapshot = {
       name: mode === "demo" ? DEMO_NAMES[role] : self?.cult_name || email || "",
       dob: self?.date_of_birth || "",
       tob: self?.time_of_birth || "",
@@ -481,18 +572,20 @@ export default function Profile() {
         if (raw) Object.assign(base, JSON.parse(raw));
       } catch {}
     }
+    base.tz = base.tz || DEFAULT_TZ;
     setName(base.name);
     setDob(base.dob);
     setTob(base.tob);
-    setTz(base.tz || DEFAULT_TZ);
+    setTz(base.tz);
     setPlace(base.place);
     setPlaceLat(base.lat);
     setPlaceLon(base.lon);
     setPlaceHits(null);
+    setPlaceError(null);
     setVenue(base.venue);
     setTitle(base.title);
     setAvatar(base.avatar);
-    setSaved(false);
+    setBaseline(base);
     setEditingName(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, mode, self]);
@@ -503,16 +596,47 @@ export default function Profile() {
   const element = sun?.element ?? null;
   const initials = (name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
-  const touch = () => setSaved(false);
+  // The dirty ledger: which fields have drifted from the last kept record.
+  // Named, so the bar can say WHAT is unsaved — no silent losses (ticket #1).
+  const dirtyFields = baseline
+    ? ([
+        name !== baseline.name && "Name",
+        title !== baseline.title && "Title",
+        dob !== baseline.dob && "Date of birth",
+        tob !== baseline.tob && "Time of birth",
+        tz !== baseline.tz && "Timezone",
+        (place !== baseline.place || placeLat !== baseline.lat || placeLon !== baseline.lon) && "Place of birth",
+        venue !== baseline.venue && "Venue instructions",
+        avatar !== baseline.avatar && "Portrait",
+      ].filter(Boolean) as string[])
+    : [];
+
+  const discard = () => {
+    if (!baseline) return;
+    setName(baseline.name);
+    setDob(baseline.dob);
+    setTob(baseline.tob);
+    setTz(baseline.tz);
+    setPlace(baseline.place);
+    setPlaceLat(baseline.lat);
+    setPlaceLon(baseline.lon);
+    setPlaceHits(null);
+    setPlaceError(null);
+    setVenue(baseline.venue);
+    setTitle(baseline.title);
+    setAvatar(baseline.avatar);
+    setEditingName(false);
+  };
 
   // Look the birth town up in the atlas; picking a match pins its coordinates
   // and sets the timezone (which stays editable).
   const seekPlace = async () => {
     if (!place.trim()) return;
     setSeeking(true);
-    const hits = await geocodePlace(place);
+    const { hits, error } = await geocodePlace(place);
     setSeeking(false);
-    setPlaceHits(hits);
+    setPlaceError(error);
+    setPlaceHits(error ? null : hits);
     if (hits.length === 1) pickPlace(hits[0]);
   };
   const pickPlace = (h: GeoHit) => {
@@ -521,7 +645,8 @@ export default function Profile() {
     setPlaceLon(h.longitude);
     setTz(h.timezone);
     setPlaceHits([]);
-    touch();
+    setPlaceError(null);
+   
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -534,14 +659,17 @@ export default function Profile() {
   };
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    let keptAvatar = avatar;
     if (mode === "live" && supabase && email) {
       // Live: persist to the members row and surface any failure instead of
       // faking success (a swallowed error is why details kept vanishing).
-      let avatarUrl = avatar;
       try {
-        avatarUrl = avatar ? await uploadAvatar(email, avatar) : avatar;
+        keptAvatar = avatar ? await uploadAvatar(email, avatar) : avatar;
       } catch (e) {
         alert(`Your portrait would not take: ${(e as Error).message}`);
+        setSaving(false);
         return;
       }
       const { error } = await supabase.from("members").update({
@@ -556,29 +684,40 @@ export default function Profile() {
         zodiac: sun?.name || null,
         element: element || null,
         venue_instructions: venue || null,
-        avatar_url: avatarUrl,
+        avatar_url: keptAvatar,
       }).eq("email", email);
-      if (error) { alert(`Could not save your profile: ${error.message}`); return; }
+      if (error) { alert(`Could not save your profile: ${error.message}`); setSaving(false); return; }
     } else {
       try {
         localStorage.setItem(storeKey, JSON.stringify({ name, dob, tob, tz, place, lat: placeLat, lon: placeLon, venue, title, avatar }));
       } catch {}
     }
-    window.dispatchEvent(new CustomEvent("lcv-profile", { detail: { avatar } }));
-    setSaved(true);
+    window.dispatchEvent(new CustomEvent("lcv-profile", { detail: { avatar: keptAvatar } }));
+    // The kept record becomes the new baseline; the bar sinks away.
+    setAvatar(keptAvatar);
+    setBaseline({ name, dob, tob, tz, place, lat: placeLat, lon: placeLon, venue, title, avatar: keptAvatar });
+    setSaving(false);
+    setToast(`Saved — ${dirtyFields.join(", ")}. Your record is kept.`);
   };
+
+  // The toast burns for a moment, then fades.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   if (rawFile) {
     return (
       <section>
         <h1 className="disp" style={{ fontSize: 18, fontWeight: 500, marginBottom: 14 }}>Frame your portrait</h1>
-        <AvatarCropper src={rawFile} onSave={(url) => { setAvatar(url); setRawFile(null); touch(); }} onCancel={() => setRawFile(null)} />
+        <AvatarCropper src={rawFile} onSave={(url) => { setAvatar(url); setRawFile(null); }} onCancel={() => setRawFile(null)} />
       </section>
     );
   }
 
   return (
-    <section>
+    <section style={{ paddingBottom: dirtyFields.length ? 96 : 0 }}>
       <h1 className="disp" style={{ fontSize: 18, fontWeight: 500 }}>Your profile</h1>
       <p style={{ color: "var(--dim)", fontSize: 14, marginTop: 2, marginBottom: 18 }}>
         Who the Council sees when you enter.
@@ -610,7 +749,7 @@ export default function Profile() {
               <input
                 value={name}
                 autoFocus
-                onChange={(e) => { setName(e.target.value); touch(); }}
+                onChange={(e) => { setName(e.target.value); }}
                 onBlur={() => setEditingName(false)}
                 onKeyDown={(e) => e.key === "Enter" && setEditingName(false)}
                 style={{ maxWidth: 220 }}
@@ -627,7 +766,7 @@ export default function Profile() {
         <label className="field" style={{ marginTop: 12 }}>Title</label>
         <input
           value={title}
-          onChange={(e) => { setTitle(e.target.value.slice(0, 60)); touch(); }}
+          onChange={(e) => { setTitle(e.target.value.slice(0, 60)); }}
           placeholder="Warden of the Western Cellars… (optional)"
         />
         <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
@@ -643,16 +782,16 @@ export default function Profile() {
         <div className="birth-fields">
           <div>
             <label className="field" style={{ marginTop: 8 }}>Date of birth</label>
-            <input type="date" value={dob} onChange={(e) => { setDob(e.target.value); touch(); }} />
+            <input type="date" value={dob} onChange={(e) => { setDob(e.target.value); }} />
           </div>
           <div>
             <label className="field" style={{ marginTop: 8 }}>Time of birth</label>
-            <input type="time" value={tob} onChange={(e) => { setTob(e.target.value); touch(); }} />
+            <input type="time" value={tob} onChange={(e) => { setTob(e.target.value); }} />
           </div>
         </div>
 
         <label className="field" style={{ marginTop: 10 }}>Timezone of birth</label>
-        <select value={tz} onChange={(e) => { setTz(e.target.value); touch(); }} style={{ colorScheme: "dark" }}>
+        <select value={tz} onChange={(e) => { setTz(e.target.value); }} style={{ colorScheme: "dark" }}>
           {curatedTimezones(tz).map((z) => (
             <option key={z.tz} value={z.tz}>{z.label}</option>
           ))}
@@ -662,7 +801,7 @@ export default function Profile() {
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={place}
-            onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); touch(); }}
+            onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); setPlaceError(null); }}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), seekPlace())}
             placeholder="Cape Town"
             style={{ flex: 1 }}
@@ -686,6 +825,12 @@ export default function Profile() {
         {placeHits && placeHits.length === 0 && placeLat == null && (
           <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try adding the region, or the nearest larger town.</p>
         )}
+        {placeError && (
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#c98" }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 4 }} />
+            The lookup failed — {placeError}. Try again in a moment.
+          </p>
+        )}
 
         <p className="whisper" style={{ margin: "14px 0 0", fontSize: 13 }}>
           Your chart is drawn from these. Behold it, and all it derives, on your card and under Your sky below.
@@ -695,18 +840,12 @@ export default function Profile() {
       <div className="card" style={{ marginBottom: 16 }}>
         <label className="field" style={{ marginTop: 0 }}>Your venue instructions</label>
         <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>Shared in the invite when you host.</p>
-        <textarea value={venue} onChange={(e) => { setVenue(e.target.value); touch(); }} placeholder="Gate codes, parking, the dog…" />
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-        <button className="btn gold" style={{ width: "auto", padding: "12px 26px" }} onClick={save} disabled={saved}>
-          {saved ? "Sealed" : "Save changes"}
-        </button>
-        {saved && <span className="scr" style={{ fontSize: 15 }}>Your record is kept.</span>}
+        <textarea value={venue} onChange={(e) => { setVenue(e.target.value); }} placeholder="Gate codes, parking, the dog…" />
       </div>
 
       <RosterEditor />
       {role === "keiser" && <HeraldsEditor />}
+      {role === "keiser" && mode === "live" && <GateLedger />}
 
       <YourSky
         self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
@@ -731,6 +870,45 @@ export default function Profile() {
         <button className="btn" style={{ maxWidth: 220 }} onClick={signOut}>
           <i className="ti ti-logout" style={{ marginRight: 6 }} /> Depart the Council
         </button>
+      )}
+
+      {/* The dirty-state bar (ticket #1, Option II): rises only while fields
+          have drifted from the kept record, names them, and offers the only
+          Save. Nothing can be edited and silently lost — the bar stands until
+          the change is kept or discarded. */}
+      {dirtyFields.length > 0 && (
+        <div
+          className="lcv-riseup"
+          role="status"
+          style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "#0d0b0a", borderTop: "1px solid var(--line2)", boxShadow: "0 -12px 34px rgba(0,0,0,0.6)" }}
+        >
+          <div style={{ maxWidth: 820, margin: "0 auto", padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <span className="disp" style={{ fontSize: 13, display: "block" }}>
+                {dirtyFields.length} unsaved change{dirtyFields.length === 1 ? "" : "s"}
+              </span>
+              <span className="whisper" style={{ fontSize: 13, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {dirtyFields.join(", ")}
+              </span>
+            </span>
+            <button className="btn" style={{ width: "auto", padding: "9px 16px", flex: "none" }} onClick={discard} disabled={saving}>
+              Discard
+            </button>
+            <button className="btn gold" style={{ width: "auto", padding: "9px 20px", flex: "none" }} onClick={save} disabled={saving}>
+              {saving ? "Sealing…" : "Save changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation toast: what was saved, in so many words. */}
+      {toast && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 22, zIndex: 70, display: "flex", justifyContent: "center", pointerEvents: "none", padding: "0 18px" }}>
+          <div className="lcv-riseup" role="status" style={{ background: "#0d0b0a", border: "1px solid var(--gold)", borderRadius: 12, padding: "10px 18px", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, boxShadow: "0 14px 44px rgba(0,0,0,0.65)", maxWidth: 480 }}>
+            <i className="ti ti-check" style={{ fontSize: 13, marginRight: 7 }} />
+            {toast}
+          </div>
+        </div>
       )}
     </section>
   );

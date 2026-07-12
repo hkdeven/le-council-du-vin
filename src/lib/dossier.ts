@@ -5,7 +5,7 @@
 
 import { supabase } from "./supabase";
 import { fetchGatherings, gatheringsLive } from "./gatherings";
-import { fetchAnnals, fetchDqCounts, championsOf, type AnnalEntry } from "./annals";
+import { fetchAnnals, dqCountsFrom, championsOf, type AnnalEntry } from "./annals";
 import { fetchBallotHistory, type HistoryBallot } from "./ballots";
 import { loadMembers } from "./members";
 import { toRoman } from "./util";
@@ -204,16 +204,47 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   return { moonsStood, bottlesCrowned, marks, temper, kindred, wheel, communion, nose, pours: pours.slice(0, 3), coin, purse };
 }
 
+// The shared inputs, fetched once and briefly kept: opening several cards in
+// a row (the roster) used to refetch the whole history per card, and the
+// disqualification counts refetched the annals a second time within one open.
+// Now: one parallel sweep, dq derived from the annals already in hand, and a
+// short-lived cache so the next card opens on data already here.
+interface DossierSources {
+  gatherings: Gathering[];
+  annals: AnnalEntry[];
+  members: (Pick<Member, "id" | "cult_name"> & Partial<Pick<Member, "role" | "active" | "last_hosted">>)[];
+  ballots: HistoryBallot[];
+  dq: Record<string, number>;
+}
+
+const INPUTS_TTL_MS = 30_000;
+let inputsAt = 0;
+let inputsPromise: Promise<DossierSources> | null = null;
+
+async function loadInputs(): Promise<DossierSources> {
+  const membersP: PromiseLike<DossierSources["members"]> = gatheringsLive()
+    ? supabase!.from("members").select("id,cult_name,last_hosted,role,active").then(({ data }) => (data as Member[]) || [])
+    : Promise.resolve(loadMembers());
+  const [gatherings, annals, members] = await Promise.all([fetchGatherings(), fetchAnnals(), membersP]);
+  const dq = dqCountsFrom(annals);
+  const ballots = await fetchBallotHistory(gatherings.map((g) => g.id), members.map((m) => m.id));
+  return { gatherings, annals, members, ballots, dq };
+}
+
+function dossierInputs(): Promise<DossierSources> {
+  const now = Date.now();
+  if (!inputsPromise || now - inputsAt > INPUTS_TTL_MS) {
+    inputsAt = now;
+    inputsPromise = loadInputs().catch((e) => {
+      inputsPromise = null; // never cache a failure
+      throw e;
+    });
+  }
+  return inputsPromise;
+}
+
 // Gather the inputs (live or demo) and compute.
 export async function dossierFor(member: { id: string; cult_name: string; last_hosted?: string | null }): Promise<DossierStats> {
-  const [gatherings, annals, dq] = await Promise.all([fetchGatherings(), fetchAnnals(), fetchDqCounts()]);
-  let members: Pick<Member, "id" | "cult_name">[];
-  if (gatheringsLive()) {
-    const { data } = await supabase!.from("members").select("id,cult_name,last_hosted,role,active");
-    members = (data as Member[]) || [];
-  } else {
-    members = loadMembers();
-  }
-  const ballots = await fetchBallotHistory(gatherings.map((g) => g.id), members.map((m) => m.id));
+  const { gatherings, annals, members, ballots, dq } = await dossierInputs();
   return computeDossier({ member, members, gatherings, annals, ballots, dq, nowMs: Date.now() });
 }

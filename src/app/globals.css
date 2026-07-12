@@ -367,6 +367,28 @@ select option {
   animation: riseIn 0.7s ease both;
 }
 
+/* The dirty-state bar and its toast rise from below (profile save, ticket #1) */
+@keyframes lcvRiseUp {
+  from { opacity: 0; transform: translateY(60%); }
+  to { opacity: 1; transform: none; }
+}
+.lcv-riseup {
+  animation: lcvRiseUp 0.26s ease both;
+}
+
+/* Skeleton shimmer for card data still on its way (ticket #3) */
+@keyframes lcvSkeleton {
+  0% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.45; }
+}
+.lcv-skeleton {
+  display: inline-block;
+  background: rgba(160, 150, 120, 0.16);
+  border-radius: 6px;
+  animation: lcvSkeleton 1.4s ease-in-out infinite;
+}
+
 /* Shared loading spinner (Loading.tsx + AppShell) */
 @keyframes lcvSpin {
   to { transform: rotate(360deg); }

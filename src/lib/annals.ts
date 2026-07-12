@@ -56,23 +56,25 @@ const ANNALS_KEY = "lcv_annals";
 
 // The demo codex is never bare: two committed nights (scores, prices,
 // grapes, one disqualification) seed the store on first visit, like the
-// rest of the demo's furniture. Live mode never sees these.
+// rest of the demo's furniture. Live mode never sees these. The averages
+// here are exactly what the seeded ballots (seed.ts seedBallots) compute,
+// so the per-member breakdowns and the totals agree.
 const SEED_ANNALS: AnnalEntry[] = [
   {
     gatheringId: "seed-night-1", number: 1, theme: "Cape Syrah", date: "2026-04-18",
     committed_at: "2026-04-19T09:00:00.000Z",
     rows: [
-      { cloth: 1, owner: "Seer Matthew", title: "Porseleinberg 2021", score: 8.6, votes: 6, rank: 1, dq: false, varietals: ["Syrah"], price: 450 },
-      { cloth: 2, owner: "The Keiser", title: "Reyneke Syrah 2022", score: 8.1, votes: 6, rank: 2, dq: false, varietals: ["Syrah"], price: 260 },
+      { cloth: 1, owner: "Seer Matthew", title: "Porseleinberg 2021", score: 8.7, votes: 6, rank: 1, dq: false, varietals: ["Syrah"], price: 450 },
+      { cloth: 2, owner: "The Keiser", title: "Reyneke Syrah 2022", score: 8.2, votes: 6, rank: 2, dq: false, varietals: ["Syrah"], price: 260 },
       { cloth: 3, owner: "Priestess Larissa", title: "Mullineux Kloof Street 2022", score: 7.8, votes: 6, rank: 3, dq: false, varietals: ["Syrah"], price: 165 },
-      { cloth: 4, owner: "Elder Martin", title: "A chilled Pinotage", score: 5.9, votes: 6, rank: null, dq: true, varietals: ["Pinotage"], price: 120 },
+      { cloth: 4, owner: "Elder Martin", title: "A chilled Pinotage", score: 5.8, votes: 6, rank: null, dq: true, varietals: ["Pinotage"], price: 120 },
     ],
   },
   {
     gatheringId: "seed-night-2", number: 2, theme: "White Blends", date: "2026-06-13",
     committed_at: "2026-06-14T09:00:00.000Z",
     rows: [
-      { cloth: 1, owner: "The Keiser", title: "Palladius 2021", score: 8.9, votes: 5, rank: 1, dq: false, varietals: ["White Blend"], price: 780 },
+      { cloth: 1, owner: "The Keiser", title: "Palladius 2021", score: 8.8, votes: 5, rank: 1, dq: false, varietals: ["White Blend"], price: 780 },
       { cloth: 2, owner: "Adept Wernardt", title: "Sadie Skerpioen 2022", score: 8.2, votes: 5, rank: 2, dq: false, varietals: ["Chenin Blanc", "Palomino"], price: 420 },
       { cloth: 3, owner: "Seer Matthew", title: "Alheit Cartology 2022", score: 8.0, votes: 5, rank: 3, dq: false, varietals: ["Chenin Blanc"], price: 395 },
     ],
@@ -92,7 +94,21 @@ function localAnnals(): AnnalEntry[] {
       localStorage.setItem(ANNALS_KEY, JSON.stringify(SEED_ANNALS));
       return [...SEED_ANNALS];
     }
-    return parsed;
+    // Keep the furniture current: a browser that seeded an OLDER version of a
+    // demo night (and never amended it — committed_at still wears the seeded
+    // stamp) takes the code's values, so the annal's averages always agree
+    // with the seeded ballots behind them. Amended nights are left alone.
+    let refreshedAny = false;
+    const refreshed = parsed.map((a) => {
+      const seed = SEED_ANNALS.find((s) => s.gatheringId === a.gatheringId);
+      if (seed && a.committed_at === seed.committed_at && JSON.stringify(a) !== JSON.stringify(seed)) {
+        refreshedAny = true;
+        return seed;
+      }
+      return a;
+    });
+    if (refreshedAny) localStorage.setItem(ANNALS_KEY, JSON.stringify(refreshed));
+    return refreshed;
   } catch {
     return [];
   }
@@ -144,6 +160,20 @@ export async function commitAnnal(entry: AnnalEntry): Promise<void> {
     const rest = localAnnals().filter((a) => a.gatheringId !== entry.gatheringId);
     localStorage.setItem(ANNALS_KEY, JSON.stringify([...rest, entry]));
   } catch {}
+}
+
+// Victories per member name, derived fresh from the committed entries — never
+// incremented in place, so an amended or re-entered night can never double a
+// crown, and a DQ applied after entry takes a wrongly credited win with it.
+export function victoriesFrom(annals: AnnalEntry[]): Record<string, number> {
+  const victories: Record<string, number> = {};
+  for (const a of annals) {
+    // Co-champions each count as a victory.
+    for (const champ of championsOf(a)) {
+      if (champ.owner) victories[champ.owner] = (victories[champ.owner] || 0) + 1;
+    }
+  }
+  return victories;
 }
 
 // The disqualification ledger is derived from all committed entries so counts

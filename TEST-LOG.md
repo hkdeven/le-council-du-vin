@@ -1,5 +1,42 @@
 # Le Council — Test Log
 
+## 2026-07-12 — the July backlog: twelve tickets — NOT yet pushed
+
+**SQL for the live DB before this deploys** (safe to run right now; all of it
+is in schema.sql + policies.sql, this is the delta):
+```sql
+-- schema.sql additions
+alter table applications add column if not exists votes jsonb not null default '{}'::jsonb;
+-- + the login_events table and its index (see schema.sql, ticket #12)
+-- policies.sql additions (run the whole "Ranks at the gate (2026-07-12)" and
+-- "The gate ledger (2026-07-12)" sections): is_full_member(), my_member_id(),
+-- applications full-member read, cast_counsel() with the rank check,
+-- application_votes RLS lock, ballots read/write by rank, reveal_summary(),
+-- login_events RLS.
+```
+
+**Data fix to run once (ticket #2):**
+```
+SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/migrate-julia.ts           # dry run, review
+SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/migrate-julia.ts --write   # apply
+```
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **#8 Place-of-birth lookup**: the atlas call now runs through our own /api/geocode proxy (content blockers were silently killing the cross-origin call — the "types a city, nothing happens" bug), falls back to the API directly, and a failed lookup shows a visible error instead of masquerading as "the atlas does not know it" | Petition + profile: type a town, Mark it; kill the network and see the error line | ✓ (tsc, build) | [ ] |
+| 2 | **#10 Tribunal & counsel by rank**: applications readable by full members (was Keiser-only — live members saw an empty tribunal); cast_counsel() refuses initiates at the database; application_votes locked; codex nav opened to initiates (#11) | As an initiate: no Tribunal tab, codex opens, counsel RPC refused | ✓ | [ ] |
+| 3 | **#1 Profile save — the dirty-state bar** (approved Option II): global Save gone; a bar rises only while fields have drifted, names them ("2 unsaved changes — Name, Place of birth"), Save changes / Discard; toast confirms what was kept; Discard reverts | Edit fields, watch the bar; save; discard | ✓ | [ ] |
+| 4 | **#5 Grapes tasted caret**: inline on the existing line (no new row), rotates, unfolds every grape recorded | Codex, grapes card | ✓ | [ ] |
+| 5 | **#6 Per-member scores per bottle**: caret on each codex bottle row unfolds every member's verdict (portrait, name, pips, total + average). Members and the Keiser only — initiates get no caret AND no rows: ballots RLS now full-member-or-own-row, and the reveal reads aggregates via reveal_summary() so it still works for initiates | Codex night, unfold a bottle; as initiate, no carets; ballots select as initiate returns only own row | ✓ | [ ] |
+| 6 | **#3 Card loading + speed**: dossier skeleton (shimmering shape, not an empty block), chalice skeleton; chalices now ride in with the dossier (was a second sweep of the annals); dq no longer refetches annals inside the dossier; roster fetched in parallel; 30s shared-inputs cache so opening several cards stops refetching the world | Open cards on a slow connection; open several in a row | ✓ | [ ] |
+| 7 | **#7 The reveal's week**: results reachable for exactly 7 days after the night ends, then the tab vanishes and direct links are turned away to /convene; vote data untouched (codex/tallies still read it) | Visit /reveal for a night older than a week | ✓ | [ ] |
+| 8 | **#2 Julia → Queen of Cups**: scripts/migrate-julia.ts re-points her annal rows (La Plage nights), ballots, RSVPs, polls and the rest from the placeholder to her account, erases the orphan, and refuses to write if the victory/DQ totals would shift | Dry-run prints the plan + before/after tallies; her card shows the history after --write | n/a | [ ] |
+| 9 | **#4 Meeting-entry suite**: `npm test` — 53 cases over the EXACT validation + reckoning the codex entry path runs (winner/tie/single-voter/zero-votes, tally increments, re-entry never doubles, Keiser's vote weighs the same, blank/whitespace/null data rejected loudly — the Number(" ")=0 phantom-zero bug is dead — and the full bottle-DQ family incl. post-entry DQ decrement). Bad drafts now block the seal with the reasons listed | `npm test`; try sealing a partial row in the codex editor | ✓ 53/53 + 12/12 | [ ] |
+| 10 | **#9 Tribunal portrait enlarge**: the petitioner card's portrait now opens the same lightbox as the member card (shared PortraitLightbox) | Tribunal, open a petitioner with a portrait, tap it | ✓ | [ ] |
+| 11 | **#12 The gate ledger**: login_events recorded via /api/log-login (server-verified token, connection IP, user agent; throttled per browser; no insert policy so nothing can forge rows); Keiser-only ledger card on the profile (who, when, device · IP) | Sign in live, profile → The gate ledger | n/a (live only) | [ ] |
+
+---
+
 ## 2026-07-11 — the gate's atlas, the quiet shimmer, the Tribute, the vine's foresight — NOT yet pushed
 
 No new SQL needed.

@@ -23,6 +23,7 @@ export default function Initiation() {
   const [tz, setTz] = useState(DEFAULT_TZ);
   const [place, setPlace] = useState("");
   const [placeHits, setPlaceHits] = useState<GeoHit[] | null>(null); // null = not searched
+  const [placeError, setPlaceError] = useState<string | null>(null); // the lookup itself failed
   const [placeLat, setPlaceLat] = useState<number | null>(null);
   const [placeLon, setPlaceLon] = useState<number | null>(null);
   const [placeTz, setPlaceTz] = useState<string | null>(null);
@@ -30,9 +31,10 @@ export default function Initiation() {
   const seekPlace = async () => {
     if (!place.trim()) return;
     setSeeking(true);
-    const hits = await geocodePlace(place);
+    const { hits, error } = await geocodePlace(place);
     setSeeking(false);
-    setPlaceHits(hits);
+    setPlaceError(error);
+    setPlaceHits(error ? null : hits);
     if (hits.length === 1) pickPlace(hits[0]);
   };
   const pickPlace = (h: GeoHit) => {
@@ -41,6 +43,7 @@ export default function Initiation() {
     setPlaceLon(h.longitude);
     setPlaceTz(h.timezone);
     setPlaceHits([]);
+    setPlaceError(null);
   };
   const [drawReason, setDrawReason] = useState("");
   const [ifWine, setIfWine] = useState("");
@@ -63,7 +66,7 @@ export default function Initiation() {
     // coordinates + timezone. A miss just leaves the typed name.
     let lat = placeLat, lon = placeLon, zone = placeTz || tz;
     if (lat == null && place.trim()) {
-      const hits = await geocodePlace(place);
+      const { hits } = await geocodePlace(place);
       if (hits[0]) { lat = hits[0].latitude; lon = hits[0].longitude; zone = hits[0].timezone; }
     }
     const record = {
@@ -178,7 +181,7 @@ export default function Initiation() {
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={place}
-            onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); }}
+            onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); setPlaceError(null); }}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), seekPlace())}
             placeholder="Cape Town"
             style={{ flex: 1 }}
@@ -201,6 +204,12 @@ export default function Initiation() {
         )}
         {placeHits && placeHits.length === 0 && placeLat == null && (
           <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try adding the region, or the nearest larger town.</p>
+        )}
+        {placeError && (
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#c98" }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 4 }} />
+            The lookup failed — {placeError}. Try again in a moment.
+          </p>
         )}
         <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
           The stars that made you — your chart is drawn from these.

@@ -7,7 +7,7 @@ import Emblem from "./Emblem";
 import Avatar from "./Avatar";
 import { useAuth, ROLE_RANK } from "./AuthProvider";
 import { fetchPendingCount } from "@/lib/applications";
-import { fetchCurrentGathering } from "@/lib/gatherings";
+import { fetchCurrentGathering, revealWindowClosed } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import type { Gathering, Role } from "@/lib/types";
 
@@ -17,7 +17,9 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
   { href: "/reveal", label: "Reveal", icon: "ti-eye", min: "initiate" },
   { href: "/oracle", label: "Oracle", icon: "ti-crystal-ball", min: "member" },
   { href: "/tribunal", label: "Tribunal", icon: "ti-gavel", min: "member" },
-  { href: "/codex", label: "Codex", icon: "ti-chart-radar", min: "member" },
+  // Initiates read the codex (Keiser's ruling, 2026-07-12) — totals only;
+  // the per-member breakdowns stay behind full membership.
+  { href: "/codex", label: "Codex", icon: "ti-chart-radar", min: "initiate" },
 ];
 
 const PUBLIC = ["/", "/initiation", "/reset"];
@@ -168,7 +170,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div style={{ maxWidth: 820, margin: "0 auto" }}>
         {(() => { const items = NAV.filter((n) => ROLE_RANK[role] >= ROLE_RANK[n.min])
-          .filter((n) => (n.href !== "/rite" && n.href !== "/reveal") || riteOpen);
+          .filter((n) => (n.href !== "/rite" && n.href !== "/reveal") || riteOpen)
+          // A week after the night ends the reveal is gone entirely (#7).
+          .filter((n) => n.href !== "/reveal" || !revealWindowClosed(gathering));
         return items.map((n, i) => {
           const on = pathname.startsWith(n.href);
           const last = i === items.length - 1;

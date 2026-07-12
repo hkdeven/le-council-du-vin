@@ -4,6 +4,7 @@
 
 import { supabase } from "./supabase";
 import { gatheringsLive } from "./gatherings";
+import { seedBallots } from "./seed";
 
 export interface Ballot {
   scores: Record<number, number>; // cloth number -> 1..10
@@ -17,6 +18,14 @@ export interface MemberBallot extends Ballot {
 }
 
 const key = (gatheringId: string, memberId: string) => `lcv_ballot_${gatheringId}_${memberId}`;
+
+// Demo furniture: the sealed ballots behind the seeded codex nights. They are
+// merged in code (never written to storage) and any ballot this browser has
+// actually stored for the same night + member wins over them.
+const demoSeed = (gatheringId: string): MemberBallot[] =>
+  seedBallots
+    .filter((b) => b.gatheringId === gatheringId)
+    .map((b) => ({ memberId: b.memberId, scores: b.scores, sealed: true, aromas: {}, notes: {} }));
 
 // One member's own ballot (rite restore).
 export async function fetchBallot(gatheringId: string, memberId: string): Promise<Ballot | null> {
@@ -64,29 +73,41 @@ export async function fetchAllBallots(gatheringId: string): Promise<MemberBallot
   }
   if (typeof window === "undefined") return [];
   const prefix = `lcv_ballot_${gatheringId}_`;
-  const out: MemberBallot[] = [];
+  const byMember = new Map<string, MemberBallot>(demoSeed(gatheringId).map((b) => [b.memberId, b]));
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k?.startsWith(prefix)) {
         const b = JSON.parse(localStorage.getItem(k) || "{}") as Ballot;
-        out.push({ memberId: k.slice(prefix.length), scores: b.scores || {}, sealed: !!b.sealed, notes: b.notes || {} });
+        const memberId = k.slice(prefix.length);
+        byMember.set(memberId, { memberId, scores: b.scores || {}, sealed: !!b.sealed, notes: b.notes || {} });
       }
     }
   } catch {}
-  return out;
+  return [...byMember.values()];
+}
+
+// One ballot per member, always: should duplicates ever sneak into a list
+// (demo storage, a bad import), the LAST row per member wins — a member's
+// vote must never count twice. The live table's primary key already forbids
+// duplicates; this guards every other path.
+export function dedupeBallots<T extends MemberBallot>(ballots: T[]): T[] {
+  const seen = new Map<string, T>();
+  for (const b of ballots) seen.set(b.memberId, b);
+  return [...seen.values()];
 }
 
 // How many of the given attendees have a sealed ballot.
 export function sealedAmong(ballots: MemberBallot[], attendees: string[]): number {
-  return ballots.filter((b) => b.sealed && attendees.includes(b.memberId)).length;
+  return dedupeBallots(ballots).filter((b) => b.sealed && attendees.includes(b.memberId)).length;
 }
 
-// Average each cloth's score across every sealed ballot.
+// Average each cloth's score across every sealed ballot. Every ballot weighs
+// the same — the Keiser's included; no vote carries more than any other.
 export function tallyFromBallots(ballots: MemberBallot[], wineCount: number): Record<number, { avg: number; votes: number }> {
   const out: Record<number, { avg: number; votes: number }> = {};
   for (let cloth = 1; cloth <= wineCount; cloth++) out[cloth] = { avg: 0, votes: 0 };
-  for (const b of ballots) {
+  for (const b of dedupeBallots(ballots)) {
     if (!b.sealed) continue;
     for (let cloth = 1; cloth <= wineCount; cloth++) {
       const s = b.scores[cloth];
@@ -98,6 +119,61 @@ export function tallyFromBallots(ballots: MemberBallot[], wineCount: number): Re
     }
   }
   return out;
+}
+
+// What the reveal page runs on: aggregates only, so the same shape serves
+// full members (derived from the ballots they may read) and initiates (from
+// the reveal_summary RPC, which never surrenders an individual's scores).
+export interface RevealStats {
+  sealedIds: string[]; // member ids with a sealed ballot (who, not what)
+  totals: Record<number, { avg: number; votes: number; min: number; max: number }>;
+  notes: { cloth: number; note: string }[]; // sealed ballots' whispers, anonymous
+}
+
+export function statsFromBallots(ballots: MemberBallot[]): RevealStats {
+  const sealed = dedupeBallots(ballots).filter((b) => b.sealed);
+  const totals: RevealStats["totals"] = {};
+  const notes: RevealStats["notes"] = [];
+  for (const b of sealed) {
+    for (const [c, v] of Object.entries(b.scores || {})) {
+      if (typeof v !== "number" || v <= 0) continue;
+      const cloth = Number(c);
+      const t = totals[cloth] || { avg: 0, votes: 0, min: Infinity, max: -Infinity };
+      t.avg = (t.avg * t.votes + v) / (t.votes + 1);
+      t.votes += 1;
+      t.min = Math.min(t.min, v);
+      t.max = Math.max(t.max, v);
+      totals[cloth] = t;
+    }
+    for (const [c, note] of Object.entries(b.notes || {})) {
+      if (note?.trim()) notes.push({ cloth: Number(c), note });
+    }
+  }
+  return { sealedIds: sealed.map((b) => b.memberId), totals, notes };
+}
+
+// The initiate's road to the reveal: the security-definer summary. Falls back
+// to whatever rows RLS will surrender (their own ballot) on an older database
+// that lacks the function — degraded, never broken.
+export async function fetchRevealStats(gatheringId: string): Promise<RevealStats> {
+  if (gatheringsLive()) {
+    const { data, error } = await supabase!.rpc("reveal_summary", { gid: gatheringId });
+    if (!error && data) {
+      const d = data as {
+        sealed?: string[];
+        totals?: Record<string, { avg: number; votes: number; min: number; max: number }>;
+        notes?: { cloth: number | string; note: string }[];
+      };
+      return {
+        sealedIds: d.sealed || [],
+        totals: Object.fromEntries(
+          Object.entries(d.totals || {}).map(([c, t]) => [Number(c), { avg: Number(t.avg), votes: Number(t.votes), min: Number(t.min), max: Number(t.max) }])
+        ),
+        notes: (d.notes || []).map((n) => ({ cloth: Number(n.cloth), note: n.note })),
+      };
+    }
+  }
+  return statsFromBallots(await fetchAllBallots(gatheringId));
 }
 
 // Every ballot across every gathering — the Palate Dossier reads the whole
@@ -118,16 +194,21 @@ export async function fetchBallotHistory(gatheringIds: string[], memberIds: stri
     }));
   }
   if (typeof window === "undefined") return [];
-  const out: HistoryBallot[] = [];
+  const byKey = new Map<string, HistoryBallot>();
+  for (const b of seedBallots) {
+    if (gatheringIds.includes(b.gatheringId) && memberIds.includes(b.memberId)) {
+      byKey.set(`${b.gatheringId}|${b.memberId}`, { gatheringId: b.gatheringId, memberId: b.memberId, scores: b.scores, sealed: true, aromas: {}, notes: {} });
+    }
+  }
   try {
     for (const g of gatheringIds) {
       for (const m of memberIds) {
         const raw = localStorage.getItem(key(g, m));
         if (!raw) continue;
         const b = JSON.parse(raw) as Ballot;
-        out.push({ gatheringId: g, memberId: m, scores: b.scores || {}, sealed: !!b.sealed, aromas: b.aromas || {}, notes: b.notes || {} });
+        byKey.set(`${g}|${m}`, { gatheringId: g, memberId: m, scores: b.scores || {}, sealed: !!b.sealed, aromas: b.aromas || {}, notes: b.notes || {} });
       }
     }
   } catch {}
-  return out;
+  return [...byKey.values()];
 }

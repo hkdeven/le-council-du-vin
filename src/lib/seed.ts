@@ -49,3 +49,24 @@ export const seedGatherings: Gathering[] = [
 ];
 export const seedPolls: Poll[] = [];
 export const seedApplications: Application[] = [];
+
+// The sealed ballots behind the two committed demo nights (their annals seed
+// in annals.ts), so the codex's per-member score breakdowns (ticket #6) have
+// furniture in demo mode — without these, demo browsers held no ballots at
+// all and the breakdown carets never appeared. Each cloth's scores sum to
+// exactly the average the seeded annal records. Live mode never sees these.
+export const seedBallots: { gatheringId: string; memberId: string; scores: Record<number, number> }[] = [
+  // Night 1 · Cape Syrah — six verdicts per cloth.
+  { gatheringId: "seed-night-1", memberId: "m-matthew", scores: { 1: 9, 2: 8, 3: 8, 4: 6 } },
+  { gatheringId: "seed-night-1", memberId: "m-keiser", scores: { 1: 9, 2: 8, 3: 7, 4: 5 } },
+  { gatheringId: "seed-night-1", memberId: "m-larissa", scores: { 1: 8, 2: 9, 3: 8, 4: 6 } },
+  { gatheringId: "seed-night-1", memberId: "m-martin", scores: { 1: 9, 2: 8, 3: 8, 4: 6 } },
+  { gatheringId: "seed-night-1", memberId: "m-wernardt", scores: { 1: 9, 2: 8, 3: 8, 4: 7 } },
+  { gatheringId: "seed-night-1", memberId: "m-dominik", scores: { 1: 8, 2: 8, 3: 8, 4: 5 } },
+  // Night 2 · White Blends — five verdicts per cloth.
+  { gatheringId: "seed-night-2", memberId: "m-keiser", scores: { 1: 9, 2: 8, 3: 9 } },
+  { gatheringId: "seed-night-2", memberId: "m-wernardt", scores: { 1: 9, 2: 8, 3: 8 } },
+  { gatheringId: "seed-night-2", memberId: "m-matthew", scores: { 1: 9, 2: 9, 3: 7 } },
+  { gatheringId: "seed-night-2", memberId: "m-larissa", scores: { 1: 9, 2: 8, 3: 8 } },
+  { gatheringId: "seed-night-2", memberId: "m-scott", scores: { 1: 8, 2: 8, 3: 8 } },
+];
