@@ -384,8 +384,11 @@ export default function MemberCard({ member, size = 30 }: { member: CardMember; 
 
   return (
     <>
+      {/* flex:none — in a crowded flex row (a long unbreakable email beside
+          it) the wrapper would otherwise shrink and squash the portrait into
+          an ellipse. The circle never gives up its width. */}
       <button onClick={() => setOpen(true)} aria-label={`View ${member.cult_name}'s card`} title={member.cult_name}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", width: "auto", lineHeight: 0 }}>
+        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", width: "auto", flex: "none", lineHeight: 0 }}>
         <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={size} />
       </button>
       {mounted && open && createPortal(<CardModal member={member} chalices={chalices} shown={shown} onClose={close} />, document.body)}

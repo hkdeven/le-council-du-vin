@@ -4,6 +4,7 @@
 
 import { supabase } from "./supabase";
 import { gatheringsLive } from "./gatherings";
+import { seedBallots } from "./seed";
 
 export interface Ballot {
   scores: Record<number, number>; // cloth number -> 1..10
@@ -17,6 +18,14 @@ export interface MemberBallot extends Ballot {
 }
 
 const key = (gatheringId: string, memberId: string) => `lcv_ballot_${gatheringId}_${memberId}`;
+
+// Demo furniture: the sealed ballots behind the seeded codex nights. They are
+// merged in code (never written to storage) and any ballot this browser has
+// actually stored for the same night + member wins over them.
+const demoSeed = (gatheringId: string): MemberBallot[] =>
+  seedBallots
+    .filter((b) => b.gatheringId === gatheringId)
+    .map((b) => ({ memberId: b.memberId, scores: b.scores, sealed: true, aromas: {}, notes: {} }));
 
 // One member's own ballot (rite restore).
 export async function fetchBallot(gatheringId: string, memberId: string): Promise<Ballot | null> {
@@ -64,17 +73,18 @@ export async function fetchAllBallots(gatheringId: string): Promise<MemberBallot
   }
   if (typeof window === "undefined") return [];
   const prefix = `lcv_ballot_${gatheringId}_`;
-  const out: MemberBallot[] = [];
+  const byMember = new Map<string, MemberBallot>(demoSeed(gatheringId).map((b) => [b.memberId, b]));
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k?.startsWith(prefix)) {
         const b = JSON.parse(localStorage.getItem(k) || "{}") as Ballot;
-        out.push({ memberId: k.slice(prefix.length), scores: b.scores || {}, sealed: !!b.sealed, notes: b.notes || {} });
+        const memberId = k.slice(prefix.length);
+        byMember.set(memberId, { memberId, scores: b.scores || {}, sealed: !!b.sealed, notes: b.notes || {} });
       }
     }
   } catch {}
-  return out;
+  return [...byMember.values()];
 }
 
 // One ballot per member, always: should duplicates ever sneak into a list
@@ -184,16 +194,21 @@ export async function fetchBallotHistory(gatheringIds: string[], memberIds: stri
     }));
   }
   if (typeof window === "undefined") return [];
-  const out: HistoryBallot[] = [];
+  const byKey = new Map<string, HistoryBallot>();
+  for (const b of seedBallots) {
+    if (gatheringIds.includes(b.gatheringId) && memberIds.includes(b.memberId)) {
+      byKey.set(`${b.gatheringId}|${b.memberId}`, { gatheringId: b.gatheringId, memberId: b.memberId, scores: b.scores, sealed: true, aromas: {}, notes: {} });
+    }
+  }
   try {
     for (const g of gatheringIds) {
       for (const m of memberIds) {
         const raw = localStorage.getItem(key(g, m));
         if (!raw) continue;
         const b = JSON.parse(raw) as Ballot;
-        out.push({ gatheringId: g, memberId: m, scores: b.scores || {}, sealed: !!b.sealed, aromas: b.aromas || {}, notes: b.notes || {} });
+        byKey.set(`${g}|${m}`, { gatheringId: g, memberId: m, scores: b.scores || {}, sealed: !!b.sealed, aromas: b.aromas || {}, notes: b.notes || {} });
       }
     }
   } catch {}
-  return out;
+  return [...byKey.values()];
 }

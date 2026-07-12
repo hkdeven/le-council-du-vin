@@ -204,11 +204,14 @@ function RosterEditor() {
               <MemberCard member={m} size={30} />
               <button
                 onClick={() => isKeiser && setOpenId(open ? null : m.id)}
-                style={{ flex: 1, background: "none", border: "none", cursor: isKeiser ? "pointer" : "default", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+                style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: isKeiser ? "pointer" : "default", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
               >
-                <span style={{ flex: 1 }}>
+                {/* minWidth:0 + ellipsis: a long unbreakable email (the
+                    placeholder addresses) must truncate, not shove the row
+                    wide and squash the portrait beside it. */}
+                <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: "var(--gold2)" }}>{m.cult_name}</span>
-                  {isKeiser && <span className="whisper" style={{ fontSize: 12, display: "block" }}>{m.email}</span>}
+                  {isKeiser && <span className="whisper" style={{ fontSize: 12, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</span>}
                 </span>
                 {isKeiser && <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />}
               </button>
