@@ -343,6 +343,9 @@ function RecipientChips({ list, onRemove, addValue, onAddChange, onAdd }: {
 // summons. Nothing here fires automatically; recipients are editable per send.
 function HeraldsEditor() {
   const { mode } = useAuth();
+  // Folded by default: the Heralds are an occasional instrument, not daily
+  // reading. Nothing inside is fetched until the card is opened.
+  const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [gathering, setGathering] = useState<Gathering | null>(null);
   const [dq, setDq] = useState<Record<string, number>>({});
@@ -355,6 +358,7 @@ function HeraldsEditor() {
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!open) return;
     (async () => {
       const mem = mode === "live" && supabase ? ((await supabase.from("members").select("*")).data as Member[] || []) : loadMembers();
       setMembers(mem);
@@ -362,7 +366,7 @@ function HeraldsEditor() {
       setGathering(await fetchCurrentGathering());
       setDq(await fetchDqCounts());
     })();
-  }, [mode]);
+  }, [mode, open]);
 
   const add = (list: string[], value: string, setList: (v: string[]) => void, clear: () => void) => {
     const v = value.trim().toLowerCase();
@@ -399,10 +403,22 @@ function HeraldsEditor() {
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="eyebrow" style={{ marginBottom: 4 }}>Heralds</div>
-      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>Send the Council&rsquo;s branded emails by hand — nothing here fires automatically.</p>
-
-      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+      >
+        <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+        <span style={{ flex: 1 }}>
+          <span className="eyebrow" style={{ display: "block", marginBottom: open ? 4 : 0 }}>Heralds</span>
+          {open && (
+            <span className="whisper" style={{ display: "block", fontSize: 13 }}>Send the Council&rsquo;s branded emails by hand — nothing here fires automatically.</span>
+          )}
+        </span>
+      </button>
+      {open && (
+      <>
+      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 10 }}>
         <div className="scr" style={{ fontSize: 16 }}>Summon the Council</div>
         <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>
           {gathering ? `The invite for Gathering ${toRoman(gathering.number)} — ${gathering.theme_title}.` : "No gathering scheduled — summon one on Convene first."}
@@ -435,6 +451,8 @@ function HeraldsEditor() {
       </div>
 
       {msg && <p className="scr" style={{ marginTop: 12, fontSize: 15 }}>{msg}</p>}
+      </>
+      )}
     </div>
   );
 }
