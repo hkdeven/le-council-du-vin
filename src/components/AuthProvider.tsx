@@ -126,10 +126,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (active) setLoading(false);
     };
-    supabase.auth.getSession().then(({ data }) => resolve(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) =>
-      resolve(sess)
-    );
+    // The gate ledger (ticket #12): a real sign-in is reported once, so the
+    // Keiser can see who entered, when, and from what vessel. Throttled per
+    // browser so token refreshes and tab-switches don't flood the ledger;
+    // the server captures the IP and verifies the token.
+    const recordLogin = (token: string) => {
+      try {
+        const last = Number(localStorage.getItem("lcv_login_logged") || 0);
+        if (Date.now() - last < 30 * 60 * 1000) return;
+        localStorage.setItem("lcv_login_logged", String(Date.now()));
+      } catch {}
+      fetch("/api/log-login", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    };
+    supabase.auth.getSession().then(({ data }) => {
+      resolve(data.session);
+      if (data.session?.access_token) recordLogin(data.session.access_token);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
+      resolve(sess);
+      if (event === "SIGNED_IN" && sess?.access_token) recordLogin(sess.access_token);
+    });
     return () => {
       active = false;
       sub.subscription.unsubscribe();

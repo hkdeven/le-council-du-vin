@@ -143,6 +143,10 @@ alter table members add column if not exists birth_lon double precision;
 alter table members add column if not exists birth_tz text;
 alter table members add column if not exists title text; -- optional honorific, shown on the card in place of the moon phase
 
+-- Counsel lives on the row itself: member id -> 'anoint'|'cast_out'|'abstain',
+-- written only through the cast_counsel() function (see policies.sql).
+alter table applications add column if not exists votes jsonb not null default '{}'::jsonb;
+
 create table if not exists application_votes (
   id uuid primary key default gen_random_uuid(),
   application_id uuid references applications(id) on delete cascade,
@@ -198,6 +202,19 @@ create table if not exists annals (
   rows jsonb not null default '[]'::jsonb,
   committed_at timestamptz not null default now()
 );
+
+-- Login events: who entered the gate, when, and from what vessel --------
+-- Written ONLY by the /api/log-login route (service role), read only by the
+-- Keiser (see policies.sql). Ticket #12.
+create table if not exists login_events (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid references members(id) on delete set null,
+  email text not null,
+  at timestamptz not null default now(),
+  user_agent text,
+  ip text
+);
+create index if not exists login_events_at on login_events (at desc);
 
 -- Ranking view: average score per wine, ranked within a gathering ----
 create or replace view wine_rankings as

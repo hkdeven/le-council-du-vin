@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { seedMembers } from "@/lib/seed";
 import { toRoman } from "@/lib/util";
 import { fetchAllOfferings, type Offering } from "@/lib/bottles";
-import { fetchAllBallots, tallyFromBallots, sealedAmong, MemberBallot } from "@/lib/ballots";
+import { fetchAllBallots, statsFromBallots, fetchRevealStats, type RevealStats } from "@/lib/ballots";
 import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
-import { fetchCurrentGathering, updateGathering } from "@/lib/gatherings";
+import { fetchCurrentGathering, updateGathering, revealWindowClosed } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { sendEmail } from "@/lib/sendEmail";
 import { useWineCount } from "@/lib/useWineCount";
@@ -81,10 +82,10 @@ function OwnerSlot({ owner, mine, canClaim, canAct, onClaim, onRelease, style }:
 // Once the night is sealed in the Annals, the reveal page becomes the
 // Reckoning: the crowning, the table as it ranked, the split cloth, the
 // whispers, and the ledger — with the whole thing sendable to your own inbox.
-function ReckoningView({ g, rows, ballots, email, onPhotos }: {
+function ReckoningView({ g, rows, stats, email, onPhotos }: {
   g: Gathering;
   rows: RevealRow[];
-  ballots: MemberBallot[];
+  stats: RevealStats;
   email: string | null;
   onPhotos: (next: string[]) => void;
 }) {
@@ -100,24 +101,19 @@ function ReckoningView({ g, rows, ballots, email, onPhotos }: {
   const cloths = new Set(rows.map((r) => r.cloth));
   let split: { row: RevealRow; min: number; max: number } | null = null;
   for (const cloth of cloths) {
-    const scores = ballots.filter((b) => b.sealed).map((b) => b.scores[cloth]).filter((v) => typeof v === "number");
-    if (scores.length < 3) continue;
-    const min = Math.min(...scores), max = Math.max(...scores);
+    const t = stats.totals[cloth];
+    if (!t || t.votes < 3) continue;
     const row = rows.find((r) => r.cloth === cloth);
-    if (row && max - min >= 5 && (!split || max - min > split.max - split.min)) split = { row, min, max };
+    if (row && t.max - t.min >= 5 && (!split || t.max - t.min > split.max - split.min)) split = { row, min: t.min, max: t.max };
   }
   const splitText = split ? `${name(split.row)} divided the table: one soul gave it a ${split.min}, another a ${split.max}.` : null;
 
   // The whispers: short, punchy notes from the night, anonymous, three at most.
   const quotes: { text: string; cloth: string }[] = [];
-  for (const b of ballots) {
-    if (!b.sealed || !b.notes) continue;
-    for (const [c, note] of Object.entries(b.notes)) {
-      const cloth = Number(c);
-      if (!cloths.has(cloth) || !note) continue;
-      const t = note.trim();
-      if (t.length >= 15 && t.length <= 140) quotes.push({ text: t, cloth: toRoman(cloth) });
-    }
+  for (const { cloth, note } of stats.notes) {
+    if (!cloths.has(cloth)) continue;
+    const t = note.trim();
+    if (t.length >= 15 && t.length <= 140) quotes.push({ text: t, cloth: toRoman(cloth) });
   }
   quotes.sort((a, b) => a.text.length - b.text.length);
   const chosen = quotes.slice(0, 3);
@@ -249,13 +245,14 @@ function ReckoningView({ g, rows, ballots, email, onPhotos }: {
 
 export default function Reveal() {
   const { mode, role, member, email } = useAuth();
+  const router = useRouter();
   const isKeiser = role === "keiser";
   const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
   const myName = mode === "live" ? member?.cult_name || "" : seedMembers.find((m) => m.id === meId)?.cult_name || "";
 
   const [g, setG] = useState<Gathering | null>(null);
   const [ready, setReady] = useState(false);
-  const [ballots, setBallots] = useState<MemberBallot[]>([]);
+  const [stats, setStats] = useState<RevealStats>({ sealedIds: [], totals: {}, notes: [] });
   const [offerings, setOfferings] = useState<Record<string, Offering>>({});
   const [rows, setRows] = useState<RevealRow[]>([]);
   const [committed, setCommitted] = useState(false);
@@ -271,39 +268,54 @@ export default function Reveal() {
   const gid = g?.id ?? "none";
   const attendees = g?.attendees || [];
 
+  // A week after the night ends, the reveal is gone entirely (#7): direct
+  // links are turned away. The vote data itself stays in the database — the
+  // codex and every tally still read it; only this page's presentation goes.
+  const windowClosed = revealWindowClosed(g);
+  useEffect(() => {
+    if (ready && windowClosed) router.replace("/convene");
+  }, [ready, windowClosed, router]);
+
   const [wineCount] = useWineCount(g);
 
-  // Load every ballot + offering, and any committed annal, for this gathering.
+  // Initiates may not read individual ballots (#6): they load the aggregate
+  // summary; full members derive the same stats from the ballots themselves.
+  const loadStats = async (gatheringId: string): Promise<RevealStats> =>
+    mode === "live" && role === "initiate"
+      ? fetchRevealStats(gatheringId)
+      : statsFromBallots(await fetchAllBallots(gatheringId));
+
+  // Load the reveal stats + offerings, and any committed annal, for this gathering.
   useEffect(() => {
     if (!g) return;
     let active = true;
     (async () => {
-      const [bs, offs, annal] = await Promise.all([
-        fetchAllBallots(g.id),
+      const [st, offs, annal] = await Promise.all([
+        loadStats(g.id),
         fetchAllOfferings(g.id),
         fetchAnnal(g.id),
       ]);
       if (!active) return;
-      setBallots(bs);
+      setStats(st);
       setOfferings(offs);
       if (annal) {
         setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, varietals: r.varietals, price: r.price })));
         setCommitted(true);
       } else {
-        const tally = tallyFromBallots(bs, wineCount);
         setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
           cloth, title: "", owner: "",
-          score: tally[cloth]?.avg || 0, votes: tally[cloth]?.votes || 0, dq: false,
+          score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false,
         })));
       }
     })();
     return () => { active = false; };
-  }, [g, wineCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g, wineCount, mode, role]);
 
   // The reveal opens only when the rite itself is open AND every attendee has
   // sealed — or once committed. Before the rite there is nothing to reveal.
   const riteOpen = useRiteOpen(g);
-  const sealedCount = sealedAmong(ballots, attendees);
+  const sealedCount = stats.sealedIds.filter((id) => attendees.includes(id)).length;
   const locked = !committed && (!riteOpen || attendees.length === 0 || sealedCount < attendees.length);
 
   // While still sealed, poll for newly-sealed ballots so the reveal unlocks and
@@ -312,15 +324,15 @@ export default function Reveal() {
   useEffect(() => {
     if (!g || committed || !locked) return;
     const iv = setInterval(async () => {
-      const bs = await fetchAllBallots(g.id);
-      setBallots(bs);
-      const tally = tallyFromBallots(bs, wineCount);
+      const st = await loadStats(g.id);
+      setStats(st);
       setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
-        cloth, title: "", owner: "", score: tally[cloth]?.avg || 0, votes: tally[cloth]?.votes || 0, dq: false,
+        cloth, title: "", owner: "", score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false,
       })));
     }, 5000);
     return () => clearInterval(iv);
-  }, [g, committed, locked, wineCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g, committed, locked, wineCount, mode, role]);
 
   // Ranking is computed, never stored. Ties share a rank (competition style:
   // two 2nds → next is 4th), and a tie for the top score crowns co-champions.
@@ -396,6 +408,17 @@ export default function Reveal() {
 
   if (!ready) return <section />;
 
+  if (windowClosed) {
+    return (
+      <section style={{ textAlign: "center", padding: "70px 0" }}>
+        <i className="ti ti-eye-off" style={{ fontSize: 30, color: "var(--gold)" }} aria-hidden="true" />
+        <p className="whisper" style={{ fontSize: 16, marginTop: 12 }}>
+          The reveal has passed beyond the veil. The codex remembers what the table decided.
+        </p>
+      </section>
+    );
+  }
+
   if (!g) {
     return (
       <section style={{ textAlign: "center", padding: "70px 0" }}>
@@ -409,7 +432,7 @@ export default function Reveal() {
 
   if (committed && g) {
     return (
-      <ReckoningView g={g} rows={rows} ballots={ballots} email={mode === "live" ? email : null}
+      <ReckoningView g={g} rows={rows} stats={stats} email={mode === "live" ? email : null}
         onPhotos={(next) => { updateGathering(g.id, { reveal_photos: next }).then(() => setG({ ...g, reveal_photos: next })).catch((e) => alert(`Could not save the photos: ${e.message}`)); }} />
     );
   }

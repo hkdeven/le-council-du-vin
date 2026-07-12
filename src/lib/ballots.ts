@@ -77,16 +77,27 @@ export async function fetchAllBallots(gatheringId: string): Promise<MemberBallot
   return out;
 }
 
-// How many of the given attendees have a sealed ballot.
-export function sealedAmong(ballots: MemberBallot[], attendees: string[]): number {
-  return ballots.filter((b) => b.sealed && attendees.includes(b.memberId)).length;
+// One ballot per member, always: should duplicates ever sneak into a list
+// (demo storage, a bad import), the LAST row per member wins — a member's
+// vote must never count twice. The live table's primary key already forbids
+// duplicates; this guards every other path.
+export function dedupeBallots<T extends MemberBallot>(ballots: T[]): T[] {
+  const seen = new Map<string, T>();
+  for (const b of ballots) seen.set(b.memberId, b);
+  return [...seen.values()];
 }
 
-// Average each cloth's score across every sealed ballot.
+// How many of the given attendees have a sealed ballot.
+export function sealedAmong(ballots: MemberBallot[], attendees: string[]): number {
+  return dedupeBallots(ballots).filter((b) => b.sealed && attendees.includes(b.memberId)).length;
+}
+
+// Average each cloth's score across every sealed ballot. Every ballot weighs
+// the same — the Keiser's included; no vote carries more than any other.
 export function tallyFromBallots(ballots: MemberBallot[], wineCount: number): Record<number, { avg: number; votes: number }> {
   const out: Record<number, { avg: number; votes: number }> = {};
   for (let cloth = 1; cloth <= wineCount; cloth++) out[cloth] = { avg: 0, votes: 0 };
-  for (const b of ballots) {
+  for (const b of dedupeBallots(ballots)) {
     if (!b.sealed) continue;
     for (let cloth = 1; cloth <= wineCount; cloth++) {
       const s = b.scores[cloth];
@@ -98,6 +109,61 @@ export function tallyFromBallots(ballots: MemberBallot[], wineCount: number): Re
     }
   }
   return out;
+}
+
+// What the reveal page runs on: aggregates only, so the same shape serves
+// full members (derived from the ballots they may read) and initiates (from
+// the reveal_summary RPC, which never surrenders an individual's scores).
+export interface RevealStats {
+  sealedIds: string[]; // member ids with a sealed ballot (who, not what)
+  totals: Record<number, { avg: number; votes: number; min: number; max: number }>;
+  notes: { cloth: number; note: string }[]; // sealed ballots' whispers, anonymous
+}
+
+export function statsFromBallots(ballots: MemberBallot[]): RevealStats {
+  const sealed = dedupeBallots(ballots).filter((b) => b.sealed);
+  const totals: RevealStats["totals"] = {};
+  const notes: RevealStats["notes"] = [];
+  for (const b of sealed) {
+    for (const [c, v] of Object.entries(b.scores || {})) {
+      if (typeof v !== "number" || v <= 0) continue;
+      const cloth = Number(c);
+      const t = totals[cloth] || { avg: 0, votes: 0, min: Infinity, max: -Infinity };
+      t.avg = (t.avg * t.votes + v) / (t.votes + 1);
+      t.votes += 1;
+      t.min = Math.min(t.min, v);
+      t.max = Math.max(t.max, v);
+      totals[cloth] = t;
+    }
+    for (const [c, note] of Object.entries(b.notes || {})) {
+      if (note?.trim()) notes.push({ cloth: Number(c), note });
+    }
+  }
+  return { sealedIds: sealed.map((b) => b.memberId), totals, notes };
+}
+
+// The initiate's road to the reveal: the security-definer summary. Falls back
+// to whatever rows RLS will surrender (their own ballot) on an older database
+// that lacks the function — degraded, never broken.
+export async function fetchRevealStats(gatheringId: string): Promise<RevealStats> {
+  if (gatheringsLive()) {
+    const { data, error } = await supabase!.rpc("reveal_summary", { gid: gatheringId });
+    if (!error && data) {
+      const d = data as {
+        sealed?: string[];
+        totals?: Record<string, { avg: number; votes: number; min: number; max: number }>;
+        notes?: { cloth: number | string; note: string }[];
+      };
+      return {
+        sealedIds: d.sealed || [],
+        totals: Object.fromEntries(
+          Object.entries(d.totals || {}).map(([c, t]) => [Number(c), { avg: Number(t.avg), votes: Number(t.votes), min: Number(t.min), max: Number(t.max) }])
+        ),
+        notes: (d.notes || []).map((n) => ({ cloth: Number(n.cloth), note: n.note })),
+      };
+    }
+  }
+  return statsFromBallots(await fetchAllBallots(gatheringId));
 }
 
 // Every ballot across every gathering — the Palate Dossier reads the whole

@@ -11,6 +11,7 @@ import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import MemberCard from "@/components/MemberCard";
 import Avatar from "@/components/Avatar";
+import PortraitLightbox from "@/components/PortraitLightbox";
 import { useBodyLock } from "@/components/NatalChart";
 import { castCounsel } from "@/lib/applications";
 import { computeAugury } from "@/lib/augury";
@@ -129,13 +130,16 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
   const [shown, setShown] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [auguryOnce, setAuguryOnce] = useState(false);
+  // Their portrait, enlarged — the same lightbox as the full member card (#9).
+  // Escape closes the photo first, then the card.
+  const [photoOpen, setPhotoOpen] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && (photoOpen ? setPhotoOpen(false) : close());
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [photoOpen]);
   const close = () => { setShown(false); setTimeout(onClose, 240); };
 
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -200,7 +204,14 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
             <i className="ti ti-x" style={{ fontSize: 16 }} />
           </button>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-            <Avatar src={portrait} initials={initialsOf(a.cult_name)} size={72} />
+            {portrait ? (
+              <button onClick={() => setPhotoOpen(true)} aria-label="Enlarge their portrait"
+                style={{ width: "auto", background: "none", border: "none", padding: 0, cursor: "zoom-in", display: "flex" }}>
+                <Avatar src={portrait} initials={initialsOf(a.cult_name)} size={72} />
+              </button>
+            ) : (
+              <Avatar src={portrait} initials={initialsOf(a.cult_name)} size={72} />
+            )}
           </div>
           <div className="disp" style={{ fontSize: 19 }}>{a.cult_name}</div>
           {a.date_of_birth && (
@@ -320,6 +331,11 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
           </div>
         </div>
       </div>
+      {/* Sibling of the flipping card, never inside it (the transform would
+          become the containing block for the fixed overlay). */}
+      {photoOpen && portrait && (
+        <PortraitLightbox src={portrait} alt={`${a.cult_name}'s portrait`} onClose={() => setPhotoOpen(false)} />
+      )}
     </div>
   );
 }

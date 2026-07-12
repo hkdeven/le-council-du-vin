@@ -146,6 +146,20 @@ export async function commitAnnal(entry: AnnalEntry): Promise<void> {
   } catch {}
 }
 
+// Victories per member name, derived fresh from the committed entries — never
+// incremented in place, so an amended or re-entered night can never double a
+// crown, and a DQ applied after entry takes a wrongly credited win with it.
+export function victoriesFrom(annals: AnnalEntry[]): Record<string, number> {
+  const victories: Record<string, number> = {};
+  for (const a of annals) {
+    // Co-champions each count as a victory.
+    for (const champ of championsOf(a)) {
+      if (champ.owner) victories[champ.owner] = (victories[champ.owner] || 0) + 1;
+    }
+  }
+  return victories;
+}
+
 // The disqualification ledger is derived from all committed entries so counts
 // never double when an entry is amended.
 export function dqCountsFrom(annals: AnnalEntry[]): Record<string, number> {

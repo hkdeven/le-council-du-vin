@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toRoman } from "@/lib/util";
-import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, AnnalRow, championsOf } from "@/lib/annals";
+import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, championsOf, victoriesFrom } from "@/lib/annals";
+import { validateMeetingDraft, reckonRows, type DraftRowInput } from "@/lib/meeting-entry";
 import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
 import { prophecyRecord } from "@/lib/prophecy";
@@ -10,6 +11,7 @@ import { loadMembers } from "@/lib/members";
 import { uploadRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
+import Avatar from "@/components/Avatar";
 import Loading from "@/components/Loading";
 import Tip from "@/components/Tip";
 import GrapePicker from "@/components/GrapePicker";
@@ -20,10 +22,42 @@ import type { Gathering, Member } from "@/lib/types";
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
+// Roster rows as the codex needs them: names for the records, portraits for
+// the per-member score breakdowns.
+type RosterLite = Pick<Member, "id" | "cult_name"> & Partial<Pick<Member, "short_name" | "avatar_url">>;
+
+// The inline caret (tickets #5/#6): sits ON the existing line — never its own
+// row — and rotates to show state. One pattern for the grapes line and the
+// per-bottle breakdowns.
+function Caret({ open, onClick, label }: { open: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-expanded={open}
+      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--gold)", padding: "2px 4px", display: "inline-flex", alignItems: "center", flex: "none" }}
+    >
+      <i className="ti ti-chevron-down" style={{ fontSize: 14, display: "inline-block", transform: open ? "rotate(-180deg)" : "none", transition: "transform 0.25s ease" }} />
+    </button>
+  );
+}
+
+// Ten pips, one per point: a member's verdict at a glance.
+function ScorePips({ score }: { score: number }) {
+  return (
+    <span aria-hidden="true" style={{ display: "inline-flex", gap: 2, flex: "none" }}>
+      {Array.from({ length: 10 }).map((_, i) => (
+        <span key={i} style={{ width: 4, height: 4, borderRadius: 2, background: i < Math.round(score) ? "var(--gold2)" : "rgba(160,150,120,0.22)" }} />
+      ))}
+    </span>
+  );
+}
+
 // A gathering under the Keiser's pen: everything editable, ranks recomputed
 // from the scores on save (ties share rank 1, DQs unranked) exactly as the
-// reveal would have judged it.
-interface DraftRow { cloth: string; title: string; owner: string; score: string; dq: boolean; votes: number; varietals: string[]; price: string }
+// reveal would have judged it. The row shape lives in meeting-entry.ts so
+// the verify suite exercises the same validation and reckoning this page runs.
+type DraftRow = DraftRowInput;
 interface Draft {
   gatheringId?: string;
   number: number;
@@ -193,13 +227,15 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
   );
 }
 
-function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, onClaim, onAddPhoto }: {
+function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBreakdown, onSave, onErase, onClaim, onAddPhoto }: {
   a: AnnalEntry;
   g?: Gathering;
   isKeiser: boolean;
-  members: Pick<Member, "id" | "cult_name">[];
+  members: RosterLite[];
   myName: string;
   split?: { cloth: number; min: number; max: number };
+  ballots: HistoryBallot[]; // this gathering's sealed ballots (empty for initiates)
+  canSeeBreakdown: boolean; // per-member scores: full members and the Keiser only (#6)
   onSave: (d: Draft) => Promise<void>;
   onErase: (gatheringId: string) => Promise<void>;
   onClaim: (a: AnnalEntry, rowIdx: number) => Promise<void>;
@@ -209,7 +245,18 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
+  // Which bottle's per-member scores are unfolded (keyed by row index).
+  const [openScores, setOpenScores] = useState<number | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  // A bottle's individual verdicts, named and worn with a portrait.
+  const memberById = new Map(members.map((m) => [m.id, m]));
+  const scoresFor = (cloth: number | null) => {
+    if (cloth == null || !canSeeBreakdown) return [];
+    return ballots
+      .map((b) => ({ member: memberById.get(b.memberId), score: b.scores[cloth] }))
+      .filter((x): x is { member: RosterLite; score: number } => !!x.member && typeof x.score === "number" && x.score > 0)
+      .sort((x, y) => y.score - x.score || x.member.cult_name.localeCompare(y.member.cult_name));
+  };
   // One bottle per soul per night: no claiming if a wine is already yours here.
   const canClaim = !!myName && !a.rows.some((r) => r.owner === myName);
   const photos = g?.reveal_photos || [];
@@ -258,8 +305,12 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
             <span className="whisper" style={{ fontSize: 13 }}><span className="eyebrow" style={{ marginRight: 6 }}>Date</span>{fmtDate(a.date)}</span>
             <span className="whisper" style={{ fontSize: 13 }}><span className="eyebrow" style={{ marginRight: 6 }}>Host</span>{host || "unrecorded"}</span>
           </div>
-          {a.rows.map((r, ri) => ({ r, ri })).sort((x, y) => (x.r.rank ?? 99) - (y.r.rank ?? 99)).map(({ r, ri }) => (
-            <div key={ri} style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)", alignItems: "center" }}>
+          {a.rows.map((r, ri) => ({ r, ri })).sort((x, y) => (x.r.rank ?? 99) - (y.r.rank ?? 99)).map(({ r, ri }) => {
+            const verdicts = scoresFor(r.cloth);
+            const scoresOpen = openScores === ri;
+            return (
+            <div key={ri}>
+            <div style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)", alignItems: "center" }}>
               <span className="disp" style={{ width: 24, fontSize: 11 }}>{r.dq ? "✕" : toRoman(r.rank || 0)}</span>
               <span style={{ flex: 1 }}>
                 <span className="scr" style={{ fontSize: 14 }}>{r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded")}</span>
@@ -281,8 +332,33 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, onSave, onErase, on
                 {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--wine)" }}> · disqualified</span>}
               </span>
               <span className="disp" style={{ fontSize: 12 }}>{r.votes > 0 ? r.score.toFixed(1) : "—"}</span>
+              {verdicts.length > 0 && (
+                <Caret open={scoresOpen} onClick={() => setOpenScores(scoresOpen ? null : ri)} label={`Every member's score for ${r.title || "this bottle"}`} />
+              )}
             </div>
-          ))}
+            {scoresOpen && verdicts.length > 0 && (
+              // Per-member scores (#6): full members and the Keiser only —
+              // initiates get no caret, and the database gives them no rows.
+              <div style={{ margin: "2px 0 8px 32px", borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
+                {verdicts.map(({ member, score }) => (
+                  <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "3px 0" }}>
+                    <Avatar src={member.avatar_url} initials={member.short_name || member.cult_name.slice(0, 2).toUpperCase()} size={22} />
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'Cormorant Garamond', serif", fontSize: 14, color: "var(--parch)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.cult_name}</span>
+                    <ScorePips score={score} />
+                    <span className="disp" style={{ fontSize: 12, width: 20, textAlign: "right", color: "var(--gold2)" }}>{score}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "4px 0 1px", borderTop: "1px solid var(--line)", marginTop: 3 }}>
+                  <span className="eyebrow" style={{ flex: 1, fontSize: 9.5 }}>Total</span>
+                  <span className="disp" style={{ fontSize: 12, color: "var(--gold2)" }}>
+                    {verdicts.reduce((s, v) => s + v.score, 0)}{r.votes > 0 ? ` · avg ${r.score.toFixed(1)}` : ""}
+                  </span>
+                </div>
+              </div>
+            )}
+            </div>
+            );
+          })}
 
           {split && (() => {
             const w = a.rows.find((r) => r.cloth === split.cloth);
@@ -336,7 +412,7 @@ export default function Codex() {
   const [annals, setAnnals] = useState<AnnalEntry[]>([]);
   const [dq, setDq] = useState<Record<string, number>>({});
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
-  const [members, setMembers] = useState<Pick<Member, "id" | "cult_name">[]>([]);
+  const [members, setMembers] = useState<RosterLite[]>([]);
   const [adding, setAdding] = useState(false);
   // Until the first fetch lands, show the waiting mark — zeros everywhere
   // read as "no history" and send souls away before the annals arrive.
@@ -362,7 +438,7 @@ export default function Codex() {
     swr("dq", fetchDqCounts, setDq);
     if (mode === "live" && supabase) {
       swr("members-brief", async () => {
-        const { data } = await supabase!.from("members").select("id,cult_name").order("cult_name");
+        const { data } = await supabase!.from("members").select("id,cult_name,short_name,avatar_url").order("cult_name");
         return (data || []) as Member[];
       }, setMembers);
     } else {
@@ -372,13 +448,15 @@ export default function Codex() {
   }, [mode]);
 
   // One pass over the sealed ballots once the annals + roster are known.
+  // Initiates never load them: individual scores are full-member reading
+  // (#6; the database refuses them the rows regardless).
   useEffect(() => {
-    if (!annals.length || !members.length) return;
+    if (!annals.length || !members.length || role === "initiate") return;
     fetchBallotHistory(annals.map((a) => a.gatheringId), members.map((m) => m.id))
       .then((h) => setHistory(h.filter((b) => b.sealed)))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [annals.length, members.length]);
+  }, [annals.length, members.length, role]);
 
   // The split cloth per night: the widest score gap on any wine, when wide
   // enough (>= 5) to count as a genuine schism.
@@ -404,28 +482,14 @@ export default function Codex() {
     return out;
   })();
 
-  // Seal an amended or newly recorded gathering: ranks recomputed from scores
-  // (competition style, ties share, DQs unranked), gathering + annal in step.
+  // Seal an amended or newly recorded gathering: validation first (blank or
+  // malformed required data blocks the seal, loudly — ticket #4), then ranks
+  // recomputed from scores (competition style, ties share, DQs unranked),
+  // gathering + annal in step.
   const saveDraft = async (d: Draft) => {
-    // A row with nothing on it (no name, no owner, no score, no mark) is a
-    // leftover blank, not a wine; sealing it would haunt the annal.
-    const kept = d.rows.filter((r) => r.title.trim() || r.owner.trim() || r.score !== "" || r.dq || r.varietals.length || r.price !== "");
-    const scored = kept.filter((r) => !r.dq && r.score !== "").map((r) => Number(r.score));
-    const rows: AnnalRow[] = kept.map((r) => ({
-      // A blank cloth means the pouring order was never known; record nothing.
-      cloth: r.cloth.trim() !== "" && Number.isFinite(Number(r.cloth)) ? Number(r.cloth) : null,
-      title: r.title.trim(),
-      owner: r.owner.trim(),
-      score: r.score === "" ? 0 : Number(r.score),
-      // An empty score means "never judged", not zero: votes drop to 0 so the
-      // codex shows "—" and averages/records skip the row (a votes:1 zero
-      // would read as a real 0.0 and drag every statistic down).
-      votes: r.score === "" ? 0 : r.votes || 1,
-      dq: r.dq,
-      rank: r.dq || r.score === "" ? null : 1 + scored.filter((s) => s > Number(r.score)).length,
-      varietals: r.varietals.length ? r.varietals : undefined,
-      price: r.price !== "" && Number.isFinite(Number(r.price)) ? Number(r.price) : undefined,
-    }));
+    const faults = validateMeetingDraft(d);
+    if (faults.length) throw new Error(`the record refuses it —\n• ${faults.join("\n• ")}`);
+    const rows = reckonRows(d.rows);
     const gpatch: Partial<Gathering> = {
       number: d.number, theme_title: d.theme, gather_date: d.date, status: "revealed",
       host_id: d.host_id, host_name: d.host_name || null, host2_id: d.host2_id, host2_name: d.host2_name || null,
@@ -480,14 +544,7 @@ export default function Codex() {
   // A bottle counts as judged when it was scored or cast out; a night
   // recorded without scores poured bottles that were never judged.
   const bottlesJudged = annals.reduce((n, a) => n + a.rows.filter((r) => r.votes > 0 || r.dq).length, 0);
-  const victories: Record<string, number> = {};
-  for (const a of annals) {
-    // Co-champions each count as a victory.
-    for (const champ of championsOf(a)) {
-      if (champ.owner) victories[champ.owner] = (victories[champ.owner] || 0) + 1;
-    }
-  }
-  const victoryList = Object.entries(victories).sort((a, b) => b[1] - a[1]);
+  const victoryList = Object.entries(victoriesFrom(annals)).sort((a, b) => b[1] - a[1]);
   // The vine's foresight: the Prophecy's lifetime record, graded crowning by
   // crowning; silent until at least one prophecy has been judged.
   const foresight = prophecyRecord(gatherings, annals);
@@ -495,7 +552,9 @@ export default function Codex() {
   const coinTotal = annals.reduce((n, a) => n + a.rows.reduce((m, r) => m + (r.price || 0), 0), 0);
   const coinLabel = coinTotal >= 1000 ? `R${(coinTotal / 1000).toFixed(1)}K` : `R${Math.round(coinTotal)}`;
   // Grapes tasted: distinct varietals ever recorded, against the full ledger.
-  const grapesTasted = new Set(annals.flatMap((a) => a.rows.flatMap((r) => r.varietals || []))).size;
+  const grapeList = [...new Set(annals.flatMap((a) => a.rows.flatMap((r) => r.varietals || [])))].sort((x, y) => x.localeCompare(y));
+  const grapesTasted = grapeList.length;
+  const [grapesOpen, setGrapesOpen] = useState(false);
   const winsMax = Math.max(1, ...victoryList.map(([, n]) => n));
   // The most frequent winner holds the chalice.
   const chaliceChampion = victoryList[0]?.[0] || "—";
@@ -610,12 +669,23 @@ export default function Codex() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 10 }}>Grapes tasted</div>
+        {/* The caret rides the existing line (ticket #5) — no row of its own. */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1, height: 6, background: "rgba(160,150,120,0.14)", borderRadius: 3, overflow: "hidden" }}>
             <div style={{ width: `${Math.min(100, (grapesTasted / GRAPES.length) * 100)}%`, height: "100%", background: "linear-gradient(90deg, var(--gold), var(--gold2))", borderRadius: 3 }} />
           </div>
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: "var(--gold2)", whiteSpace: "nowrap" }}>{grapesTasted} of {GRAPES.length}</span>
+          {grapesTasted > 0 && (
+            <Caret open={grapesOpen} onClick={() => setGrapesOpen((o) => !o)} label="Every grape tasted so far" />
+          )}
         </div>
+        {grapesOpen && grapesTasted > 0 && (
+          <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {grapeList.map((gr) => (
+              <span key={gr} className="tag" style={{ textTransform: "none", letterSpacing: "0.04em" }}>{gr}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {relics && (relics.pour || relics.schism || relics.iron || relics.crownedGrape || relics.victoryPrice) && (
@@ -745,6 +815,8 @@ export default function Codex() {
                 members={members}
                 myName={myName}
                 split={splits[a.gatheringId]}
+                ballots={history.filter((b) => b.gatheringId === a.gatheringId)}
+                canSeeBreakdown={role !== "initiate"}
                 onSave={saveDraft}
                 onErase={eraseGathering}
                 onClaim={claimWine}
