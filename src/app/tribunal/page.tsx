@@ -200,7 +200,7 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
 
         {/* FRONT: the petition. */}
         <div ref={frontRef} style={{ ...faceStyle, pointerEvents: flipped ? "none" : undefined }}>
-          <button onClick={close} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
+          <button onClick={close} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2, visibility: flipped ? "hidden" : "visible" }}>
             <i className="ti ti-x" style={{ fontSize: 16 }} />
           </button>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
@@ -280,10 +280,10 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
 
         {/* BACK: the Augury. */}
         <div ref={backRef} style={{ ...faceStyle, transform: "rotateY(180deg)", pointerEvents: flipped ? undefined : "none" }}>
-          <button onClick={() => flipTo(false)} aria-label="Back to the petition" title="Back to the petition" style={{ position: "absolute", top: 6, left: 6, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 12, zIndex: 2 }}>
+          <button onClick={() => flipTo(false)} aria-label="Back to the petition" title="Back to the petition" style={{ position: "absolute", top: 6, left: 6, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 12, zIndex: 2, visibility: flipped ? "visible" : "hidden" }}>
             <i className="ti ti-arrow-back-up" style={{ fontSize: 18 }} />
           </button>
-          <button onClick={close} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
+          <button onClick={close} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2, visibility: flipped ? "visible" : "hidden" }}>
             <i className="ti ti-x" style={{ fontSize: 16 }} />
           </button>
           <div className="disp" style={{ fontSize: 19, marginTop: 6 }}>The Augury</div>

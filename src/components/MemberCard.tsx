@@ -143,7 +143,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         {/* FRONT: the member card. The turned-away face must never intercept
             a tap (not every browser backface-culls hit-testing). */}
         <div ref={frontRef} style={{ ...faceStyle, pointerEvents: flipped ? "none" : undefined }}>
-        <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6 }}>
+        <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, visibility: flipped ? "hidden" : "visible" }}>
           <i className="ti ti-x" style={{ fontSize: 16 }} />
         </button>
 
@@ -298,7 +298,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
 
         {/* BACK: the Heavens. */}
         <div ref={backRef} style={{ ...faceStyle, transform: "rotateY(180deg)", pointerEvents: flipped ? undefined : "none" }}>
-          <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2 }}>
+          <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 6, zIndex: 2, visibility: flipped ? "visible" : "hidden" }}>
             <i className="ti ti-x" style={{ fontSize: 16 }} />
           </button>
           {flipOnce && <HeavensFace member={member} isSelf={isSelf} onGo={onClose} onBack={() => flipTo(false)} />}

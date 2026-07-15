@@ -124,6 +124,8 @@ function RosterEditor() {
   const isKeiser = role === "keiser";
   const [members, setMembers] = useState<Member[]>([]);
   const [rosterLoaded, setRosterLoaded] = useState(false);
+  // Open by default (the roll is daily reading), but it can be folded away.
+  const [unfolded, setUnfolded] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   // Keiser editing a member's portrait: pick a file for a member, then crop it.
   const photoRef = useRef<HTMLInputElement>(null);
@@ -188,12 +190,26 @@ function RosterEditor() {
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="eyebrow" style={{ marginBottom: 4 }}>The council roster</div>
-      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-        {isKeiser
-          ? "Every soul's account. Yours to amend, Keiser."
-          : "Every soul of the Council. Touch a portrait to know them."}
-      </p>
+      <button
+        onClick={() => setUnfolded((o) => !o)}
+        aria-expanded={unfolded}
+        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+      >
+        <i className={`ti ti-chevron-${unfolded ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+        <span style={{ flex: 1 }}>
+          <span className="eyebrow" style={{ display: "block", marginBottom: unfolded ? 4 : 0 }}>The council roster</span>
+          {unfolded && (
+            <span className="whisper" style={{ display: "block", fontSize: 13 }}>
+              {isKeiser
+                ? "Every soul's account. Yours to amend, Keiser."
+                : "Every soul of the Council. Touch a portrait to know them."}
+            </span>
+          )}
+        </span>
+      </button>
+      {unfolded && (
+      <>
+      <div style={{ height: 10 }} />
       <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickPhoto} />
       {!rosterLoaded && <Loading text="Summoning the roster…" />}
       {members.map((m) => {
@@ -310,6 +326,8 @@ function RosterEditor() {
           </div>
         );
       })}
+      </>
+      )}
     </div>
   );
 }
@@ -396,7 +414,7 @@ function HeraldsEditor() {
     setBusy(kind); setMsg(null);
     const res = await sendEmail(type, to, params);
     setBusy(null);
-    if (res.skipped) setMsg("Email isn't configured yet — set RESEND_API_KEY + NOTIFY_FROM in Netlify.");
+    if (res.skipped) setMsg("Email isn't configured yet: set RESEND_API_KEY + NOTIFY_FROM in Netlify.");
     else if (res.ok) setMsg(`Sent to ${res.sent}.`);
     else setMsg(res.error || `Sent ${res.sent || 0}; ${res.failed || 0} failed.`);
   };
@@ -412,7 +430,7 @@ function HeraldsEditor() {
         <span style={{ flex: 1 }}>
           <span className="eyebrow" style={{ display: "block", marginBottom: open ? 4 : 0 }}>Heralds</span>
           {open && (
-            <span className="whisper" style={{ display: "block", fontSize: 13 }}>Send the Council&rsquo;s branded emails by hand — nothing here fires automatically.</span>
+            <span className="whisper" style={{ display: "block", fontSize: 13 }}>Send the Council&rsquo;s branded emails by hand; nothing here fires automatically.</span>
           )}
         </span>
       </button>
@@ -421,7 +439,7 @@ function HeraldsEditor() {
       <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 10 }}>
         <div className="scr" style={{ fontSize: 16 }}>Summon the Council</div>
         <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>
-          {gathering ? `The invite for Gathering ${toRoman(gathering.number)} — ${gathering.theme_title}.` : "No gathering scheduled — summon one on Convene first."}
+          {gathering ? `The invite for Gathering ${toRoman(gathering.number)} · ${gathering.theme_title}.` : "No gathering scheduled: summon one on Convene first."}
         </p>
         <RecipientChips list={inviteTo} onRemove={(e) => setInviteTo(inviteTo.filter((x) => x !== e))} addValue={inviteAdd} onAddChange={setInviteAdd} onAdd={() => add(inviteTo, inviteAdd, setInviteTo, () => setInviteAdd(""))} />
         <button className="btn gold" style={{ marginTop: 10, width: "auto", padding: "10px 20px" }} disabled={!gathering || busy !== null} onClick={() => send("invite", "invite", inviteTo, inviteParams)}>
@@ -511,7 +529,7 @@ function GateLedger() {
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="eyebrow" style={{ marginBottom: 4 }}>The gate ledger</div>
       <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-        Every entry through the gate — who, when, and from what vessel. Your eyes alone, Keiser.
+        Every entry through the gate: who, when, and from what vessel. Your eyes alone, Keiser.
       </p>
       {failed ? (
         <p className="whisper" style={{ margin: 0, fontSize: 13, color: "#c98" }}>
@@ -558,6 +576,8 @@ export default function Profile() {
   const [placeError, setPlaceError] = useState<string | null>(null); // the lookup itself failed
   const [seeking, setSeeking] = useState(false);
   const [venue, setVenue] = useState("");
+  // Open by default, but it can be folded away.
+  const [venueOpen, setVenueOpen] = useState(true);
   const [title, setTitle] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [rawFile, setRawFile] = useState<string | null>(null);
@@ -714,7 +734,7 @@ export default function Profile() {
     setAvatar(keptAvatar);
     setBaseline({ name, dob, tob, tz, place, lat: placeLat, lon: placeLon, venue, title, avatar: keptAvatar });
     setSaving(false);
-    setToast(`Saved — ${dirtyFields.join(", ")}. Your record is kept.`);
+    setToast(`Saved: ${dirtyFields.join(", ")}. Your record is kept.`);
   };
 
   // The toast burns for a moment, then fades.
@@ -845,7 +865,7 @@ export default function Profile() {
         {placeError && (
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#c98" }}>
             <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 4 }} />
-            The lookup failed — {placeError}. Try again in a moment.
+            The lookup failed: {placeError}. Try again in a moment.
           </p>
         )}
 
@@ -855,19 +875,35 @@ export default function Profile() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <label className="field" style={{ marginTop: 0 }}>Your venue instructions</label>
-        <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>Shared in the invite when you host.</p>
-        <textarea value={venue} onChange={(e) => { setVenue(e.target.value); }} placeholder="Gate codes, parking, the dog…" />
+        <button
+          onClick={() => setVenueOpen((o) => !o)}
+          aria-expanded={venueOpen}
+          style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+        >
+          <i className={`ti ti-chevron-${venueOpen ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+          <span style={{ flex: 1 }}>
+            <span className="eyebrow" style={{ display: "block", marginBottom: venueOpen ? 4 : 0 }}>Your venue instructions</span>
+            {venueOpen && (
+              <span className="whisper" style={{ display: "block", fontSize: 13 }}>Shared in the invite when you host.</span>
+            )}
+          </span>
+        </button>
+        {venueOpen && (
+          <>
+            <div style={{ height: 10 }} />
+            <textarea value={venue} onChange={(e) => { setVenue(e.target.value); }} placeholder="Gate codes, parking, the dog…" />
+          </>
+        )}
       </div>
-
-      <RosterEditor />
-      {role === "keiser" && <HeraldsEditor />}
-      {role === "keiser" && mode === "live" && <GateLedger />}
 
       <YourSky
         self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
         email={email}
       />
+
+      <RosterEditor />
+      {role === "keiser" && <HeraldsEditor />}
+      {role === "keiser" && mode === "live" && <GateLedger />}
 
       <FeatureWish />
 
@@ -875,7 +911,7 @@ export default function Profile() {
         <div className="card">
           <div className="eyebrow" style={{ marginBottom: 6 }}>View as</div>
           <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-            A preview aid while access isn&rsquo;t enforced — walk the tiers to see what each rank sees.
+            A preview aid while access isn&rsquo;t enforced: walk the tiers to see what each rank sees.
           </p>
           <div className="pills">
             {ROLES.map((r) => (
@@ -935,7 +971,9 @@ export default function Profile() {
 // The two doors to your own sky, each with an envelope that emails it to
 // your own inbox. The send route only ever accepts your own address.
 // Ask the builders: a member's feature wish, relayed to the Keiser's inbox.
+// Folded by default, like the Heralds: an occasional instrument.
 function FeatureWish() {
+  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
   const submit = async () => {
@@ -948,10 +986,22 @@ function FeatureWish() {
   };
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="eyebrow" style={{ marginBottom: 4, fontSize: 14 }}>Feature request</div>
-      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-        Something the Council should be able to do? Whisper it here and it is carried to the Keiser.
-      </p>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+      >
+        <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+        <span style={{ flex: 1 }}>
+          <span className="eyebrow" style={{ display: "block", marginBottom: open ? 4 : 0, fontSize: 14 }}>Feature request</span>
+          {open && (
+            <span className="whisper" style={{ display: "block", fontSize: 13 }}>Something the Council should be able to do? Whisper it here and it is carried to the Keiser.</span>
+          )}
+        </span>
+      </button>
+      {open && (
+      <>
+      <div style={{ height: 10 }} />
       <textarea
         value={text}
         onChange={(e) => { setText(e.target.value); if (state === "sent") setState("idle"); }}
@@ -966,6 +1016,8 @@ function FeatureWish() {
         </button>
         {state === "sent" && <span className="scr" style={{ fontSize: 15 }}>The Keiser will hear of it.</span>}
       </div>
+      </>
+      )}
     </div>
   );
 }

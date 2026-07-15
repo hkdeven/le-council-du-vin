@@ -232,12 +232,12 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
         onPhotos={onPhotos}
       />
 
-      {email && (
-        <button className="btn" style={{ width: "auto", padding: "10px 22px", marginTop: 18 }} onClick={mailIt} disabled={mailState === "sending"}>
-          <i className="ti ti-mail" style={{ fontSize: 14, marginRight: 6 }} />
-          {mailState === "sent" ? "It flies to your inbox" : mailState === "sending" ? "Sending…" : "Email this to me"}
-        </button>
-      )}
+      <button className="btn" style={{ width: "auto", padding: "10px 22px", marginTop: 18 }}
+        onClick={() => { if (!email) { alert("The demo has no post office: sign in on the live Council and the reckoning will fly."); return; } mailIt(); }}
+        disabled={mailState === "sending"}>
+        <i className="ti ti-mail" style={{ fontSize: 14, marginRight: 6 }} />
+        {mailState === "sent" ? "It flies to your inbox" : mailState === "sending" ? "Sending…" : "Email this to me"}
+      </button>
       <p className="whisper" style={{ margin: "14px 0 0", fontSize: 12 }}>the vine calculates, it does not flatter</p>
     </section>
   );
