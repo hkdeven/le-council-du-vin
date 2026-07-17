@@ -1086,7 +1086,7 @@ function AskToWake() {
     else { setState("idle"); alert(`The word would not carry: ${res.error || res.skipped || "unknown"}`); }
   };
   return (
-    <div className="card" style={{ marginBottom: 16, borderColor: "rgba(140,138,130,0.45)" }}>
+    <div className="card" data-sleep-ok style={{ marginBottom: 16, borderColor: "rgba(140,138,130,0.45)" }}>
       <div className="eyebrow" style={{ marginBottom: 4, fontSize: 12, color: "#8d8b85" }}>The one word left to you</div>
       <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
         A plea to wake is carried to the Keiser by hand. It writes nothing; it only asks.

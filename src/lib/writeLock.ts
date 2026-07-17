@@ -45,15 +45,23 @@ export function assertWrite() {
   if (locked) throw new Error(SLEEPING_MESSAGE);
 }
 
-// RPCs that only read. Everything else is treated as a write.
-const READ_ONLY_RPCS = new Set(["reveal_summary"]);
+// RPCs a sleeping hand may still call: the read-only one, and the one that
+// hangs a photograph on a past night (add_reveal_photo is SECURITY DEFINER and
+// does exactly that one thing, because gatherings.reveal_photos cannot be
+// opened by RLS alone without opening the whole row). Everything else is a write.
+const OPEN_RPCS = new Set(["reveal_summary", "add_reveal_photo"]);
 
 export function assertRpc(fn: string) {
-  if (locked && !READ_ONLY_RPCS.has(fn)) throw new Error(SLEEPING_MESSAGE);
+  if (locked && !OPEN_RPCS.has(fn)) throw new Error(SLEEPING_MESSAGE);
 }
 
-// Buckets holding self-serving artifacts rather than the Council's records.
-const OPEN_BUCKETS = new Set(["charts"]);
+// Buckets a sleeping hand may still write:
+//   charts       - a PNG of their own sky, for their own inbox.
+//   reveal-photos - photographs of past nights (the Keiser's decree, 2026-07-17:
+//                   "no ability to edit anything, except perhaps add photos to
+//                   past meetings"). `avatars` is NOT here: a portrait is a
+//                   member's own record, and sleep stays the hand on that.
+const OPEN_BUCKETS = new Set(["charts", "reveal-photos"]);
 
 export function assertBucketWrite(bucket: string) {
   if (locked && !OPEN_BUCKETS.has(bucket)) throw new Error(SLEEPING_MESSAGE);

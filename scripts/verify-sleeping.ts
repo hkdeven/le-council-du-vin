@@ -70,9 +70,12 @@ async function main() {
 
   // Storage: records buckets sealed, the self-serving chart bucket open.
   const blob = new Blob(["x"]);
-  check("sleeping: avatars upload refused", sealed(() => sb.storage.from("avatars").upload("p", blob)));
-  check("sleeping: reveal-photos upload refused", sealed(() => sb.storage.from("reveal-photos").upload("p", blob)));
-  check("sleeping: reveal-photos remove refused", sealed(() => sb.storage.from("reveal-photos").remove(["p"])));
+  check("sleeping: avatars upload refused (a portrait is their own record)", sealed(() => sb.storage.from("avatars").upload("p", blob)));
+  // The Keiser's decree, 2026-07-17: photographs of past nights are the one
+  // write a sleeping hand keeps.
+  check("sleeping: reveal-photos upload UNTOUCHED", allowed(() => sb.storage.from("reveal-photos").upload("p", blob)));
+  check("sleeping: add_reveal_photo RPC UNTOUCHED", allowed(() => sb.rpc("add_reveal_photo", { gid: "x", url: "u" })));
+  check("sleeping: a gatherings update is still refused (the RPC is the only door)", sealed(() => sb.from("gatherings").update({ theme_title: "x" })));
   check("sleeping: charts upload UNTOUCHED (their own sky, their own inbox)",
     allowed(() => sb.storage.from("charts").upload("p", blob)));
   check("sleeping: reading a public URL untouched", allowed(() => sb.storage.from("avatars").getPublicUrl("p")));

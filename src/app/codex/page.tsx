@@ -8,7 +8,7 @@ import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
 import { prophecyRecord } from "@/lib/prophecy";
 import { loadMembers } from "@/lib/members";
-import { uploadRevealPhoto } from "@/lib/photos";
+import { uploadRevealPhoto, attachRevealPhoto, removeRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { sendEmail } from "@/lib/sendEmail";
 import { useAuth } from "@/components/AuthProvider";
@@ -228,7 +228,7 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
   );
 }
 
-function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBreakdown, onSave, onErase, onClaim, onAddPhoto }: {
+function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBreakdown, onSave, onErase, onClaim, onAddPhoto, onDropPhoto }: {
   a: AnnalEntry;
   g?: Gathering;
   isKeiser: boolean;
@@ -241,6 +241,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
   onErase: (gatheringId: string) => Promise<void>;
   onClaim: (a: AnnalEntry, rowIdx: number) => Promise<void>;
   onAddPhoto: (g: Gathering, file: File) => Promise<void>;
+  onDropPhoto: (a: AnnalEntry, url: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -419,18 +420,30 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
               <div className="eyebrow" style={{ fontSize: 11, marginBottom: 6 }}>Look upon the wine</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                 {photos.map((url) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={url} src={url} alt="A bottle from this night" onClick={() => setViewPhoto(url)}
-                    style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+                  <span key={url} style={{ position: "relative", display: "inline-flex" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="A bottle from this night" onClick={() => setViewPhoto(url)}
+                      style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+                    {isKeiser && (
+                      <button
+                        onClick={() => onDropPhoto(a, url)}
+                        aria-label="Take this photograph down"
+                        title="Take this photograph down"
+                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, padding: 0, borderRadius: 10, background: "#0d0b0a", border: "1px solid var(--wine)", color: "#c98", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+                      >
+                        <i className="ti ti-x" style={{ fontSize: 11 }} />
+                      </button>
+                    )}
+                  </span>
                 ))}
                 {!!myName && (
-                  <button onClick={() => photoRef.current?.click()} disabled={uploading || sleeping} aria-label="Add a photo of this night"
+                  <button onClick={() => photoRef.current?.click()} disabled={uploading} aria-label="Add a photo of this night"
                     style={{ width: 64, height: 64, background: "none", border: "1px dashed var(--line2)", borderRadius: 8, color: "var(--gold2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <i className={`ti ti-${uploading ? "loader-2" : "camera-plus"}`} style={{ fontSize: 18 }} />
                   </button>
                 )}
               </div>
-              <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={pickPhoto} />
+              <input ref={photoRef} data-sleep-ok type="file" accept="image/*" style={{ display: "none" }} onChange={pickPhoto} />
             </div>
           )}
           {viewPhoto && (
@@ -575,9 +588,28 @@ export default function Codex() {
   };
 
   // Any soul may add a photo of the night to the gathering's gallery.
+  // The Keiser alone may take a photograph down, and is asked first: a
+  // photograph erased by a slip cannot be got back.
+  const dropPhoto = async (a: AnnalEntry, url: string) => {
+    const g = gatherings.find((x) => x.id === a.gatheringId);
+    if (!g) return;
+    if (!window.confirm("Take this photograph down for good?")) return;
+    const keep = (g.reveal_photos || []).filter((u) => u !== url);
+    try {
+      if (gatheringsLive()) await removeRevealPhoto(g.id, url, keep);
+      else await updateGathering(g.id, { reveal_photos: keep });
+      await refresh();
+    } catch (e) {
+      alert(`The photograph would not come down: ${(e as Error).message}`);
+    }
+  };
+
   const addPhoto = async (g: Gathering, file: File) => {
     const url = await uploadRevealPhoto(g.id, file);
-    await updateGathering(g.id, { reveal_photos: [...(g.reveal_photos || []), url] });
+    // The RPC appends; a plain gatherings update would be refused for a
+    // sleeping member, who is allowed to hang photographs by decree.
+    if (gatheringsLive()) await attachRevealPhoto(g.id, url);
+    else await updateGathering(g.id, { reveal_photos: [...(g.reveal_photos || []), url] });
     await refresh();
   };
 
@@ -601,7 +633,6 @@ export default function Codex() {
   const [grapesOpen, setGrapesOpen] = useState(false);
   const winsMax = Math.max(1, ...victoryList.map(([, n]) => n));
   // The most frequent winner holds the chalice.
-  const chaliceChampion = victoryList[0]?.[0] || "—";
   // The Reliquary: all-time records, reckoned fresh from the annals + ballots.
   const relics = (() => {
     if (!annals.length) return null;
@@ -706,7 +737,6 @@ export default function Codex() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 16 }}>
         <Metric value={String(annals.length)} label="gatherings" />
         <Metric value={String(bottlesJudged)} label="bottles judged" />
-        <Metric value={chaliceChampion} label="champion of the chalice" />
         {coinTotal > 0 && <Metric value={coinLabel} label="coin poured" />}
         <Metric value={foresight.total > 0 ? `${Math.round((foresight.right / foresight.total) * 100)}%` : "NA"} label="prophecies fulfilled" />
       </div>
@@ -865,6 +895,7 @@ export default function Codex() {
                 onErase={eraseGathering}
                 onClaim={claimWine}
                 onAddPhoto={addPhoto}
+                onDropPhoto={dropPhoto}
               />
             ))
         )}

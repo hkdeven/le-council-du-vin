@@ -489,3 +489,45 @@ alter table if exists scores enable row level security;
 -- above: a way around the seal. No app code ever queried it. Dropped; see
 -- schema.sql for how to revive it safely (security_invoker).
 drop view if exists wine_rankings;
+
+-- ── Photographs of past nights, open to a sleeping hand (2026-07-17) ────────
+-- The Keiser's decree: a sleeping member may edit NOTHING, "except perhaps add
+-- photos to past meetings". Two things stood in the way, and both are fixed
+-- here rather than by weakening the seal:
+--   1. the `reveal-photos` bucket was sealed with the rest -> carved out below,
+--      exactly as `charts` already was. `avatars` stays sealed: a portrait is
+--      a member's own record, and sleep stays the hand on that.
+--   2. the photo list lives in gatherings.reveal_photos, and RLS cannot open a
+--      single COLUMN without opening the whole row (which would hand a sleeping
+--      member the theme, the date, the hosts, everything). So the append goes
+--      through a SECURITY DEFINER function that does one thing and nothing else.
+drop policy if exists "storage sleeping seal insert" on storage.objects;
+create policy "storage sleeping seal insert" on storage.objects as restrictive
+  for insert with check (bucket_id in ('charts', 'reveal-photos') or is_awake());
+drop policy if exists "storage sleeping seal update" on storage.objects;
+create policy "storage sleeping seal update" on storage.objects as restrictive
+  for update using (bucket_id in ('charts', 'reveal-photos') or is_awake());
+drop policy if exists "storage sleeping seal delete" on storage.objects;
+create policy "storage sleeping seal delete" on storage.objects as restrictive
+  for delete using (bucket_id in ('charts', 'reveal-photos') or is_awake());
+
+-- Append one photograph to one night. Any member of the Council may call it,
+-- sleeping or awake; it can do nothing else. A stranger with no member row is
+-- refused. Note this deliberately does NOT check is_awake().
+create or replace function add_reveal_photo(gid uuid, url text) returns void
+  language plpgsql security definer
+  set search_path = public
+as $$
+begin
+  if not exists (select 1 from members where email = (auth.jwt() ->> 'email')) then
+    raise exception 'Only members of the Council may hang a photograph.';
+  end if;
+  update gatherings
+     set reveal_photos = array_append(coalesce(reveal_photos, '{}'), url)
+   where id = gid;
+  if not found then
+    raise exception 'No such gathering.';
+  end if;
+end $$;
+revoke all on function add_reveal_photo(uuid, text) from public;
+grant execute on function add_reveal_photo(uuid, text) to authenticated;

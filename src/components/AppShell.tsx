@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Emblem from "./Emblem";
 import Avatar from "./Avatar";
 import { useAuth, ROLE_RANK } from "./AuthProvider";
@@ -55,6 +55,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     fetchCurrentGathering().then(setGathering).catch(() => {});
   }, [mode, bare]);
   const riteOpen = useRiteOpen(gathering);
+
+  // SLEEP STAYS THE HAND AT THE GLASS. Disabling the save buttons was not
+  // enough: a sleeping member could still type into every field, which reads
+  // as though the Council were taking it down. Every data-entry control under
+  // the main content is disabled outright, including on surfaces built later,
+  // because the sweep runs on the DOM rather than on a list of components.
+  // Buttons are NOT swept: the writing ones are sealed individually, and
+  // sweeping them would take away the reading rights sleep must never touch
+  // (tooltips, folds, the Heavens, the photo lightbox).
+  // Opt out with data-sleep-ok: the plea to wake, and photographs of past
+  // nights, are open to a sleeping hand by decree.
+  const mainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = mainRef.current;
+    if (!sleeping || !root) return;
+    const stay = () => {
+      root.querySelectorAll("input, textarea, select").forEach((el) => {
+        const field = el as HTMLInputElement;
+        if (field.closest("[data-sleep-ok]")) return;
+        if (!field.disabled) field.disabled = true;
+      });
+    };
+    stay();
+    // Two ways a live field can appear after the sweep: a repaint mounts one
+    // (a fold opening, a card rising), or React re-renders a field that owns
+    // its own `disabled` prop and hands it back enabled. Watch for both. The
+    // `if (!field.disabled)` guard above keeps this from chasing its own tail.
+    const watch = new MutationObserver(stay);
+    watch.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+    return () => watch.disconnect();
+  }, [sleeping, pathname]);
 
   // The chambers menu: the tabs folded behind a hamburger. Any navigation
   // (or a tap on the hamburger again) lifts the curtain.
@@ -212,7 +243,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main>
-        <div style={{ maxWidth: 820, margin: "0 auto", padding: 22, minHeight: 440 }}>
+        <div ref={mainRef} style={{ maxWidth: 820, margin: "0 auto", padding: 22, minHeight: 440 }}>
         {sleeping && (
           <div style={{ border: "1px solid rgba(140,138,130,0.45)", background: "linear-gradient(180deg, rgba(60,58,54,0.28), rgba(20,19,18,0.5))", borderRadius: 10, padding: "12px 14px", marginBottom: 18, textAlign: "center" }}>
             <div className="eyebrow" style={{ fontSize: 10, color: "#8d8b85", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
