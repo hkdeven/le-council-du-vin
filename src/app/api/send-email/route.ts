@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, reckoningEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -9,22 +9,25 @@ import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail
 
 export const dynamic = "force-dynamic";
 
-async function callerIdentity(req: Request): Promise<{ email: string | null; name: string | null; isMember: boolean; keiser: boolean; keiserEmail: string | null }> {
+async function callerIdentity(req: Request): Promise<{ email: string | null; name: string | null; isMember: boolean; keiser: boolean; keiserEmail: string | null; awake: boolean }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
-  const none = { email: null, name: null, isMember: false, keiser: false, keiserEmail: null };
+  const none = { email: null, name: null, isMember: false, keiser: false, keiserEmail: null, awake: true };
   if (!url || !anon || !token) return none;
   try {
     const sb = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const { data: u } = await sb.auth.getUser();
     const email = u?.user?.email || null;
     if (!email) return none;
-    const { data: m } = await sb.from("members").select("role,cult_name").eq("email", email).maybeSingle();
+    const { data: m } = await sb.from("members").select("role,cult_name,active").eq("email", email).maybeSingle();
     // Feature requests go to the Keiser; his address is looked up with the
     // caller's own token (the roster-read policy covers every member).
     const { data: k } = await sb.from("members").select("email").eq("role", "keiser").maybeSingle();
-    return { email, name: m?.cult_name || null, isMember: !!m, keiser: m?.role === "keiser", keiserEmail: (k?.email as string) || null };
+    // Standing, not just rank: a sleeping member may still post their own sky
+    // to themselves (a reading right), but may send nothing on the Council's
+    // behalf and may petition nothing. A stranger with no row is not sleeping.
+    return { email, name: m?.cult_name || null, isMember: !!m, keiser: m?.role === "keiser", keiserEmail: (k?.email as string) || null, awake: m?.active !== false };
   } catch {
     return none;
   }
@@ -48,12 +51,22 @@ export async function POST(req: Request) {
     // Any actual member may petition; the recipient is ALWAYS the Keiser —
     // whatever the client sent as `to` is ignored.
     if (!caller.isMember) return NextResponse.json({ ok: false, error: "Only members may petition." }, { status: 403 });
+    if (!caller.awake) return NextResponse.json({ ok: false, error: "Your seat sleeps; a sleeping hand writes nothing." }, { status: 403 });
     const text = (params?.text || "").trim();
     if (!text) return NextResponse.json({ ok: false, error: "The petition is empty." }, { status: 400 });
     if (text.length > 2000) return NextResponse.json({ ok: false, error: "The petition is too long (2000 characters at most)." }, { status: 400 });
     // The roster lookup needs the "members roster read" policy; if it is not
     // in place (or ever breaks) fall back to the configured Keiser address so
     // a member's wish never bounces.
+    recipients = [caller.keiserEmail || process.env.KEISER_EMAIL || "hkdeven@gmail.com"];
+  } else if (type === "wake") {
+    // The one word a sleeping hand may send. It writes nothing; it only asks,
+    // and only ever the Keiser hears it (whatever `to` the client sent is
+    // ignored). Deliberately NOT gated on `awake`: this exists FOR the asleep.
+    if (!caller.isMember) return NextResponse.json({ ok: false, error: "Only members may ask." }, { status: 403 });
+    if (caller.awake) return NextResponse.json({ ok: false, error: "Your seat is already awake." }, { status: 403 });
+    const text = (params?.text || "").trim();
+    if (text.length > 2000) return NextResponse.json({ ok: false, error: "The word is too long (2000 characters at most)." }, { status: 400 });
     recipients = [caller.keiserEmail || process.env.KEISER_EMAIL || "hkdeven@gmail.com"];
   } else if (SELF_TYPES.has(type || "")) {
     // Self-send: any signed-in member, but strictly to their own address.
@@ -63,6 +76,10 @@ export async function POST(req: Request) {
     }
   } else if (!caller.keiser) {
     return NextResponse.json({ ok: false, error: "Only the Keiser may send this." }, { status: 403 });
+  } else if (!caller.awake) {
+    // The Heralds carry the Council's word: a sleeping Keiser does not speak
+    // for it. Self-sends above are untouched.
+    return NextResponse.json({ ok: false, error: "Your seat sleeps; the Heralds do not ride for a sleeping hand." }, { status: 403 });
   }
   if (!recipients.length) return NextResponse.json({ ok: false, error: "No recipients." }, { status: 400 });
 
@@ -77,6 +94,7 @@ export async function POST(req: Request) {
     case "kundli": email = kundliEmail((params || {}) as KundliEmailParams); break;
     case "vedic-foretelling": email = vedicForetellingEmail((params || {}) as VedicForetellingEmailParams); break;
     case "feature": email = featureRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
+    case "wake": email = wakeRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     case "reckoning": email = reckoningEmail(params || {}); break;
     default: return NextResponse.json({ ok: false, error: "Unknown email type." }, { status: 400 });
   }

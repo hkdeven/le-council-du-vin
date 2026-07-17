@@ -1,5 +1,5 @@
 import { writeFileSync, mkdirSync, readFileSync } from "fs";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, magicLinkHtml, petitionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail } from "../src/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, magicLinkHtml, petitionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, reckoningEmail, wakeRequestEmail } from "../src/lib/emailTemplates";
 
 mkdirSync("public/email-previews", { recursive: true });
 
@@ -140,3 +140,28 @@ write("5-magiclink.html", magicLinkHtml("https://lecouncilduvin.co.za/#example-l
 writeFileSync("public/email-previews/5-magiclink-for-supabase.html", magicLinkHtml());
 
 console.log("wrote previews (incl. 9-kundli, 10-vedic-foretelling) to public/email-previews/");
+
+// The Reckoning: what the reveal sends on the night, and what a past night in
+// the codex now sends months later ("Email this to me" on any annal).
+write("10-reckoning.html", reckoningEmail({
+  numberRoman: "XVI",
+  theme: "Greyton · Overberg Wines",
+  dateLabel: "6 June 2026",
+  crowned: [{ title: "Lismore Estate Syrah 2021", owner: "Seer Matthew", score: 8.4 }],
+  ranked: [
+    { rank: "II", title: "Barton Chardonnay 2022", owner: "The Keiser", score: 7.9, dq: false },
+    { rank: "III", title: "Sumaridge Pinot Noir 2021", owner: "Priestess Larissa", score: 7.4, dq: false },
+    { rank: "IV", title: "Luddite Shiraz 2019", owner: "Adept Wernardt", score: 6.8, dq: false },
+    { rank: "V", title: "Beaumont Hope Marguerite", owner: "Elder Martin", score: 6.1, dq: false },
+    { rank: "✕", title: "A chilled Pinotage", owner: "Great Scott", score: null, dq: true },
+  ],
+  split: "Luddite Shiraz 2019 divided the table, 3 to 9",
+  quotes: [
+    { text: "Smoke, and something the fire left behind.", cloth: "I" },
+    { text: "It argues with the food and wins.", cloth: "III" },
+  ],
+  value: "Best value of the night: Sumaridge Pinot Noir 2021, borne by Priestess Larissa, at R210 · 3.5 points per hundred rand.",
+}).html);
+
+// The one word a sleeping seat may send.
+write("11-wake.html", wakeRequestEmail("Elder Martin", "martin@nightvine.com", "I have been away, not absent. Let me return.").html);

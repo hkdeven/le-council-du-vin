@@ -2,6 +2,19 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 17 July 2026
+
+- **A seat may now sleep.** The Keiser can put any seat to sleep, and wake it again at a word. A sleeping member is not cast out and loses nothing: the Council remembers them, every chamber their rank opens stays open to their eyes, and their whole record stands untouched. But a sleeping hand writes nothing: no ballot, no offering, no answer to a call, no counsel, not a word of their own record. They are told so plainly on every page, the roll shows their seat greyed and sleeping for all to see, and the controls they cannot use fall quiet rather than pretending. Their own sky remains theirs to read and to send to themselves: sleep takes the pen, not the stars.
+- **The night can no longer be lost.** A soul put to sleep after answering a call used to be waited on forever: the cloths could never lift and the night could never reach the Annals. The rite now never waits on a sleeping hand, and the vine no longer holds its tongue for an offering that can never come.
+- **Behind the curtain: the seal was audited before it was believed.** Fifty independent readings swept every write path in the instrument and found sixteen ways a sleeping hand could still write, most through doors the first attempt had not even closed. The seal was rebuilt at the one gate every write must pass, then audited again by fresh eyes, which caught a fault in the repair itself: it had welded a sleeping soul's answer in place so that not even the Keiser could withdraw it. Both passes are recorded, and the rules now stand behind 47 automated checks of their own.
+- **A word from the sleeping.** A sleeping seat may send exactly one thing: a plea to wake, carried to the Keiser by hand. It writes nothing to the Council's records; it only asks.
+- **Tarnished chalices.** While a seat sleeps, its victories show dulled on the card. Nothing is ever taken away: every crown still stands in the annals, and the gold brightens the moment the seat wakes.
+- **Any night, posted to you.** Every gathering in the codex now carries "Email this to me": the full Reckoning of that night, the crowning, the ranked table, the split cloth, the ledger, sent months or years later exactly as it read on the night. Until now the Reckoning was reachable only until the next gathering was summoned.
+- **The Reckoning email, reworked.** The title is simply the gathering, its numeral now legible rather than lost in script; the crowned wine stands on its own line with the hand that bore it beneath; and the ledger names that hand too, not just the bottle.
+- **Behind the curtain: the vault, not just the door.** The instrument's lock is a courtesy; anyone determined can speak to the vault directly. Every record of the Council, and three old doors found standing unguarded since the first days, are now sealed in the database itself.
+- **Behind the curtain: a fourth door, and a locksmith's audit.** Sealing those three doors revealed a fourth: an old view that read past every lock by design, quietly exposing what the locks were meant to guard. It is gone. The live vault was then checked table by table, column by column, against the Council's own plans: no drift, nothing adrift.
+- **Behind the curtain: the Council's voice, corrected.** Every page and every email was swept for a punctuation the Keiser has banished; thirty-two survivors were put right in his own voice. The sweep uncovered a fault it would otherwise have hidden: the vine's refusals had begun to announce themselves twice.
+
 ## 15 July 2026
 
 Polish and truth-telling, in one breath:

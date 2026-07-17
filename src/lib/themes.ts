@@ -3,6 +3,7 @@
 // localStorage, seeded from the club's real pool.
 
 import type { Theme } from "./types";
+import { assertWrite } from "./writeLock";
 import { seedThemes } from "./seed";
 import { supabase } from "./supabase";
 import { gatheringsLive } from "./gatherings";
@@ -51,6 +52,7 @@ export async function fetchThemes(myId: string | null): Promise<PoolTheme[]> {
 }
 
 export async function proposeTheme(title: string, description: string | null): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("themes").insert({ title, description, status: "pool" });
     if (error) throw new Error(error.message);
@@ -60,6 +62,7 @@ export async function proposeTheme(title: string, description: string | null): P
 }
 
 export async function favourTheme(themeId: string, myId: string | null, on: boolean): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     if (!myId) return;
     if (on) await supabase!.from("theme_favours").upsert({ theme_id: themeId, member_id: myId }, { onConflict: "theme_id,member_id" });
@@ -76,6 +79,7 @@ export async function favourTheme(themeId: string, myId: string | null, on: bool
 }
 
 export async function editTheme(id: string, patch: { title?: string; description?: string | null }): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("themes").update(patch).eq("id", id);
     if (error) throw new Error(error.message);
@@ -85,6 +89,7 @@ export async function editTheme(id: string, patch: { title?: string; description
 }
 
 export async function removeTheme(id: string): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("themes").delete().eq("id", id);
     if (error) throw new Error(error.message);

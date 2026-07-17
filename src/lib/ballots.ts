@@ -3,6 +3,7 @@
 // gathering). Demo: per-browser localStorage.
 
 import { supabase } from "./supabase";
+import { assertWrite } from "./writeLock";
 import { gatheringsLive } from "./gatherings";
 import { seedBallots } from "./seed";
 
@@ -48,6 +49,7 @@ export async function fetchBallot(gatheringId: string, memberId: string): Promis
 }
 
 export async function saveBallot(gatheringId: string, memberId: string, ballot: Ballot): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("ballots").upsert(
       { gathering_id: gatheringId, member_id: memberId, scores: ballot.scores, sealed: ballot.sealed, aromas: ballot.aromas || {}, notes: ballot.notes || {}, updated_at: new Date().toISOString() },

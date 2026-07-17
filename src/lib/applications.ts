@@ -1,4 +1,5 @@
 import type { Application } from "./types";
+import { assertWrite } from "./writeLock";
 import { supabase } from "./supabase";
 import { gatheringsLive } from "./gatherings";
 
@@ -58,16 +59,19 @@ function writeAll(list: Application[]) {
 }
 
 export function addApplication(app: Application) {
+  assertWrite();
   writeAll([app, ...loadApplications()]);
 }
 
 export function updateApplication(id: string, patch: Partial<Application>) {
+  assertWrite();
   writeAll(loadApplications().map((a) => (a.id === id ? { ...a, ...patch } : a)));
 }
 
 // When a member is cast from the Council, drop their petition too so they no
 // longer linger on the tribunal's decided list.
 export async function deleteApplicationsByEmail(email: string): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     await supabase!.from("applications").delete().eq("email", email);
     return;
@@ -80,6 +84,7 @@ export async function deleteApplicationsByEmail(email: string): Promise<void> {
 // cast_counsel RPC (security definer) so members can write ONLY their own
 // key in the votes column and nothing else on the row.
 export async function castCounsel(appId: string, memberId: string, vote: "anoint" | "cast_out" | "abstain"): Promise<string | null> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.rpc("cast_counsel", { app_id: appId, vote });
     return error ? error.message : null;

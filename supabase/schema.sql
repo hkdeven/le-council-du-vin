@@ -216,18 +216,17 @@ create table if not exists login_events (
 );
 create index if not exists login_events_at on login_events (at desc);
 
--- Ranking view: average score per wine, ranked within a gathering ----
-create or replace view wine_rankings as
-select
-  w.id as wine_id,
-  w.gathering_id,
-  w.cloth_number,
-  round(avg(s.score)::numeric, 1) as avg_score,
-  count(s.id) as votes,
-  rank() over (partition by w.gathering_id order by avg(s.score) desc) as rank
-from wines w
-left join scores s on s.wine_id = w.id
-group by w.id;
+-- Ranking view: RETIRED 2026-07-17. It read average score per wine from the
+-- legacy wines/scores tables, which no app code has touched since the annals
+-- took over (the codex reckons its own ranks). Supabase flagged it Critical:
+-- a Postgres view runs as its OWNER, so it read straight past row level
+-- security, and once wines/scores were sealed (see policies.sql, "Three doors
+-- nobody guards") it would have been the door around that seal. Dropped
+-- rather than kept: nothing queried it.
+--   drop view if exists wine_rankings;
+-- If it is ever revived, it MUST enforce the caller's permissions, not the
+-- owner's: create it, then
+--   alter view wine_rankings set (security_invoker = on);
 
 -- Seed the Keiser (edit the email to yours) --------------------------
 insert into members (email, cult_name, short_name, role, active)

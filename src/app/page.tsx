@@ -31,7 +31,7 @@ export default function Gate() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/black-gold-full-logo.png"
-        alt="Le Council du Vin — in vino veritas"
+        alt="Le Council du Vin · in vino veritas"
         style={{ width: "100%", maxWidth: 340, height: "auto", margin: "0 auto 30px", display: "block" }}
       />
 

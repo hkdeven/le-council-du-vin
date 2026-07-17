@@ -208,11 +208,11 @@ export default function Initiation() {
         {placeError && (
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#c98" }}>
             <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 4 }} />
-            The lookup failed — {placeError}. Try again in a moment.
+            The lookup failed: {placeError}. Try again in a moment.
           </p>
         )}
         <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>
-          The stars that made you — your chart is drawn from these.
+          The stars that made you: your chart is drawn from these.
         </p>
 
         <label className="field">What draws you to the vine?</label>

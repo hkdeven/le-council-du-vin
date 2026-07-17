@@ -22,6 +22,7 @@ export interface CardMember {
   short_name?: string | null;
   avatar_url?: string | null;
   role?: string | null;
+  active?: boolean | null; // false = the seat sleeps: reads on, writes nothing
   title?: string | null; // optional honorific; shown in place of the moon phase
   date_of_birth?: string | null;
   time_of_birth?: string | null;
@@ -171,7 +172,16 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             {phase}<Tip text="Moon phase at birth" />
           </div>
         ) : null}
-        {member.role && <div style={{ marginTop: 4 }}><span className="tag">{member.role}</span></div>}
+        {member.role && (
+          <div style={{ marginTop: 4, display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
+            <span className="tag">{member.role}</span>
+            {member.active === false && (
+              <span className="tag" style={{ borderColor: "rgba(140,138,130,0.5)", color: "#8d8b85" }}>
+                <i className="ti ti-zzz" style={{ fontSize: 10, marginRight: 3 }} />sleeping
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -20px 26px" }} />
 
@@ -191,7 +201,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
                 <Row label="Value for coin"
                   tip="How much scoring their money buys. Take every bottle they have brought with a known price: the points those bottles earned, divided by the rand they cost, per hundred rand. Higher means they find wines the table loves without spending much."
                   value={`${dossier.coin.perHundred.toFixed(1)} pts per R100`}
-                  valueTip={`The table as a whole earns ${dossier.coin.table.toFixed(1)} points per hundred rand — ${dossier.coin.perHundred > dossier.coin.table ? "they hunt better value than most" : "the table hunts value better than they do"}.`} />
+                  valueTip={`The table as a whole earns ${dossier.coin.table.toFixed(1)} points per hundred rand: ${dossier.coin.perHundred > dossier.coin.table ? "they hunt better value than most" : "the table hunts value better than they do"}.`} />
               )}
               {dossier.purse && (
                 <Row label="The purse" tip="Their average spend on a bottle, against the table's." value={`R${Math.round(dossier.purse.mine)} a bottle`} valueTip={`The table pours R${Math.round(dossier.purse.table)} on average.`} />
@@ -260,10 +270,17 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
             {[0, 1, 2].map((i) => <span key={i} className="lcv-skeleton" style={{ width: 22, height: 31 }} />)}
           </div>
         ) : shownChalices > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+          <div
+            style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}
+            // A sleeping seat's chalices tarnish: every victory stands in the
+            // annals forever and the count is never reduced, but the gold dulls
+            // while the seat sleeps, and brightens the moment it wakes.
+            title={member.active === false ? "Tarnished while the seat sleeps; every victory still stands" : undefined}
+          >
             {Array.from({ length: shownChalices }).map((_, i) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src="/chalice.webp" alt="" width={22} height={31} style={{ display: "block" }} />
+              <img key={i} src="/chalice.webp" alt="" width={22} height={31}
+                style={{ display: "block", filter: member.active === false ? "grayscale(1) brightness(0.62)" : "none", transition: "filter 0.4s ease" }} />
             ))}
           </div>
         ) : (

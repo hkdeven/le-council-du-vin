@@ -20,7 +20,12 @@ export function useWineCount(g: Gathering | null) {
   const update = (n: number) => {
     const clamped = Math.max(1, Math.min(30, Math.round(n)));
     setCount(clamped);
-    if (g) updateGathering(g.id, { wine_count: clamped }).catch(() => {});
+    // Swallowing this left the count changed on screen and unchanged in the
+    // vault: put it back and say so.
+    if (g) updateGathering(g.id, { wine_count: clamped }).catch((e: Error) => {
+      setCount(g.wine_count || 1);
+      alert(`The count would not hold: ${e.message}`);
+    });
   };
 
   return [count, update] as const;

@@ -19,6 +19,7 @@ import type { CardMember } from "@/components/MemberCard";
 import MemberCard from "@/components/MemberCard";
 import Loading from "@/components/Loading";
 import { uploadAvatar } from "@/lib/photos";
+import { assertWrite } from "@/lib/writeLock";
 import { swr } from "@/lib/swr";
 import type { Role, Member, Gathering } from "@/lib/types";
 
@@ -120,7 +121,7 @@ const ALL_ROLES: Role[] = ["initiate", "member", "keiser"];
 // The full roster. Every soul sees the roll (avatars open their cards);
 // only the Keiser may expand a row to amend the account, or elevate.
 function RosterEditor() {
-  const { mode, role } = useAuth();
+  const { mode, role, sleeping } = useAuth();
   const isKeiser = role === "keiser";
   const [members, setMembers] = useState<Member[]>([]);
   const [rosterLoaded, setRosterLoaded] = useState(false);
@@ -160,6 +161,7 @@ function RosterEditor() {
   }, [mode]);
 
   const edit = async (id: string, patch: Partial<Member>) => {
+    try { assertWrite(); } catch (e) { alert((e as Error).message); return; }
     const before = members.find((m) => m.id === id);
     if (mode === "live" && supabase) {
       const { error } = await supabase.from("members").update(patch).eq("id", id);
@@ -175,6 +177,7 @@ function RosterEditor() {
   };
 
   const remove = async (m: Member) => {
+    try { assertWrite(); } catch (e) { alert((e as Error).message); return; }
     if (!window.confirm(`Cast ${m.cult_name} from the Council? This erases their account.`)) return;
     if (mode === "live" && supabase) {
       const { error } = await supabase.from("members").delete().eq("id", m.id);
@@ -217,7 +220,9 @@ function RosterEditor() {
         return (
           <div key={m.id} style={{ borderTop: "1px solid var(--line)", padding: "9px 0" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <MemberCard member={m} size={30} />
+              <span style={{ display: "flex", flex: "none", filter: m.active === false ? "grayscale(1) brightness(0.6)" : "none" }}>
+                <MemberCard member={m} size={30} />
+              </span>
               <button
                 onClick={() => isKeiser && setOpenId(open ? null : m.id)}
                 style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: isKeiser ? "pointer" : "default", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
@@ -226,7 +231,12 @@ function RosterEditor() {
                     inside the expanded row. minWidth:0 + ellipsis so a long
                     name truncates rather than squashing the portrait. */}
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: "var(--gold2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cult_name}</span>
+                  <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: m.active === false ? "#8d8b85" : "var(--gold2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cult_name}</span>
+                  {m.active === false && (
+                    <span className="eyebrow" style={{ display: "block", fontSize: 8.5, color: "var(--faint)", marginTop: 1 }}>
+                      <i className="ti ti-zzz" style={{ fontSize: 10, marginRight: 3 }} />sleeping
+                    </span>
+                  )}
                 </span>
                 {isKeiser && <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />}
               </button>
@@ -306,10 +316,28 @@ function RosterEditor() {
                   <label className="field" style={{ marginTop: 0 }}>Venue instructions</label>
                   <textarea value={m.venue_instructions || ""} onChange={(e) => edit(m.id, { venue_instructions: e.target.value || null })} placeholder="Gate codes, parking, the dog…" />
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontSize: 15, color: "var(--parch)" }}>
-                  <input type="checkbox" checked={m.active} onChange={(e) => edit(m.id, { active: e.target.checked })} style={{ width: "auto" }} />
-                  Active in the Council
-                </label>
+                {/* Sleep and waking: the whole of it. A sleeping member keeps
+                    every door their rank opens and writes nothing anywhere. */}
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                  <div className="eyebrow" style={{ fontSize: 10, marginBottom: 4 }}>{m.active === false ? "This seat sleeps" : "This seat is awake"}</div>
+                  <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>
+                    {m.active === false
+                      ? "They read every chamber their rank opens, but write nothing. Wake them and their hand is returned."
+                      : "Put a seat to sleep and they may still read all their rank allows, but may edit nothing, anywhere. Their record stands untouched."}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const sleep = m.active !== false;
+                      if (!window.confirm(sleep ? `Put ${m.cult_name} to sleep? They will read on, but write nothing.` : `Wake ${m.cult_name}? Their hand is returned to them.`)) return;
+                      edit(m.id, { active: !sleep });
+                    }}
+                    className="btn"
+                    style={{ width: "auto", padding: "8px 16px", borderColor: m.active === false ? "var(--line2)" : "rgba(140,138,130,0.45)", color: m.active === false ? "var(--gold2)" : "#8d8b85" }}
+                  >
+                    <i className={`ti ti-${m.active === false ? "sun" : "zzz"}`} style={{ fontSize: 14, marginRight: 6 }} />
+                    {m.active === false ? "Wake the seat" : "Put the seat to sleep"}
+                  </button>
+                </div>
                 <div style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 10 }}>
                   {m.role === "keiser" ? (
                     <p className="whisper" style={{ margin: 0, fontSize: 13 }}>
@@ -509,11 +537,13 @@ const deviceOf = (ua: string | null): string => {
 };
 
 function GateLedger() {
+  // Folded by default, like the Heralds: nothing is fetched until opened.
+  const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<LoginEvent[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!open || !supabase) return;
     supabase
       .from("login_events")
       .select("id,email,at,user_agent,ip,member:members(cult_name)")
@@ -523,14 +553,26 @@ function GateLedger() {
         if (error) setFailed(error.message);
         else setEvents((data as unknown as LoginEvent[]) || []);
       });
-  }, []);
+  }, [open]);
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="eyebrow" style={{ marginBottom: 4 }}>The gate ledger</div>
-      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
-        Every entry through the gate: who, when, and from what vessel. Your eyes alone, Keiser.
-      </p>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: 0 }}
+      >
+        <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "var(--gold)", flex: "none" }} />
+        <span style={{ flex: 1 }}>
+          <span className="eyebrow" style={{ display: "block", marginBottom: open ? 4 : 0 }}>The gate ledger</span>
+          {open && (
+            <span className="whisper" style={{ display: "block", fontSize: 13 }}>Every entry through the gate: who, when, and from what vessel. Your eyes alone, Keiser.</span>
+          )}
+        </span>
+      </button>
+      {open && (
+      <>
+      <div style={{ height: 10 }} />
       {failed ? (
         <p className="whisper" style={{ margin: 0, fontSize: 13, color: "#c98" }}>
           The ledger would not open: {failed}. (Has the login_events table been created?)
@@ -556,12 +598,14 @@ function GateLedger() {
           </div>
         ))
       )}
+      </>
+      )}
     </div>
   );
 }
 
 export default function Profile() {
-  const { mode, role, member, email, setRole, signOut } = useAuth();
+  const { mode, role, member, email, setRole, signOut, sleeping } = useAuth();
   const self = mode === "demo" ? seedMembers.find((m) => m.role === role) : member;
 
   const [name, setName] = useState("");
@@ -697,6 +741,10 @@ export default function Profile() {
 
   const save = async () => {
     if (saving) return;
+    // The seal throws; caught here it speaks through the toast the save bar
+    // already uses, instead of dying as an unhandled rejection behind a
+    // button that looks broken.
+    try { assertWrite(); } catch (e) { setToast((e as Error).message); return; }
     setSaving(true);
     let keptAvatar = avatar;
     if (mode === "live" && supabase && email) {
@@ -896,6 +944,8 @@ export default function Profile() {
         )}
       </div>
 
+      {sleeping && <AskToWake />}
+
       <YourSky
         self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
         email={email}
@@ -947,7 +997,7 @@ export default function Profile() {
             <button className="btn" style={{ width: "auto", padding: "9px 16px", flex: "none" }} onClick={discard} disabled={saving}>
               Discard
             </button>
-            <button className="btn gold" style={{ width: "auto", padding: "9px 20px", flex: "none" }} onClick={save} disabled={saving}>
+            <button className="btn gold" style={{ width: "auto", padding: "9px 20px", flex: "none" }} onClick={save} disabled={saving || sleeping}>
               {saving ? "Sealing…" : "Save changes"}
             </button>
           </div>
@@ -1018,6 +1068,44 @@ function FeatureWish() {
       </div>
       </>
       )}
+    </div>
+  );
+}
+
+// The one word left to a sleeping seat: a plea carried to the Keiser by hand.
+// It writes NOTHING to the Council's records (the seal holds); it only asks,
+// which is why the send-email route lets this one type through while asleep.
+function AskToWake() {
+  const [text, setText] = useState("");
+  const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
+  const ask = async () => {
+    if (state === "sending") return;
+    setState("sending");
+    const res = await sendEmail("wake", ["keiser"], { text: text.trim() });
+    if (res.ok) { setState("sent"); setText(""); }
+    else { setState("idle"); alert(`The word would not carry: ${res.error || res.skipped || "unknown"}`); }
+  };
+  return (
+    <div className="card" style={{ marginBottom: 16, borderColor: "rgba(140,138,130,0.45)" }}>
+      <div className="eyebrow" style={{ marginBottom: 4, fontSize: 12, color: "#8d8b85" }}>The one word left to you</div>
+      <p className="whisper" style={{ margin: "0 0 10px", fontSize: 13 }}>
+        A plea to wake is carried to the Keiser by hand. It writes nothing; it only asks.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => { setText(e.target.value); if (state === "sent") setState("idle"); }}
+        placeholder="A word with your asking, if you wish…"
+        maxLength={2000}
+        rows={2}
+        style={{ width: "100%", resize: "vertical" }}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+        <button className="btn" style={{ width: "auto", padding: "10px 22px" }} onClick={ask} disabled={state === "sending"}>
+          <i className="ti ti-bell" style={{ fontSize: 14, marginRight: 6 }} />
+          {state === "sending" ? "Carrying…" : "Ask to wake"}
+        </button>
+        {state === "sent" && <span className="scr" style={{ fontSize: 15 }}>The Keiser will hear of it.</span>}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the Prophecy, summoned</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:430px;margin:0 auto;padding:26px 16px 80px;}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:17px;text-align:center;margin:6px 0 0;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:6px 0 4px;line-height:1.55;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:10.5px;color:var(--gold2);margin:30px 0 8px;text-align:center;}
+  .card{background:linear-gradient(180deg,#100e0c,#0a0908);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  .gv{font-family:"Great Vibes",cursive;color:var(--gold2);}
+  .btn{width:100%;background:none;border:1px solid var(--line2);border-radius:10px;color:var(--gold2);font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .rule{border-top:1px solid var(--line);margin:14px 0}
+
+  /* the veil: the whole prophecy is hidden until summoned */
+  .veil{overflow:hidden;max-height:0;opacity:0;transition:max-height .75s cubic-bezier(0.4,0.1,0.2,1), opacity .5s ease .15s;}
+  .open .veil{max-height:520px;opacity:1;}
+  .unfurl{text-align:center;padding:18px 4px 6px;}
+
+  /* the emblem breathes above the words */
+  .emblem{width:74px;height:74px;margin:0 auto 10px;display:block;opacity:0.92;animation:breathe 4.6s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(203,189,147,0.22));}
+  @keyframes breathe{0%,100%{transform:scale(1);opacity:0.86;filter:drop-shadow(0 0 10px rgba(203,189,147,0.16))}50%{transform:scale(1.06);opacity:1;filter:drop-shadow(0 0 20px rgba(203,189,147,0.34))}}
+
+  .named{font-family:"Great Vibes",cursive;color:var(--gold2);font-size:34px;line-height:1.15;margin:2px 0 4px;}
+  .rise{animation:rise .8s ease both}
+  .rise2{animation:rise .8s ease .18s both}
+  .rise3{animation:rise .8s ease .36s both}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  .record{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:12px;padding:3px 11px;color:var(--gold2);font-family:"Cormorant Garamond",serif;font-style:italic;font-size:13px;margin-top:10px}
+  .refusal{border:1px solid rgba(122,48,56,0.5);border-radius:10px;padding:12px 14px;text-align:center;background:rgba(122,48,56,0.07)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The Prophecy, summoned</h1>
+  <p class="note">Never shown unbidden. It waits at the tail of the meeting card as one quiet line; tap it and the veil lifts, the emblem breathes, and the vine names its soul.</p>
+
+  <div class="plabel">I · At rest, on the meeting card</div>
+  <div class="card" id="p1">
+    <div class="eyebrow" style="margin-bottom:4px">Gathering XVII</div>
+    <div class="gv" style="font-size:26px;line-height:1.2">Cape Cabernet</div>
+    <p class="whisper" style="margin:2px 0 0">Saturday 8 August, 19:00 · at the Keiser's table</p>
+    <div class="rule"></div>
+    <button class="btn" onclick="document.getElementById('p1').classList.toggle('open')">
+      <i class="ti ti-crystal-ball"></i><span>Consult the Prophecy</span>
+    </button>
+    <div class="veil">
+      <div class="unfurl">
+        <img class="emblem" src="/site-mark.png" alt="">
+        <div class="eyebrow rise" style="font-size:10px">The vine has spoken</div>
+        <div class="named rise2">Seer Matthew</div>
+        <p class="rise2" style="margin:0;font-size:15px;color:var(--bright);line-height:1.5">shall be crowned this night.</p>
+        <div class="record rise3"><i class="ti ti-flame" style="font-size:12px"></i>right 3 nights of 4</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="plabel">II · When the vine holds its tongue</div>
+  <div class="card" id="p2">
+    <div class="eyebrow" style="margin-bottom:4px">Gathering XVII</div>
+    <div class="gv" style="font-size:26px;line-height:1.2">Cape Cabernet</div>
+    <div class="rule"></div>
+    <button class="btn" onclick="document.getElementById('p2').classList.toggle('open')">
+      <i class="ti ti-crystal-ball"></i><span>Consult the Prophecy</span>
+    </button>
+    <div class="veil">
+      <div style="padding-top:14px">
+        <div class="refusal">
+          <img class="emblem" src="/site-mark.png" alt="" style="width:52px;height:52px;opacity:0.4;animation:none;filter:grayscale(1)">
+          <p style="margin:0;font-size:15px;color:var(--bright);line-height:1.5">The vine holds its tongue.</p>
+          <p style="margin:4px 0 0;font-size:14px;color:var(--parch);line-height:1.5">2 of 6 offerings remain unsealed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="plabel">III · The record line, before the vine has ever been graded</div>
+  <div class="card" style="text-align:center">
+    <div class="named" style="font-size:30px">Seer Matthew</div>
+    <p style="margin:0;font-size:15px;color:var(--bright)">shall be crowned this night.</p>
+    <div class="record" style="margin-top:12px"><i class="ti ti-flame" style="font-size:12px"></i>the vine&rsquo;s first foretelling</div>
+    <p class="note" style="margin:12px 0 0">No night has yet been prophesied, so there is nothing yet to be right about. It reads so until the first night is graded, then becomes &ldquo;right 1 night of 1&rdquo;.</p>
+  </div>
+
+  <p class="note" style="margin-top:20px">The words never read the sealed bottles: the vine judges by record, by the room's grape leanings, and by its weakness for price. It speaks once per night, is stored, and is graded in the codex under prophecies fulfilled.</p>
+</div>
+</body>
+</html>

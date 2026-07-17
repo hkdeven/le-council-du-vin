@@ -4,6 +4,7 @@
 // the `annals` table. Demo: per-browser localStorage.
 
 import { supabase } from "./supabase";
+import { assertWrite } from "./writeLock";
 import { gatheringsLive } from "./gatherings";
 
 export interface AnnalRow {
@@ -147,6 +148,7 @@ export async function fetchAnnal(gatheringId: string): Promise<AnnalEntry | null
 
 // Commit (or, for the Keiser's later amendments, re-commit) a gathering.
 export async function commitAnnal(entry: AnnalEntry): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("annals").upsert(
       { gathering_id: entry.gatheringId, number: entry.number, theme: entry.theme, date: entry.date, rows: entry.rows, committed_at: entry.committed_at },
@@ -192,6 +194,7 @@ export async function fetchDqCounts(): Promise<Record<string, number>> {
 
 // Erase a committed record entirely (Keiser only; e.g. a botched manual entry).
 export async function deleteAnnal(gatheringId: string): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("annals").delete().eq("gathering_id", gatheringId);
     if (error) throw new Error(error.message);

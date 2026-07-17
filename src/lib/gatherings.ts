@@ -1,4 +1,5 @@
 import type { Gathering } from "./types";
+import { assertWrite } from "./writeLock";
 import { seedGatherings } from "./seed";
 import { supabase, isLive, enforceLogin } from "./supabase";
 
@@ -132,6 +133,7 @@ export function isRiteOpen(g: Gathering | null): boolean {
 
 // Insert. In live the DB assigns the uuid id, so we return the stored row.
 export async function createGathering(g: Gathering): Promise<Gathering> {
+  assertWrite();
   if (gatheringsLive()) {
     const { data, error } = await supabase!.from("gatherings").insert(toRow(g)).select().single();
     if (error) throw new Error(error.message);
@@ -142,6 +144,7 @@ export async function createGathering(g: Gathering): Promise<Gathering> {
 }
 
 export async function updateGathering(id: string, patch: Partial<Gathering>): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("gatherings").update(toRow(patch)).eq("id", id);
     if (error) throw new Error(error.message);
@@ -154,6 +157,7 @@ export async function updateGathering(id: string, patch: Partial<Gathering>): Pr
 // writing so two people RSVPing at once don't overwrite each other's entry.
 // Returns the new attendee list.
 export async function toggleAttendee(gatheringId: string, memberId: string): Promise<string[]> {
+  assertWrite();
   if (gatheringsLive()) {
     const { data } = await supabase!.from("gatherings").select("attendees").eq("id", gatheringId).maybeSingle();
     const current: string[] = (data?.attendees as string[]) || [];
@@ -174,6 +178,7 @@ export async function toggleAttendee(gatheringId: string, memberId: string): Pro
 }
 
 export async function deleteGathering(id: string): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const { error } = await supabase!.from("gatherings").delete().eq("id", id);
     if (error) throw new Error(error.message);

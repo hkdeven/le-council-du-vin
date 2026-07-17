@@ -127,6 +127,7 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
   onSetDate: (a: Application, dateStr: string) => void;
 }) {
   useBodyLock();
+  const { sleeping: sleepingHand } = useAuth();
   const [shown, setShown] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [auguryOnce, setAuguryOnce] = useState(false);
@@ -189,6 +190,7 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
       className={`btn${myVote === v ? " gold" : danger ? " danger" : ""}`}
       style={{ flex: 1 }}
       onClick={() => onCounsel(a, v)}
+      disabled={sleepingHand}
     >
       {label}
     </button>
@@ -242,8 +244,8 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
 
           {pending && isKeiser && (
             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-              <button className="btn gold" style={{ flex: 1 }} onClick={() => onDecree(a, "anointed")}>Anoint as initiate</button>
-              <button className="btn danger" style={{ flex: 1 }} onClick={() => onDecree(a, "cast_out")}>Cast out</button>
+              <button className="btn gold" style={{ flex: 1 }} onClick={() => onDecree(a, "anointed")} disabled={sleepingHand}>Anoint as initiate</button>
+              <button className="btn danger" style={{ flex: 1 }} onClick={() => onDecree(a, "cast_out")} disabled={sleepingHand}>Cast out</button>
             </div>
           )}
 
@@ -341,7 +343,7 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
 }
 
 export default function Tribunal() {
-  const { mode, role, member } = useAuth();
+  const { mode, role, member, sleeping } = useAuth();
   const isKeiser = role === "keiser";
   const [apps, setApps] = useState<Application[]>([]);
   const [dq, setDq] = useState<Record<string, number>>({});

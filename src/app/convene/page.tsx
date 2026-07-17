@@ -32,6 +32,7 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 // not even the Keiser — can see it until the cloths are lifted. Once sealed,
 // the wine's name is hidden from the screen too; the member can edit or erase.
 function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) {
+  const { sleeping: sealDisabled } = useAuth();
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [varietals, setVarietals] = useState<string[]>([]);
@@ -59,12 +60,18 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
       title,
       price: price !== "" && Number.isFinite(Number(price)) ? Number(price) : null,
       varietals: grapes,
-    }).catch((e) => alert(`Could not seal your offering: ${e.message}`));
-    setSealed(true);
-    setEditing(false);
+    })
+      // Only claim it is sealed once it truly is: the old optimistic flip
+      // announced "your wine is sealed" over the top of its own error.
+      .then(() => { setSealed(true); setEditing(false); })
+      .catch((e) => alert(`Could not seal your offering: ${e.message}`));
   };
   const erase = () => {
-    saveOffering(gatheringId, meId, null).catch(() => {});
+    saveOffering(gatheringId, meId, null).catch((e) => {
+      // It used to swallow this and clear the fields anyway, so a refused
+      // erase looked done while the wine still stood in the vault.
+      alert(`Could not erase your offering: ${(e as Error).message}`);
+    });
     setTitle("");
     setPrice("");
     setVarietals([]);
@@ -80,7 +87,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span className="whisper" style={{ fontSize: 14, flex: 1, minWidth: 180 }}>
               <i className="ti ti-lock" style={{ fontSize: 12, marginRight: 5 }} />
-              Your wine is sealed — known only to you, until the cloths are lifted.
+              Your wine is sealed: known only to you, until the cloths are lifted.
             </span>
             <button onClick={() => setEditing(true)} aria-label="Edit your offering" title="Edit"
               style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--gold2)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
@@ -105,7 +112,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
             <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", textAlign: "left", marginTop: 2 }}>
               <div className="eyebrow" style={{ marginBottom: 4 }}>Your offering · sealed from all eyes</div>
               <p className="whisper" style={{ margin: "0 0 10px", fontSize: 14 }}>
-                Log the wine you shall bring. Hidden from every other soul — even the Keiser — until the reveal.
+                Log the wine you shall bring. Hidden from every other soul, even the Keiser, until the reveal.
               </p>
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <input
@@ -127,7 +134,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
                 <div style={{ flex: 1 }}>
                   <GrapePicker value={varietals} onChange={setVarietals} listId={`offer-grapes-${gatheringId}`} />
                 </div>
-                <button className="btn gold" style={{ width: "auto", padding: "10px 16px" }} onClick={seal} disabled={!title.trim()}>
+                <button className="btn gold" style={{ width: "auto", padding: "10px 16px" }} onClick={seal} disabled={!title.trim() || sealDisabled}>
                   Seal it
                 </button>
               </div>
@@ -168,20 +175,24 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
       const annals = await fetchAnnals();
       setRecord(prophecyRecord(allMeetings, annals));
       if (!g.prophecy) {
-        if (attendees.length === 0) {
-          setRefusal("The vine holds its tongue — no souls have answered the call yet.");
+        // A sleeping soul cannot seal an offering, so counting them here would
+        // silence the vine forever: the night could never be prophesied.
+        const sleepingIds = new Set(members.filter((m) => m.active === false).map((m) => m.id));
+        const waking = attendees.filter((id) => !sleepingIds.has(id));
+        if (waking.length === 0) {
+          setRefusal("The vine holds its tongue: no waking souls have answered the call yet.");
           return;
         }
         const offerings = await fetchAllOfferings(g.id);
-        const missing = attendees.filter((id) => !offerings[id]?.title).length;
+        const missing = waking.filter((id) => !offerings[id]?.title).length;
         if (missing > 0) {
-          setRefusal(`The vine holds its tongue — ${missing} of ${attendees.length} offerings remain unsealed.`);
+          setRefusal(`The vine holds its tongue: ${missing} of ${waking.length} offerings remain unsealed.`);
           return;
         }
         const history = await fetchBallotHistory(annals.map((a) => a.gatheringId), members.map((m) => m.id));
-        const verdict = speakProphecy({ attendees, offerings, members, annals, ballots: history, nowMs: Date.now() });
+        const verdict = speakProphecy({ attendees: waking, offerings, members, annals, ballots: history, nowMs: Date.now() });
         if (!verdict) {
-          setRefusal("The vine holds its tongue — it has too little history to speak from.");
+          setRefusal("The vine holds its tongue: it has too little history to speak from.");
           return;
         }
         onSpoken({ prophecy: verdict });
@@ -208,7 +219,10 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
             <img src="/site-mark.png" alt="" style={{ width: 64, height: 64, margin: "16px auto 4px", display: "block", opacity: 0.45, filter: "grayscale(0.4)" }} />
             <div className="eyebrow" style={{ fontSize: 10, letterSpacing: "0.2em", marginTop: 4 }}>The vine holds its tongue</div>
             <p className="scr" style={{ fontStyle: "italic", fontSize: 16, color: "var(--parch)", margin: "8px 12px 4px", lineHeight: 1.5 }}>
-              {refusal.replace(/^The vine holds its tongue — /, "").replace(/^The vine faltered: /, "")}
+              {/* The heading above already says it: strip the prefix off the
+                  body so the refusal is not read twice. Both spellings are
+                  matched because the copy moved from a dash to a colon. */}
+              {refusal.replace(/^The vine holds its tongue\s*[—:]\s*/, "").replace(/^The vine faltered:\s*/, "")}
             </p>
           </>
         )}
@@ -221,10 +235,12 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
             <div className="eyebrow" style={{ fontSize: 10, letterSpacing: "0.2em", marginTop: 6 }}>The vine has spoken</div>
             <div className="scr" style={{ fontFamily: "'Great Vibes', cursive", color: "var(--gold2)", fontSize: 30, lineHeight: 1.2, margin: "8px 0 2px" }}>{g.prophecy.name}</div>
             <p className="scr" style={{ fontStyle: "italic", fontSize: 15, color: "var(--parch)", margin: "0 12px", lineHeight: 1.5 }}>
-              shall be crowned this night — so say the sealed verdicts of every moon before.
+              shall be crowned this night.
             </p>
             <p className="whisper" style={{ margin: "10px 0 6px", fontSize: 13 }}>
-              spoken once, before the cloths{record && record.total > 0 ? ` · right ${record.right} night${record.right === 1 ? "" : "s"} of ${record.total}` : ""} · graded at the reckoning
+              spoken once, before the cloths · {record && record.total > 0
+                ? `right ${record.right} night${record.right === 1 ? "" : "s"} of ${record.total}`
+                : "the vine's first foretelling"} · graded at the reckoning
             </p>
           </>
         )}
@@ -272,6 +288,7 @@ function MeetingBody({
   onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void; allMeetings?: Gathering[];
   onDelete?: () => void; count?: number; setCount?: (n: number) => void;
 }) {
+  const { sleeping } = useAuth();
   const [showGuests, setShowGuests] = useState(false);
   const [editing, setEditing] = useState(false);
   const attendees = m.attendees || [];
@@ -422,8 +439,9 @@ function MeetingBody({
           <button
             className={`btn${attendees.includes(meId) ? " gold" : ""}`}
             onClick={() => toggleRsvp(meId)}
+            disabled={sleeping && !attendees.includes(meId)}
           >
-            {attendees.includes(meId) ? "You are attending — withdraw" : "I shall attend"}
+            {attendees.includes(meId) ? "You are attending · withdraw" : "I shall attend"}
           </button>
         )}
         <div style={{ display: "flex", gap: 8, margin: "12px 0 4px", flexWrap: "wrap", alignItems: "center" }}>
@@ -442,8 +460,14 @@ function MeetingBody({
             {showGuests && (
               <div style={{ marginTop: 8 }}>
                 {rosterOrder(members).map((mem) => (
-                  <div key={mem.id} className="rk" style={{ padding: "8px 0" }}>
+                  <div key={mem.id} className="rk" style={{ padding: "8px 0", opacity: mem.active === false ? 0.45 : 1 }}>
                     <button onClick={() => toggleRsvp(mem.id)} aria-label="Toggle attendance"
+                      disabled={mem.active === false && !attendees.includes(mem.id)}
+                      title={mem.active === false
+                        ? (attendees.includes(mem.id)
+                            ? "Their seat was put to sleep after they answered; withdraw them"
+                            : "Their seat sleeps; a sleeping soul is never summoned")
+                        : undefined}
                       style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: attendees.includes(mem.id) ? "var(--gold2)" : "var(--faint)", fontSize: 18, display: "flex" }}>
                       <i className={attendees.includes(mem.id) ? "ti ti-square-check" : "ti ti-square"} />
                     </button>
@@ -513,7 +537,7 @@ function FutureCard({ m, isKeiser, meId, members, onUpdate, onAttendees, onDelet
 }
 
 export default function Convene() {
-  const { mode, role, member } = useAuth();
+  const { mode, role, member, sleeping } = useAuth();
   const isKeiser = role === "keiser";
   // Live: act as the real signed-in member. Demo: the role-mapped stand-in.
   const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;

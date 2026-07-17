@@ -36,7 +36,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { mode, loading, signedIn, hasAccess, role, member, email, avatar, signOut } = useAuth();
+  const { mode, loading, signedIn, hasAccess, role, member, email, avatar, sleeping, signOut } = useAuth();
 
   const bare = PUBLIC.includes(pathname);
 
@@ -213,6 +213,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main>
         <div style={{ maxWidth: 820, margin: "0 auto", padding: 22, minHeight: 440 }}>
+        {sleeping && (
+          <div style={{ border: "1px solid rgba(140,138,130,0.45)", background: "linear-gradient(180deg, rgba(60,58,54,0.28), rgba(20,19,18,0.5))", borderRadius: 10, padding: "12px 14px", marginBottom: 18, textAlign: "center" }}>
+            <div className="eyebrow" style={{ fontSize: 10, color: "#8d8b85", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+              <i className="ti ti-zzz" style={{ fontSize: 13 }} />Your seat sleeps
+            </div>
+            <p className="whisper" style={{ margin: "5px 0 0", fontSize: 13.5 }}>
+              The Council remembers you. Every chamber your rank opens stays open to your eyes, but a sleeping hand writes nothing. Your record stands exactly as you left it, and the Keiser may wake you at a word.
+            </p>
+          </div>
+        )}
         {allowed ? (
           children
         ) : (

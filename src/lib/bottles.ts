@@ -5,6 +5,7 @@
 // (per-browser, so inherently private).
 
 import { supabase } from "./supabase";
+import { assertWrite } from "./writeLock";
 import { gatheringsLive } from "./gatherings";
 
 export interface Offering {
@@ -47,6 +48,7 @@ export async function fetchOffering(gatheringId: string, memberId: string): Prom
 }
 
 export async function saveOffering(gatheringId: string, memberId: string, offering: Offering | null): Promise<void> {
+  assertWrite();
   const t = offering?.title.trim() || "";
   if (gatheringsLive()) {
     if (t) {

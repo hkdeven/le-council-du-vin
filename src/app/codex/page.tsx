@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toRoman } from "@/lib/util";
-import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, championsOf, victoriesFrom } from "@/lib/annals";
+import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, type AnnalRow, championsOf, victoriesFrom } from "@/lib/annals";
 import { validateMeetingDraft, reckonRows, type DraftRowInput } from "@/lib/meeting-entry";
 import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
@@ -10,6 +10,7 @@ import { prophecyRecord } from "@/lib/prophecy";
 import { loadMembers } from "@/lib/members";
 import { uploadRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
+import { sendEmail } from "@/lib/sendEmail";
 import { useAuth } from "@/components/AuthProvider";
 import Avatar from "@/components/Avatar";
 import Loading from "@/components/Loading";
@@ -245,6 +246,38 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
+  const { email: myEmail, mode: authMode } = useAuth();
+  // "Email this to me" for a night long past: the Reckoning's own envelope,
+  // reachable from the codex once the reveal has moved on to the next moon.
+  const [mailState, setMailState] = useState<"idle" | "sending" | "sent">("idle");
+  const mailNight = async () => {
+    if (mailState === "sending") return;
+    if (authMode !== "live" || !myEmail) { alert("The demo has no post office: sign in on the live Council and the record will fly."); return; }
+    setMailState("sending");
+    const champs = championsOf(a);
+    const nameOf = (r: AnnalRow) => r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded");
+    const res = await sendEmail("reckoning", [myEmail], {
+      numberRoman: toRoman(a.number || 0),
+      theme: a.theme || "",
+      dateLabel: a.date ? fmtDate(a.date) : "",
+      crowned: champs.map((c) => ({ title: nameOf(c), owner: c.owner, score: c.score })),
+      ranked: [
+        ...a.rows.filter((r) => !r.dq && !champs.includes(r)).sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99))
+          .map((r) => ({ rank: toRoman(r.rank || 0), title: nameOf(r), owner: r.owner, score: r.votes > 0 ? r.score : null, dq: false })),
+        ...a.rows.filter((r) => r.dq).map((r) => ({ rank: "✕", title: nameOf(r), owner: r.owner, score: null, dq: true })),
+      ],
+      split: split ? `${a.rows.find((r) => r.cloth === split.cloth)?.title || "A bottle"} divided the table, ${split.min} to ${split.max}` : undefined,
+      value: (() => {
+        // The ledger, reckoned the same way the reveal reckons it on the night.
+        const priced = a.rows.filter((r) => !r.dq && r.votes > 0 && r.price);
+        if (!priced.length) return undefined;
+        const best = [...priced].sort((x, y) => y.score / y.price! - x.score / x.price!)[0];
+        return `Best value of the night: ${nameOf(best)}, borne by ${best.owner || "an unclaimed hand"}, at R${best.price} · ${(best.score / best.price! * 100).toFixed(1)} points per hundred rand.`;
+      })(),
+    });
+    if (res.ok) setMailState("sent");
+    else { setMailState("idle"); alert(`The record would not send: ${res.error || res.skipped || "unknown"}`); }
+  };
   // Which bottle's per-member scores are unfolded (keyed by row index).
   const [openScores, setOpenScores] = useState<number | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -258,7 +291,11 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
       .sort((x, y) => y.score - x.score || x.member.cult_name.localeCompare(y.member.cult_name));
   };
   // One bottle per soul per night: no claiming if a wine is already yours here.
-  const canClaim = !!myName && !a.rows.some((r) => r.owner === myName);
+  const { sleeping } = useAuth();
+  // Every write below is sealed three times over (the client Proxy, the lib
+  // asserts, and the vault's RLS); this only keeps the instrument from
+  // OFFERING what a sleeping hand cannot do.
+  const canClaim = !!myName && !sleeping && !a.rows.some((r) => r.owner === myName);
   const photos = g?.reveal_photos || [];
   const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -370,6 +407,13 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
             );
           })()}
 
+          <div style={{ marginTop: 12 }}>
+            <button className="btn" style={{ width: "auto", padding: "8px 16px" }} onClick={mailNight} disabled={mailState === "sending"}>
+              <i className="ti ti-mail" style={{ fontSize: 13, marginRight: 6 }} />
+              {mailState === "sent" ? "It flies to your inbox" : mailState === "sending" ? "Sending…" : "Email this to me"}
+            </button>
+          </div>
+
           {g && (photos.length > 0 || !!myName) && (
             <div style={{ marginTop: 12 }}>
               <div className="eyebrow" style={{ fontSize: 11, marginBottom: 6 }}>Look upon the wine</div>
@@ -380,7 +424,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
                     style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
                 ))}
                 {!!myName && (
-                  <button onClick={() => photoRef.current?.click()} disabled={uploading} aria-label="Add a photo of this night"
+                  <button onClick={() => photoRef.current?.click()} disabled={uploading || sleeping} aria-label="Add a photo of this night"
                     style={{ width: 64, height: 64, background: "none", border: "1px dashed var(--line2)", borderRadius: 8, color: "var(--gold2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <i className={`ti ti-${uploading ? "loader-2" : "camera-plus"}`} style={{ fontSize: 18 }} />
                   </button>
@@ -403,7 +447,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
 }
 
 export default function Codex() {
-  const { role, mode, member } = useAuth();
+  const { role, mode, member, sleeping } = useAuth();
   const isKeiser = role === "keiser";
   // Who is looking: claims and photos are open to every signed-in soul.
   const myName = mode === "live"
@@ -488,7 +532,7 @@ export default function Codex() {
   // gathering + annal in step.
   const saveDraft = async (d: Draft) => {
     const faults = validateMeetingDraft(d);
-    if (faults.length) throw new Error(`the record refuses it —\n• ${faults.join("\n• ")}`);
+    if (faults.length) throw new Error(`the record refuses it:\n• ${faults.join("\n• ")}`);
     const rows = reckonRows(d.rows);
     const gpatch: Partial<Gathering> = {
       number: d.number, theme_title: d.theme, gather_date: d.date, status: "revealed",

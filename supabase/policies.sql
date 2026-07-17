@@ -341,3 +341,151 @@ create policy "avatars update" on storage.objects
 drop policy if exists "avatars read" on storage.objects;
 create policy "avatars read" on storage.objects
   for select using (bucket_id = 'avatars');
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- THE SLEEPING SEAL (2026-07-16). A member whose row reads active = false is
+-- SLEEPING: they keep every reading right their rank grants, but write nothing.
+-- The browser-side lock (src/lib/writeLock.ts) is a courtesy; THIS is the
+-- enforcement, because anyone with devtools can call Supabase directly.
+--
+-- RESTRICTIVE is the load-bearing word. Postgres ORs permissive policies
+-- together, so a new permissive policy can never take a right away: only a
+-- restrictive policy, ANDed with everything else, can. Each one below reads
+-- "and also, the caller must be awake".
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Is the caller awake? SECURITY DEFINER so it can read members without
+-- tripping members' own RLS (the same reason is_keiser() is defined this way).
+-- Anyone with no member row at all (a petitioner at the gate) is NOT sleeping:
+-- the seal binds members of the Council, not strangers.
+create or replace function is_awake() returns boolean
+  language sql security definer stable
+  set search_path = public
+as $$
+  select not exists (
+    select 1 from members
+    where email = (auth.jwt() ->> 'email') and active = false
+  );
+$$;
+revoke all on function is_awake() from public;
+grant execute on function is_awake() to authenticated, anon;
+
+-- Every table that holds a record of the Council.
+-- All three verbs: an UPDATE-only seal left a sleeping Keiser able to anoint
+-- (upsert's insert branch) and to cast members out at the database.
+drop policy if exists "members sleeping seal" on members;
+create policy "members sleeping seal" on members as restrictive
+  for update using (is_awake());
+drop policy if exists "members sleeping seal insert" on members;
+create policy "members sleeping seal insert" on members as restrictive
+  for insert with check (is_awake());
+drop policy if exists "members sleeping seal delete" on members;
+create policy "members sleeping seal delete" on members as restrictive
+  for delete using (is_awake());
+
+drop policy if exists "applications sleeping seal insert" on applications;
+create policy "applications sleeping seal insert" on applications as restrictive
+  for insert with check (is_awake());
+drop policy if exists "applications sleeping seal update" on applications;
+create policy "applications sleeping seal update" on applications as restrictive
+  for update using (is_awake());
+drop policy if exists "applications sleeping seal delete" on applications;
+create policy "applications sleeping seal delete" on applications as restrictive
+  for delete using (is_awake());
+
+drop policy if exists "gatherings sleeping seal insert" on gatherings;
+create policy "gatherings sleeping seal insert" on gatherings as restrictive
+  for insert with check (is_awake());
+drop policy if exists "gatherings sleeping seal update" on gatherings;
+create policy "gatherings sleeping seal update" on gatherings as restrictive
+  for update using (is_awake());
+drop policy if exists "gatherings sleeping seal delete" on gatherings;
+create policy "gatherings sleeping seal delete" on gatherings as restrictive
+  for delete using (is_awake());
+
+drop policy if exists "themes sleeping seal insert" on themes;
+create policy "themes sleeping seal insert" on themes as restrictive
+  for insert with check (is_awake());
+drop policy if exists "themes sleeping seal update" on themes;
+create policy "themes sleeping seal update" on themes as restrictive
+  for update using (is_awake());
+drop policy if exists "themes sleeping seal delete" on themes;
+create policy "themes sleeping seal delete" on themes as restrictive
+  for delete using (is_awake());
+
+drop policy if exists "favours sleeping seal insert" on theme_favours;
+create policy "favours sleeping seal insert" on theme_favours as restrictive
+  for insert with check (is_awake());
+drop policy if exists "favours sleeping seal delete" on theme_favours;
+create policy "favours sleeping seal delete" on theme_favours as restrictive
+  for delete using (is_awake());
+
+drop policy if exists "polls sleeping seal insert" on polls;
+create policy "polls sleeping seal insert" on polls as restrictive
+  for insert with check (is_awake());
+drop policy if exists "polls sleeping seal update" on polls;
+create policy "polls sleeping seal update" on polls as restrictive
+  for update using (is_awake());
+
+drop policy if exists "ballots sleeping seal insert" on ballots;
+create policy "ballots sleeping seal insert" on ballots as restrictive
+  for insert with check (is_awake());
+drop policy if exists "ballots sleeping seal update" on ballots;
+create policy "ballots sleeping seal update" on ballots as restrictive
+  for update using (is_awake());
+
+drop policy if exists "offerings sleeping seal insert" on offerings;
+create policy "offerings sleeping seal insert" on offerings as restrictive
+  for insert with check (is_awake());
+drop policy if exists "offerings sleeping seal update" on offerings;
+create policy "offerings sleeping seal update" on offerings as restrictive
+  for update using (is_awake());
+drop policy if exists "offerings sleeping seal delete" on offerings;
+create policy "offerings sleeping seal delete" on offerings as restrictive
+  for delete using (is_awake());
+
+drop policy if exists "annals sleeping seal insert" on annals;
+create policy "annals sleeping seal insert" on annals as restrictive
+  for insert with check (is_awake());
+drop policy if exists "annals sleeping seal update" on annals;
+create policy "annals sleeping seal update" on annals as restrictive
+  for update using (is_awake());
+drop policy if exists "annals sleeping seal delete" on annals;
+create policy "annals sleeping seal delete" on annals as restrictive
+  for delete using (is_awake());
+
+-- Storage: the records buckets are sealed. `charts` is NOT: a chart PNG
+-- rendered for a member's own Heavens email is a self-serving artifact, not a
+-- record of the Council, and a sleeping soul may still read their own sky.
+drop policy if exists "storage sleeping seal insert" on storage.objects;
+create policy "storage sleeping seal insert" on storage.objects as restrictive
+  for insert with check (bucket_id = 'charts' or is_awake());
+drop policy if exists "storage sleeping seal update" on storage.objects;
+create policy "storage sleeping seal update" on storage.objects as restrictive
+  for update using (bucket_id = 'charts' or is_awake());
+drop policy if exists "storage sleeping seal delete" on storage.objects;
+create policy "storage sleeping seal delete" on storage.objects as restrictive
+  for delete using (bucket_id = 'charts' or is_awake());
+
+-- The counsel RPC is SECURITY DEFINER, so it runs past RLS: seal it by hand.
+-- (Its existing guard already requires role in ('member','keiser') AND active,
+-- so a sleeping soul is refused there too; this note records that it was
+-- checked, not forgotten.)
+
+-- ── Three doors nobody guards (found 2026-07-16 by the sleeping-seal audit) ──
+-- wines, bottles and scores are legacy tables from the first schema: no app
+-- code touches them (grep for from("wines") and kin returns nothing), and
+-- unlike every other table they were never given row level security at all,
+-- so ANY holder of the public anon key could read or write them, sleeping or
+-- not, member or stranger. Enabling RLS with no policies denies everyone
+-- except service-role scripts and the SQL editor. If they are ever revived,
+-- they need real policies AND a sleeping seal like their neighbours above.
+alter table if exists wines enable row level security;
+alter table if exists bottles enable row level security;
+alter table if exists scores enable row level security;
+
+-- A fourth door, same family (2026-07-17): the wine_rankings VIEW read over
+-- wines/scores. Views run as their owner, so it read past the RLS enabled
+-- above: a way around the seal. No app code ever queried it. Dropped; see
+-- schema.sql for how to revive it safely (security_invoker).
+drop view if exists wine_rankings;

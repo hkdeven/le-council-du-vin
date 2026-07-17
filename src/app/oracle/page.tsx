@@ -36,6 +36,7 @@ function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
   poll: Poll; meId: string | null; members: Member[];
   onUpdate: (patch: Partial<Poll>) => void; onVoted: (options: Poll["options"]) => void; onArchive: () => void;
 }) {
+  const { sleeping } = useAuth();
   const [newDate, setNewDate] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const options = [...poll.options].sort((a, b) => a.date.localeCompare(b.date));
@@ -74,7 +75,7 @@ function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
         </button>
       </div>
 
-      {options.length === 0 && <p className="whisper" style={{ margin: "0 0 8px", fontSize: 14 }}>No dates yet — add the first below.</p>}
+      {options.length === 0 && <p className="whisper" style={{ margin: "0 0 8px", fontSize: 14 }}>No dates yet: add the first below.</p>}
       {options.map((o) => {
         const mine = meId ? o.voters.includes(meId) : false;
         const leading = o.voters.length === lead && lead > 0;
@@ -82,7 +83,7 @@ function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
         return (
           <div key={o.id}>
             <div className="rk" style={{ borderBottom: open ? "none" : undefined }}>
-              <button onClick={() => vote(o.id)} disabled={!meId} aria-label={mine ? "Withdraw your vote" : "Vote for this date"}
+              <button onClick={() => vote(o.id)} disabled={!meId || sleeping} aria-label={mine ? "Withdraw your vote" : "Vote for this date"}
                 style={{ width: "auto", background: "none", border: "none", cursor: meId ? "pointer" : "default", color: mine ? "var(--gold2)" : "var(--faint)", fontSize: 20, display: "flex" }}>
                 <i className={mine ? "ti ti-square-check" : "ti ti-square"} />
               </button>
@@ -118,14 +119,14 @@ function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()} style={{ flex: 1, cursor: "pointer" }} />
-        <button className="btn" style={{ width: "auto", padding: "0 16px" }} onClick={addDate} disabled={!newDate}>Add date</button>
+        <button className="btn" style={{ width: "auto", padding: "0 16px" }} onClick={addDate} disabled={!newDate || sleeping}>Add date</button>
       </div>
     </div>
   );
 }
 
 export default function Oracle() {
-  const { mode, role, member } = useAuth();
+  const { mode, role, member, sleeping } = useAuth();
   const isKeiser = role === "keiser";
   const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
 
@@ -191,26 +192,31 @@ export default function Oracle() {
     const t = themes.find((x) => x.id === id);
     const on = !t?.favouredByMe;
     setThemes((ts) => ts.map((x) => (x.id === id ? { ...x, favouredByMe: on, favours: Math.max(0, x.favours + (on ? 1 : -1)) } : x)).sort((a, b) => b.favours - a.favours));
-    favourTheme(id, meId, on).catch(() => reloadThemes());
+    // A refused favour must say so, not just silently snap back on the reload.
+    favourTheme(id, meId, on).catch((e) => { reloadThemes(); alert(`The favour would not hold: ${(e as Error).message}`); });
   };
   const propose = async () => {
     const title = proposal.trim();
     if (!title) return;
-    setProposal(""); setProposalDesc("");
     try {
       await proposeTheme(title, proposalDesc.trim() || null);
+      // Clear ONLY once it has landed: emptying the box first threw away what
+      // the member wrote whenever the pool refused it.
+      setProposal(""); setProposalDesc("");
       reloadThemes();
     } catch (e) {
       alert(`Could not add the theme: ${(e as Error).message}`);
     }
   };
+  // Both used to swallow the refusal and just reload, so a removed theme
+  // reappeared with no word said. Reload AND speak.
   const remove = (id: string) => {
     setThemes((ts) => ts.filter((t) => t.id !== id));
-    removeTheme(id).catch(() => reloadThemes());
+    removeTheme(id).catch((e: Error) => { reloadThemes(); alert(`The theme would not be struck: ${e.message}`); });
   };
   const edit = (id: string, patch: { title?: string; description?: string | null }) => {
     setThemes((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    editTheme(id, patch).catch(() => reloadThemes());
+    editTheme(id, patch).catch((e: Error) => { reloadThemes(); alert(`The amendment would not hold: ${e.message}`); });
   };
 
   // Co-hosts share hosting credit, so the wheel reads from the gatherings too.
@@ -251,7 +257,7 @@ export default function Oracle() {
     <section>
       <h1 className="disp" style={{ fontSize: 18, fontWeight: 500 }}>The oracle</h1>
       <p style={{ color: "var(--dim)", fontSize: 14, marginTop: 2, marginBottom: 18 }}>
-        What the moons ahead will bring — dates, themes, and the turning of the host.
+        What the moons ahead will bring: dates, themes, and the turning of the host.
       </p>
 
       {!loaded ? (
@@ -322,7 +328,7 @@ export default function Oracle() {
             <div style={{ borderTop: "1px solid var(--gold)", margin: "16px -16px" }} />
           </>
         )}
-        <div className="eyebrow" style={{ marginBottom: 10 }}>Theme pool — cast your favour</div>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>Theme pool · cast your favour</div>
         {themes.map((t, i) => (
           <div key={t.id} className="rk" style={{ alignItems: editingTheme === t.id ? "flex-start" : "center" }}>
             <i className={`ti ${THEME_ICONS[i % THEME_ICONS.length]}`} style={{ color: "var(--gold2)" }} aria-hidden="true" />
@@ -338,7 +344,7 @@ export default function Oracle() {
                 {t.description && <div className="whisper" style={{ fontSize: 13 }}>{t.description}</div>}
               </div>
             )}
-            <button onClick={() => favour(t.id)} aria-label="Cast favour"
+            <button onClick={() => favour(t.id)} aria-label="Cast favour" disabled={sleeping}
               style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: t.favouredByMe ? "var(--gold2)" : "var(--faint)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, display: "flex", alignItems: "center", gap: 5 }}>
               <i className="ti ti-flame" />{t.favours} favours
             </button>
@@ -359,7 +365,7 @@ export default function Oracle() {
         <div style={{ marginTop: 14 }}>
           <input id="theme-proposal" value={proposal} onChange={(e) => setProposal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && propose()} placeholder="Propose a new theme…" style={{ width: "100%" }} />
           <input value={proposalDesc} onChange={(e) => setProposalDesc(e.target.value)} onKeyDown={(e) => e.key === "Enter" && propose()} placeholder="A supporting line (optional)…" style={{ width: "100%", marginTop: 8 }} />
-          <button className="btn" style={{ marginTop: 8 }} onClick={propose} disabled={!proposal.trim()}>Add to the pool</button>
+          <button className="btn" style={{ marginTop: 8 }} onClick={propose} disabled={!proposal.trim() || sleeping}>Add to the pool</button>
         </div>
       </div>
 

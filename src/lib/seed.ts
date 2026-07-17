@@ -7,7 +7,7 @@ export const seedMembers: Member[] = [
   { id: "m-larissa", email: "larissa@nightvine.com", cult_name: "Priestess Larissa", short_name: "LA", role: "member", last_hosted: "2026-01-31", active: true },
   { id: "m-dominik", email: "dominik@nightvine.com", cult_name: "Magus Dominik", short_name: "DK", role: "member", last_hosted: "2026-02-28", active: true },
   { id: "m-james", email: "james@nightvine.com", cult_name: "Warden James", short_name: "JM", role: "member", last_hosted: "2026-03-28", active: true },
-  { id: "m-martin", email: "martin@nightvine.com", cult_name: "Elder Martin", short_name: "MN", role: "member", last_hosted: "2026-04-25", active: true },
+  { id: "m-martin", email: "martin@nightvine.com", cult_name: "Elder Martin", short_name: "MN", role: "member", last_hosted: "2026-04-25", active: false },
   { id: "m-wernardt", email: "wernardt@nightvine.com", cult_name: "Adept Wernardt", short_name: "WT", role: "member", last_hosted: "2026-06-27", active: true },
   { id: "m-scott", email: "scott@nightvine.com", cult_name: "Scribe Scott", short_name: "SC", role: "member", last_hosted: "2026-07-04", active: true },
   { id: "m-matthew", email: "matthew@nightvine.com", cult_name: "Seer Matthew", short_name: "MW", role: "member", last_hosted: "2026-07-25", venue_instructions: "Estate gate on Rosmead — code 4471. Follow the lanterns to the cellar.", active: true },

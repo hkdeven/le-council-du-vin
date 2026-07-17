@@ -10,6 +10,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase, isLive, enforceLogin } from "@/lib/supabase";
 import type { Member, Role } from "@/lib/types";
+import { setWriteLock } from "@/lib/writeLock";
 
 // The login wall is only active when Supabase is connected AND enforcement is on.
 // Otherwise the app runs open (demo behaviour) so it stays navigable.
@@ -32,6 +33,9 @@ interface AuthValue {
   hasAccess: boolean;
   role: Role;
   member: Member | null;
+  // A sleeping (deactivated) member keeps their rank's reading rights but may
+  // write nothing; the write lock in src/lib/writeLock.ts is armed with this.
+  sleeping: boolean;
   email: string | null;
   avatar: string | null;
   authError: string | null;
@@ -58,6 +62,7 @@ const AuthContext = createContext<AuthValue>({
   hasAccess: true,
   role: "keiser",
   member: null,
+  sleeping: false,
   email: null,
   avatar: null,
   authError: null,
@@ -75,6 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [demoRole, setDemoRole] = useState<Role>("keiser");
   const [session, setSession] = useState<Session | null>(null);
   const [member, setMember] = useState<Member | null>(null);
+  // Has the register been consulted for real, or are we still holding the
+  // cached row? The cache paints instantly (and must), but a member sleeping
+  // since it was written would look awake for the length of the refetch, and
+  // the write lock is armed off exactly this. So: the BANNER rides the
+  // confirmed row (no flash for the awake), the LOCK closes pessimistically
+  // until the register answers.
+  const [resolved, setResolved] = useState(false);
   const [loading, setLoading] = useState(gated);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -124,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setMember(null);
         try { localStorage.removeItem(CACHE_KEY); } catch {}
       }
-      if (active) setLoading(false);
+      if (active) { setResolved(true); setLoading(false); }
     };
     // The gate ledger (ticket #12): a real sign-in is reported once, so the
     // Keiser can see who entered, when, and from what vessel. Throttled per
@@ -256,6 +268,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : "no-membership"
     : "member";
 
+  const sleeping = gated && member?.active === false;
+  // `gated &&` is load-bearing on both: the resolve effect returns early in
+  // demo mode, so `resolved` never flips there and demo would seal forever.
+  const sealed = gated && (!resolved || sleeping);
+  useEffect(() => { setWriteLock(sealed); }, [sealed]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -266,6 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasAccess,
         role,
         member,
+        sleeping,
         email: session?.user?.email ?? null,
         avatar,
         authError,

@@ -12,7 +12,7 @@ import { useRiteOpen } from "@/lib/useRiteOpen";
 import type { Gathering } from "@/lib/types";
 
 export default function Rite() {
-  const { mode, role, member } = useAuth();
+  const { mode, role, member, sleeping } = useAuth();
   const isKeiser = role === "keiser";
   const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
 
@@ -84,7 +84,10 @@ export default function Rite() {
   const setScore = (wine: number, val: number) => {
     setScores((s) => {
       const next = { ...s, [wine]: val };
-      if (meId) saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine, notes: notesByWine }).catch(() => {});
+      // A sleeping hand judges nothing: the draft save was swallowed silently
+      // (.catch(() => {})), so a sleeping member could score a whole night and
+      // only learn at the seal that none of it was ever written.
+      if (meId && !sleeping) saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine, notes: notesByWine }).catch(() => {});
       return next;
     });
     setSealed(false);
@@ -236,9 +239,10 @@ export default function Rite() {
           <label className="field" style={{ fontSize: 14, color: "#fff" }}>Whispered notes</label>
           <textarea
             value={notes}
+            disabled={sleeping}
             onChange={(e) => setNotesByWine((m) => ({ ...m, [current]: e.target.value }))}
-            onBlur={() => { if (meId) saveBallot(gid, meId, { scores, sealed, aromas: aromasByWine, notes: notesByWine }).catch(() => {}); }}
-            placeholder="What the wine confessed to you…"
+            onBlur={() => { if (meId && !sleeping) saveBallot(gid, meId, { scores, sealed, aromas: aromasByWine, notes: notesByWine }).catch(() => {}); }}
+            placeholder={sleeping ? "A sleeping hand writes no notes." : "What the wine confessed to you…"}
           />
         </div>
       </div>
@@ -256,7 +260,7 @@ export default function Rite() {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 4 }}>Your ballot</div>
         <p className="whisper" style={{ margin: "0 0 12px", fontSize: 14 }}>
-          Tap any wine to revise it — later pours may unseat your earlier favourites.
+          Tap any wine to revise it: later pours may unseat your earlier favourites.
         </p>
         {wines.map((w) => {
           const s = scores[w] ?? 0;
@@ -289,7 +293,7 @@ export default function Rite() {
       <button
         className="btn gold"
         style={{ marginTop: 14 }}
-        disabled={judged < total || sealed}
+        disabled={judged < total || sealed || sleeping}
         onClick={sealReckoning}
       >
         {sealed ? "Sealed" : judged < total ? `Seal the reckoning · ${judged}/${total} judged` : "Seal the reckoning"}

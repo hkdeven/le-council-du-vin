@@ -3,6 +3,7 @@
 // votes are shared and persist. Demo: localStorage.
 
 import type { Poll, DateOption } from "./types";
+import { assertWrite } from "./writeLock";
 import { supabase } from "./supabase";
 import { gatheringsLive } from "./gatherings";
 
@@ -29,6 +30,7 @@ export async function fetchPolls(): Promise<Poll[]> {
 }
 
 export async function createPoll(title: string): Promise<Poll> {
+  assertWrite();
   if (gatheringsLive()) {
     const { data, error } = await supabase!.from("polls").insert({ title, status: "open", options: [] }).select().single();
     if (error) throw new Error(error.message);
@@ -43,6 +45,7 @@ export async function createPoll(title: string): Promise<Poll> {
 // before writing so simultaneous voters don't overwrite each other. Returns the
 // new options array.
 export async function toggleVote(pollId: string, optionId: string, memberId: string): Promise<DateOption[]> {
+  assertWrite();
   const flip = (options: DateOption[]) =>
     options.map((o) =>
       o.id === optionId
@@ -64,6 +67,7 @@ export async function toggleVote(pollId: string, optionId: string, memberId: str
 }
 
 export async function updatePoll(id: string, patch: Partial<Poll>): Promise<void> {
+  assertWrite();
   if (gatheringsLive()) {
     const row: Record<string, unknown> = {};
     if (patch.status !== undefined) row.status = patch.status;

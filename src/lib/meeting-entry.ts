@@ -70,13 +70,13 @@ export function validateMeetingDraft(d: MeetingDraftInput): string[] {
       const c = Number(cloth);
       if (!Number.isInteger(c) || c < 1) errors.push(`${name}: the cloth must be a whole number of 1 or higher.`);
       else {
-        if (cloths.has(c)) errors.push(`Cloth ${c} is recorded twice — every pour carries its own number.`);
+        if (cloths.has(c)) errors.push(`Cloth ${c} is recorded twice: every pour carries its own number.`);
         cloths.set(c, (cloths.get(c) || 0) + 1);
       }
     }
     const owner = str(r.owner);
     if (owner) {
-      if (owners.has(owner)) errors.push(`${owner} is credited twice — one bottle per soul per night.`);
+      if (owners.has(owner)) errors.push(`${owner} is credited twice: one bottle per soul per night.`);
       owners.set(owner, (owners.get(owner) || 0) + 1);
     }
     const price = str(r.price);

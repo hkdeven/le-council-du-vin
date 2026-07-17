@@ -115,6 +115,23 @@ export function featureRequestEmail(fromName: string, fromEmail: string, text: s
   };
 }
 
+// A sleeping seat asks to wake. The ONE word a sleeping hand may send: it
+// writes nothing to the Council's records, it only asks. Always to the Keiser.
+export function wakeRequestEmail(fromName: string, fromEmail: string, text: string): Email {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return {
+    subject: `${fromName || fromEmail || "A sleeping seat"} asks to wake`,
+    html: layout(
+      moons() +
+      heading("A sleeping seat asks to wake") +
+      p(`<strong style="color:#cbbd93;">${esc(fromName || "A sleeping soul")}</strong> (${esc(fromEmail)}) asks the Keiser to wake their seat.`) +
+      (text ? p(`<em>&ldquo;${esc(text)}&rdquo;</em>`) : "") +
+      p(`The waking is yours alone: the council roster, on your profile.`),
+      "A sleeping seat asks to wake."
+    ),
+  };
+}
+
 // 2. Initiate elevated → full member. (auto)
 export function elevateEmail(name: string): Email {
   return {
@@ -281,7 +298,10 @@ export interface ReckoningEmailParams {
 export function reckoningEmail(rp: ReckoningEmailParams): Email {
   const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const crowned = (rp.crowned || [])
-    .map((c) => p(`<span style="text-align:center;display:block;">🏆 <strong style="color:#cbbd93;">${esc(c.title)}</strong> — borne by <strong style="color:#cbbd93;">${esc(c.owner || "an unclaimed hand")}</strong> · ${c.score.toFixed(1)}</span>`))
+    .map((c) => p(
+      `<span style="text-align:center;display:block;">🏆 <strong style="color:#cbbd93;">${esc(c.title)}</strong></span>` +
+      `<span style="text-align:center;display:block;color:#9c8a5f;font-size:15px;">borne by <strong style="color:#cbbd93;">${esc(c.owner || "an unclaimed hand")}</strong> · ${c.score.toFixed(1)}</span>`
+    ))
     .join("");
   const ranked = (rp.ranked || [])
     .map((r) => `<tr>
@@ -291,13 +311,13 @@ export function reckoningEmail(rp: ReckoningEmailParams): Email {
       <td align="right" style="padding:6px 0;border-bottom:1px solid #241f18;color:#cbbd93;font-family:${HEAD_FONT};font-size:13px;">${r.dq || r.score == null ? "—" : r.score.toFixed(1)}</td>
     </tr>`).join("");
   const quotes = (rp.quotes || [])
-    .map((q) => `<p style="margin:0 0 10px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:#cbc5b7;line-height:1.5;">&ldquo;${esc(q.text)}&rdquo; <span style="color:#5a554c;font-size:13px;">— on cloth ${esc(q.cloth)}</span></p>`)
+    .map((q) => `<p style="margin:0 0 10px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:#cbc5b7;line-height:1.5;">&ldquo;${esc(q.text)}&rdquo; <span style="color:#5a554c;font-size:13px;">· on cloth ${esc(q.cloth)}</span></p>`)
     .join("");
   return {
-    subject: `The Reckoning of Gathering ${rp.numberRoman || ""}`.trim(),
+    subject: `The Reckoning of Gathering ${rp.numberRoman || ""}`.trim(), // the subject still names the rite; only the page's title is bare
     html: layout(
       moons() +
-      heading(`The Reckoning<br>of Gathering ${esc(rp.numberRoman || "")}`) +
+      heading(`Gathering <span style="font-family:${HEAD_FONT};font-size:30px;letter-spacing:0.04em;">${esc(rp.numberRoman || "")}</span>`) +
       p(`<span style="text-align:center;display:block;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:#9c8a5f;">${esc(rp.theme || "")}${rp.dateLabel ? ` · ${esc(rp.dateLabel)}` : ""}</span>`) +
       (crowned ? sectionBand("The Crowning") + crowned : "") +
       (ranked ? sectionBand("As the table ranked them") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ranked}</table>` : "") +

@@ -3,11 +3,13 @@
 // gatherings.reveal_photos. Demo: a transient object URL (session-only).
 
 import { supabase } from "./supabase";
+import { assertWrite } from "./writeLock";
 import { gatheringsLive } from "./gatherings";
 
 const BUCKET = "reveal-photos";
 
 export async function uploadRevealPhoto(gatheringId: string, file: File): Promise<string> {
+  assertWrite();
   if (gatheringsLive()) {
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `${gatheringId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -22,6 +24,7 @@ export async function uploadRevealPhoto(gatheringId: string, file: File): Promis
 // public avatars bucket and returns a short cacheable URL, so member queries
 // stop hauling base64 images. Demo keeps the data URL (localStorage flow).
 export async function uploadAvatar(owner: string, dataUrl: string): Promise<string> {
+  assertWrite();
   if (!gatheringsLive() || !dataUrl.startsWith("data:")) return dataUrl;
   const blob = await (await fetch(dataUrl)).blob();
   const safe = owner.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40) || "soul";

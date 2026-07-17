@@ -1,4 +1,5 @@
 import { seedMembers } from "./seed";
+import { assertWrite } from "./writeLock";
 import type { Member } from "./types";
 
 // The council roster. The seed roster is the base; the Keiser's edits are
@@ -58,6 +59,7 @@ export function rosterOrder(ms: Member[]): Member[] {
 }
 
 export function saveMember(id: string, patch: Partial<Member>) {
+  assertWrite();
   if (typeof window === "undefined") return;
   const overrides = readOverrides();
   overrides[id] = { ...overrides[id], ...patch };
@@ -70,6 +72,7 @@ export function saveMember(id: string, patch: Partial<Member>) {
 // Anoint a petitioner into the roster (as an initiate by default). Idempotent
 // on id — re-anointing the same soul won't duplicate them.
 export function addMember(member: Member) {
+  assertWrite();
   if (typeof window === "undefined") return;
   const added = readAdded();
   if (added.some((m) => m.id === member.id) || seedMembers.some((m) => m.id === member.id)) return;
@@ -86,6 +89,7 @@ export function addMember(member: Member) {
 // members: added members are dropped from the added list; seeded ones are
 // recorded in the removed set so loadMembers() filters them out.
 export function removeMember(id: string) {
+  assertWrite();
   if (typeof window === "undefined") return;
   try {
     const added = readAdded().filter((m) => m.id !== id);

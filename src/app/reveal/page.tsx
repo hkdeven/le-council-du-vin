@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { seedMembers } from "@/lib/seed";
 import { toRoman } from "@/lib/util";
 import { fetchAllOfferings, type Offering } from "@/lib/bottles";
+import { supabase } from "@/lib/supabase";
 import { fetchAllBallots, statsFromBallots, fetchRevealStats, type RevealStats } from "@/lib/ballots";
 import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
 import { fetchCurrentGathering, updateGathering, revealWindowClosed } from "@/lib/gatherings";
@@ -123,7 +124,7 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
   let value: string | null = null;
   if (priced.length >= 2) {
     const best = [...priced].sort((a, b) => b.score / b.price! - a.score / a.price!)[0];
-    value = `Best value of the night: ${name(best)} at R${best.price} — ${(best.score / best.price! * 100).toFixed(1)} points per hundred rand.`;
+    value = `Best value of the night: ${name(best)}, borne by ${best.owner || "an unclaimed hand"}, at R${best.price} · ${(best.score / best.price! * 100).toFixed(1)} points per hundred rand.`;
   }
 
   const mailIt = async () => {
@@ -166,7 +167,7 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
       ) : champions.map((c) => (
         <p key={c.cloth} style={{ margin: "0 0 6px", fontSize: 16, color: "var(--parch)" }}>
           🏆 <span className="scr" style={{ fontSize: 18, color: "var(--gold2)" }}>{name(c)}</span>
-          {c.owner && <span className="whisper" style={{ fontSize: 14 }}> — borne by {c.owner}</span>}
+          {c.owner && <span className="whisper" style={{ fontSize: 14 }}> · borne by {c.owner}</span>}
           <span className="disp" style={{ fontSize: 14, marginLeft: 8 }}>{c.score.toFixed(1)}</span>
         </p>
       ))}
@@ -212,7 +213,7 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
           <div style={{ textAlign: "left" }}>
             {chosen.map((q, i) => (
               <p key={i} className="scr" style={{ margin: "0 0 10px", fontSize: 16, fontStyle: "italic", color: "var(--parch)" }}>
-                &ldquo;{q.text}&rdquo; <span className="whisper" style={{ fontSize: 13 }}>— on cloth {q.cloth}</span>
+                &ldquo;{q.text}&rdquo; <span className="whisper" style={{ fontSize: 13 }}>· on cloth {q.cloth}</span>
               </p>
             ))}
           </div>
@@ -267,6 +268,34 @@ export default function Reveal() {
   }, []);
   const gid = g?.id ?? "none";
   const attendees = g?.attendees || [];
+  // Sleeping souls are never waited on. A member deactivated AFTER RSVPing can
+  // no longer seal a ballot (the write lock stops them), so counting them here
+  // would hang the reveal forever and cost the Council the whole night.
+  // Ballots they sealed while awake still stand in the tallies; only the
+  // waiting excludes them.
+  // null means "the roll is unknown" (demo mode, or the read failed): then we
+  // wait on every attendee exactly as before, rather than unlocking a night on
+  // a guess. A soul CAST OUT of the roster is excluded too: their id lingers
+  // in attendees and, being no member at all, they can never seal either.
+  const [awakeIds, setAwakeIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (mode !== "live" || !supabase) return;
+    let alive = true;
+    const read = () => supabase!.from("members").select("id,active")
+      .then(({ data, error }: { data: { id: string; active: boolean | null }[] | null; error: { message: string } | null }) => {
+        if (!alive) return;
+        // The error was swallowed here once, which quietly restored the very
+        // deadlock this exists to prevent. Retry, and say so if it persists.
+        if (error || !data) { console.error("The roll would not open:", error?.message); return; }
+        setAwakeIds(new Set(data.filter((m) => m.active !== false).map((m) => m.id)));
+      });
+    read();
+    const t = setInterval(() => { if (!awakeIds) read(); }, 15000);
+    return () => { alive = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+  const awaited = awakeIds ? attendees.filter((id) => awakeIds.has(id)) : attendees;
+  const sleepingAmong = attendees.length - awaited.length;
 
   // A week after the night ends, the reveal is gone entirely (#7): direct
   // links are turned away. The vote data itself stays in the database — the
@@ -315,8 +344,8 @@ export default function Reveal() {
   // The reveal opens only when the rite itself is open AND every attendee has
   // sealed — or once committed. Before the rite there is nothing to reveal.
   const riteOpen = useRiteOpen(g);
-  const sealedCount = stats.sealedIds.filter((id) => attendees.includes(id)).length;
-  const locked = !committed && (!riteOpen || attendees.length === 0 || sealedCount < attendees.length);
+  const sealedCount = stats.sealedIds.filter((id) => awaited.includes(id)).length;
+  const locked = !committed && (!riteOpen || awaited.length === 0 || sealedCount < awaited.length);
 
   // While still sealed, poll for newly-sealed ballots so the reveal unlocks and
   // tallies live — no refresh needed. Stops the moment it opens (so it never
@@ -445,9 +474,11 @@ export default function Reveal() {
         <p className="whisper" style={{ fontSize: 16, maxWidth: 380, margin: "10px auto 0" }}>
           {!riteOpen
             ? "The rite has not yet begun. The cloths stay on until every soul has judged."
-            : attendees.length === 0
+            : awaited.length === 0 && sleepingAmong > 0
+            ? "Every soul who answered this call has since been sleeping. The night cannot be judged; the Keiser may record it by hand in the codex."
+            : awaited.length === 0
             ? "No souls have answered the call. RSVP on the convening, then judge in the rite."
-            : `${sealedCount} of ${attendees.length} ballots have been sealed. The cloths are not lifted until every soul has judged.`}
+            : `${sealedCount} of ${awaited.length} ballots have been sealed. The cloths are not lifted until every soul has judged.`}
         </p>
       </section>
     );
@@ -473,7 +504,7 @@ export default function Reveal() {
         </span>
         <div style={{ flex: 1 }}>
           <div>
-            <span style={{ textDecoration: isDq ? "line-through" : "none" }}>Bottle {toRoman(w.cloth)}</span> —{" "}
+            <span style={{ textDecoration: isDq ? "line-through" : "none" }}>Bottle {toRoman(w.cloth)}</span> ·{" "}
             <OwnerSlot owner={w.owner} mine={w.owner === myName && !!myName} canClaim={!!meId && !myClaim} canAct={canAct}
               onClaim={() => claim(w.cloth)} onRelease={() => release(w.cloth)}
               style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold2)" }} />
@@ -489,7 +520,7 @@ export default function Reveal() {
         <div style={{ textAlign: "right" }}>
           <span className="disp" style={{ color }}>{fmtScore(w)}</span>
           {isKeiser && canAct && (
-            <button onClick={() => patch(w.cloth, { dq: !w.dq })} title={isDq ? "Restore to the ranking" : "Disqualify — off theme"} aria-label={isDq ? "Restore this wine" : "Disqualify this wine"}
+            <button onClick={() => patch(w.cloth, { dq: !w.dq })} title={isDq ? "Restore to the ranking" : "Disqualify · off theme"} aria-label={isDq ? "Restore this wine" : "Disqualify this wine"}
               style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isDq ? "var(--gold2)" : "var(--wine)", padding: 0, marginTop: 2, marginLeft: "auto", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
               <i className={`ti ti-${isDq ? "arrow-back-up" : "ban"}`} style={{ fontSize: 11, marginRight: 3 }} />{isDq ? "restore" : "disqualify"}
             </button>
@@ -533,7 +564,7 @@ export default function Reveal() {
                 </div>
                 <div className="disp" style={{ fontSize: champions.length > 1 ? 22 : 26, marginTop: 4 }}>{fmtScore(champ)}</div>
                 {isKeiser && canAct && (
-                  <button onClick={() => patch(champ.cloth, { dq: true })} title="Disqualify — off theme" aria-label="Disqualify this wine"
+                  <button onClick={() => patch(champ.cloth, { dq: true })} title="Disqualify · off theme" aria-label="Disqualify this wine"
                     style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
                     <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
                   </button>
@@ -552,7 +583,7 @@ export default function Reveal() {
             {committed ? (
               <p className="whisper" style={{ fontSize: 15, textAlign: "center", margin: 0 }}>
                 <i className="ti ti-book" style={{ marginRight: 6 }} />
-                Committed to the Annals{isKeiser ? " — only your hand may amend it." : " — only the Keiser may amend it."}
+                Committed to the Annals{isKeiser ? ": only your hand may amend it." : ": only the Keiser may amend it."}
               </p>
             ) : (
               <>
