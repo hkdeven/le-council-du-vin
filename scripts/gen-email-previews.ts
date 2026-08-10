@@ -1,5 +1,6 @@
 import { writeFileSync, mkdirSync, readFileSync } from "fs";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, magicLinkHtml, petitionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, reckoningEmail, wakeRequestEmail } from "../src/lib/emailTemplates";
+import { summonsIcs } from "../src/lib/ics";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, magicLinkHtml, petitionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, reckoningEmail, wakeRequestEmail, summonsEmail } from "../src/lib/emailTemplates";
 
 mkdirSync("public/email-previews", { recursive: true });
 
@@ -165,3 +166,35 @@ write("10-reckoning.html", reckoningEmail({
 
 // The one word a sleeping seat may send.
 write("11-wake.html", wakeRequestEmail("Elder Martin", "martin@nightvine.com", "I have been away, not absent. Let me return.").html);
+
+// The summons: what a member receives on answering a call, and the withdrawal
+// that takes the night back off their calendar.
+const soon = new Date(Date.now() + 21 * 86400000);
+const SOON_DATE = soon.toISOString().slice(0, 10);
+const SOON_LABEL = soon.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const SUMMONS = {
+  numberRoman: "XVII",
+  theme: "Cape Cabernet",
+  dateLabel: SOON_LABEL,
+  timeLabel: "19:00",
+  host: "Seer Matthew",
+  venue: "12 Vineyard Road, Constantia. Gate code 1120; ring twice.",
+  name: "Priestess Larissa",
+};
+write("12-summons.html", summonsEmail(SUMMONS).html);
+
+// The calendar entry itself, written out whole so it can be opened on a real
+// device (or read line by line) without waiting on a letter.
+writeFileSync("public/email-previews/invite-sample.ics", summonsIcs({
+  gatheringId: "sample-gathering",
+  number: 17,
+  theme: SUMMONS.theme,
+  date: SOON_DATE,
+  time: "19:00",
+  hostName: SUMMONS.host,
+  venue: SUMMONS.venue,
+  organizerEmail: "council@lecouncilduvin.co.za",
+  attendeeEmail: "you@example.com",
+  attendeeName: SUMMONS.name,
+}));
+console.log("wrote 12-summons, invite-sample.ics");

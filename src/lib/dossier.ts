@@ -41,6 +41,11 @@ const SYNODIC = 29.53; // days per moon
 
 export function computeDossier(inp: DossierInputs): DossierStats {
   const { member, members, gatherings, annals, ballots, dq, nowMs } = inp;
+  // Names in annal rows are free text (imports, hand entry): a stray space or
+  // a case slip must never hide a member's own bottles from their dossier.
+  const norm = (x?: string | null) => (x || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const sameName = (a?: string | null, b?: string | null) => !!a && !!b && norm(a) === norm(b);
+
   const mine = ballots.filter((b) => b.memberId === member.id && b.sealed);
 
   // Moons stood + longest communion. Standing a moon is proven by EITHER a
@@ -59,7 +64,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   const nights = [...nightDates.entries()].sort((x, y) => (x[1] < y[1] ? -1 : 1));
   const stoodSet = new Set(mine.map((b) => b.gatheringId));
   for (const a of annals) {
-    if (a.rows.some((r) => r.owner === member.cult_name)) stoodSet.add(a.gatheringId);
+    if (a.rows.some((r) => sameName(r.owner, member.cult_name))) stoodSet.add(a.gatheringId);
   }
   const moonsStood = nights.filter(([id]) => stoodSet.has(id)).length;
   let communion = 0, run = 0;
@@ -74,7 +79,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   for (const a of annals) {
     const champs = championsOf(a);
     for (const r of a.rows) {
-      if (r.owner !== member.cult_name) continue;
+      if (!sameName(r.owner, member.cult_name)) continue;
       if (champs.includes(r)) bottlesCrowned++;
       // votes 0 = a night recorded without scores; not a pour to rank.
       if (!r.dq && r.votes > 0) {
@@ -88,7 +93,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
     }
   }
   pours.sort((a, b) => b.score - a.score);
-  const marks = dq[member.cult_name] || 0;
+  const marks = Object.entries(dq).find(([name]) => sameName(name, member.cult_name))?.[1] || 0;
 
   // Palate temper: their average given vs the whole table's average.
   const sealed = ballots.filter((b) => b.sealed);
@@ -143,9 +148,9 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   let lastHosted: string | null = member.last_hosted || null;
   for (const g of gatherings) {
     if (!g.gather_date || new Date(g.gather_date).getTime() > nowMs) continue;
-    const hosted = g.host_id === member.id || g.host_name === member.cult_name ||
+    const hosted = g.host_id === member.id || sameName(g.host_name, member.cult_name) ||
       (g as Gathering & { host2_id?: string | null; host2_name?: string | null }).host2_id === member.id ||
-      (g as Gathering & { host2_name?: string | null }).host2_name === member.cult_name;
+      sameName((g as Gathering & { host2_name?: string | null }).host2_name, member.cult_name);
     if (hosted && (!lastHosted || g.gather_date > lastHosted)) lastHosted = g.gather_date;
   }
   let wheel: string | null = null;
@@ -191,7 +196,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   for (const a of annals) for (const r of a.rows) {
     if (!r.dq && r.votes > 0 && (r.price ?? 0) > 0) pricedAll.push({ score: r.score, price: r.price!, owner: r.owner });
   }
-  const minePriced = pricedAll.filter((x) => x.owner === member.cult_name);
+  const minePriced = pricedAll.filter((x) => sameName(x.owner, member.cult_name));
   let coin: DossierStats["coin"] = null;
   let purse: DossierStats["purse"] = null;
   if (minePriced.length >= 2 && pricedAll.length >= 4) {

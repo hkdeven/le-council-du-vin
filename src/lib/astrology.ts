@@ -66,7 +66,7 @@ const SIGNS: Sign[] = [
 
 // Minutes east of UTC for an IANA zone at a UTC instant (the tz database
 // handles historical rules, so old birthdates get the offsets of their era).
-function tzOffsetMin(tz: string, utcMs: number): number {
+export function tzOffsetMin(tz: string, utcMs: number): number {
   try {
     const dtf = new Intl.DateTimeFormat("en-US", {
       timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { summonsIcs } from "@/lib/ics";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -33,7 +34,7 @@ async function callerIdentity(req: Request): Promise<{ email: string | null; nam
   }
 }
 
-const SELF_TYPES = new Set(["natal", "foretelling", "kundli", "vedic-foretelling", "reckoning"]);
+const SELF_TYPES = new Set(["natal", "foretelling", "kundli", "vedic-foretelling", "reckoning", "summons"]);
 
 export async function POST(req: Request) {
   const key = process.env.RESEND_API_KEY;
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
 
   const { type, to, params } = (await req.json().catch(() => ({}))) as {
     type?: string; to?: string | string[];
-    params?: ({ name?: string; count?: number; text?: string } & InviteParams & NatalEmailParams & ForetellingEmailParams & ReckoningEmailParams);
+    params?: ({ name?: string; count?: number; text?: string; gatheringId?: string; number?: number; date?: string; time?: string | null; venue?: string | null; tz?: string } & InviteParams & NatalEmailParams & ForetellingEmailParams & ReckoningEmailParams & SummonsEmailParams);
   };
   let recipients = Array.from(new Set((Array.isArray(to) ? to : [to]).filter(Boolean) as string[])).slice(0, 200);
 
@@ -96,16 +97,48 @@ export async function POST(req: Request) {
     case "feature": email = featureRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     case "wake": email = wakeRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     case "reckoning": email = reckoningEmail(params || {}); break;
+    case "summons": email = summonsEmail((params || {}) as SummonsEmailParams); break;
     default: return NextResponse.json({ ok: false, error: "Unknown email type." }, { status: 400 });
   }
+
+  // The summons carries the night itself. Three things persuade a client to
+  // show an event rather than a download, and all three are here: METHOD in
+  // the file, method=REQUEST on the content type, and an ATTENDEE line naming
+  // the recipient (built per address, below).
+  const organizerEmail = (from.match(/<([^>]+)>/)?.[1] || from).trim();
 
   // Send one message per recipient so members never see each other's addresses.
   const results = await Promise.all(recipients.map(async (addr) => {
     try {
+      const payload: Record<string, unknown> = { from, to: [addr], subject: email.subject, html: email.html };
+
+      if (type === "summons" && params?.gatheringId && params?.date) {
+        const ics = summonsIcs({
+          gatheringId: params.gatheringId,
+          number: params.number || 0,
+          theme: params.theme || "",
+          date: params.date,
+          time: params.time ?? null,
+          tz: params.tz,
+          hostName: params.host || null,
+          venue: params.venue ?? null,
+          organizerEmail,
+          attendeeEmail: addr,
+          attendeeName: params.name || null,
+        });
+        payload.attachments = [{
+          filename: "invite.ics",
+          content: Buffer.from(ics, "utf8").toString("base64"),
+          // Without this the file arrives as a nameless download; with it,
+          // Apple Mail shows the event card and Gmail its calendar preview.
+          content_type: "text/calendar; charset=UTF-8; method=REQUEST",
+        }];
+      }
+
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to: [addr], subject: email.subject, html: email.html }),
+        body: JSON.stringify(payload),
       });
       return res.ok;
     } catch {

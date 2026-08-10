@@ -5,6 +5,7 @@ import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers, rosterOrder } from "@/lib/members";
 import { swr, writeSwr } from "@/lib/swr";
+import { sendEmail } from "@/lib/sendEmail";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickUpcoming } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import { supabase } from "@/lib/supabase";
@@ -288,7 +289,7 @@ function MeetingBody({
   onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void; allMeetings?: Gathering[];
   onDelete?: () => void; count?: number; setCount?: (n: number) => void;
 }) {
-  const { sleeping } = useAuth();
+  const { sleeping, email: myEmail, mode: authMode, member: me } = useAuth();
   const [showGuests, setShowGuests] = useState(false);
   const [editing, setEditing] = useState(false);
   const attendees = m.attendees || [];
@@ -300,8 +301,36 @@ function MeetingBody({
   const showRite = isCurrent && riteOpen;
 
   // Refetch-before-write so two people RSVPing at once don't clobber each other.
+  // Answering a call posts the night to the member's own calendar. Withdrawing
+  // sends NOTHING (the Keiser's decree): the night simply stays in their
+  // calendar until they take it out themselves. Only ever for THEMSELVES: the
+  // Keiser answering on another's behalf sends no letter, since it is not his
+  // calendar, and the route would refuse an address that is not the caller's.
+  const summon = (joining: boolean) => {
+    if (!joining) return;
+    if (authMode !== "live" || !myEmail) return;
+    sendEmail("summons", [myEmail], {
+      gatheringId: m.id,
+      number: m.number,
+      numberRoman: toRoman(m.number),
+      theme: m.theme_title || "",
+      date: m.gather_date,
+      time: m.gather_time || null,
+      dateLabel: date,
+      timeLabel: time,
+      host: [m.host_name, m.host2_name].filter(Boolean).join(" & "),
+      venue: m.venue_instructions || null,
+      name: me?.cult_name || null,
+    }).catch(() => {}); // the RSVP itself already stands; a lost letter must not undo it
+  };
+
   const toggleRsvp = (id: string) =>
-    toggleAttendee(m.id, id).then(onAttendees).catch((e) => alert(`Could not update the RSVP: ${e.message}`));
+    toggleAttendee(m.id, id)
+      .then((next) => {
+        onAttendees(next);
+        if (id === meId) summon(next.includes(id));
+      })
+      .catch((e) => alert(`Could not update the RSVP: ${e.message}`));
 
   const share = () => {
     // WhatsApp markdown: *bold*

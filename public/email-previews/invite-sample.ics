@@ -1,0 +1,30 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Le Council du Vin//The Summons//EN
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+UID:lcv-sample-gathering@lecouncilduvin.co.za
+DTSTAMP:20260810T140610Z
+DTSTART:20260831T170000Z
+DTEND:20260831T200000Z
+SUMMARY:Le Council du Vin · Gathering XVII: Cape Cabernet
+DESCRIPTION:Gathering XVII · Cape Cabernet\nAt the table of Seer Matthew.
+ \n\n12 Vineyard Road\, Constantia. Gate code 1120\; ring twice.\n\nBring a
+  bottle that answers the theme. The cloths lift when every soul has judged
+ .\nhttps://lecouncilduvin.co.za/convene
+LOCATION:12 Vineyard Road\, Constantia. Gate code 1120\; ring twice.
+ORGANIZER;CN=Le Council du Vin:mailto:council@lecouncilduvin.co.za
+ATTENDEE;CN=Priestess Larissa;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=F
+ ALSE:mailto:you@example.com
+SEQUENCE:844686
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+URL:https://lecouncilduvin.co.za/convene
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:The Council gathers tomorrow. Choose your bottle.
+TRIGGER:-P1D
+END:VALARM
+END:VEVENT
+END:VCALENDAR

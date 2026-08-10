@@ -288,7 +288,8 @@ function RosterEditor() {
                 )}
                 <div>
                   <label className="field" style={{ marginTop: 0 }}>Cult name</label>
-                  <input value={m.cult_name} onChange={(e) => edit(m.id, { cult_name: e.target.value })} />
+                  <input value={m.cult_name} onChange={(e) => edit(m.id, { cult_name: e.target.value })}
+                    onBlur={(e) => { const t = e.target.value.trim(); if (t !== e.target.value) edit(m.id, { cult_name: t }); }} />
                 </div>
                 <div>
                   <label className="field" style={{ marginTop: 0 }}>Title</label>
@@ -388,7 +389,8 @@ function RecipientChips({ list, onRemove, addValue, onAddChange, onAdd }: {
 // Keiser-only: manually send the invite (a new gathering) and the tribunal
 // summons. Nothing here fires automatically; recipients are editable per send.
 function HeraldsEditor() {
-  const { mode } = useAuth();
+  const { mode, email: myEmail, member: self } = useAuth();
+  const myName = self?.cult_name || null;
   // Folded by default: the Heralds are an occasional instrument, not daily
   // reading. Nothing inside is fetched until the card is opened.
   const [open, setOpen] = useState(false);
@@ -436,6 +438,32 @@ function HeraldsEditor() {
     venue: gathering.venue_instructions || null,
   } : {};
 
+  // The summons can only ever be posted to the caller's own address (the route
+  // enforces it), so this proves the true path end to end without troubling a
+  // single member.
+  const sendSummonsTest = async () => {
+    if (!gathering) return;
+    if (!myEmail) { setMsg("No address on your own record to send to."); return; }
+    setBusy("summons"); setMsg(null);
+    const res = await sendEmail("summons", [myEmail], {
+      gatheringId: gathering.id,
+      number: gathering.number,
+      numberRoman: toRoman(gathering.number),
+      theme: gathering.theme_title || "",
+      date: gathering.gather_date,
+      time: gathering.gather_time || null,
+      dateLabel: fmtGDate(gathering.gather_date),
+      timeLabel: gathering.gather_time || "19:00",
+      host: [gathering.host_name, gathering.host2_name].filter(Boolean).join(" & "),
+      venue: gathering.venue_instructions || null,
+      name: myName || null,
+    });
+    setBusy(null);
+    if (res.skipped) setMsg("Email isn't configured yet: set RESEND_API_KEY + NOTIFY_FROM in Netlify.");
+    else if (res.ok) setMsg(`The summons flies to ${myEmail}. Open it and look for the event.`);
+    else setMsg(res.error || "It would not send.");
+  };
+
   const send = async (kind: string, type: "invite" | "expulsion", to: string[], params: Record<string, unknown>) => {
     if (!to.length) { setMsg("Add at least one recipient."); return; }
     if (!window.confirm(`Send to ${to.length} recipient${to.length === 1 ? "" : "s"}?`)) return;
@@ -472,6 +500,19 @@ function HeraldsEditor() {
         <RecipientChips list={inviteTo} onRemove={(e) => setInviteTo(inviteTo.filter((x) => x !== e))} addValue={inviteAdd} onAddChange={setInviteAdd} onAdd={() => add(inviteTo, inviteAdd, setInviteTo, () => setInviteAdd(""))} />
         <button className="btn gold" style={{ marginTop: 10, width: "auto", padding: "10px 20px" }} disabled={!gathering || busy !== null} onClick={() => send("invite", "invite", inviteTo, inviteParams)}>
           {busy === "invite" ? "Sending…" : "Send the summons"}
+        </button>
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
+        <div className="scr" style={{ fontSize: 16 }}>Prove the calendar summons</div>
+        <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>
+          {gathering
+            ? `Sends the real summons for Gathering ${toRoman(gathering.number)} to your own inbox, the very letter a member receives on answering a call. Open it on the vessel you wish to prove: the night should offer itself to your calendar, at ${gathering.gather_time || "19:00"} on ${fmtGDate(gathering.gather_date)}.`
+            : "No gathering scheduled: summon one on Convene first."}
+        </p>
+        <button className="btn gold" style={{ width: "auto", padding: "10px 20px" }} disabled={!gathering || busy !== null}
+          onClick={sendSummonsTest}>
+          {busy === "summons" ? "Sending…" : "Send me the summons"}
         </button>
       </div>
 
@@ -758,7 +799,7 @@ export default function Profile() {
         return;
       }
       const { error } = await supabase.from("members").update({
-        cult_name: name,
+        cult_name: name.trim(),
         title: title.trim() || null,
         date_of_birth: dob || null,
         time_of_birth: tob || null,

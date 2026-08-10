@@ -192,6 +192,55 @@ export function inviteEmail(gp: InviteParams): Email {
   };
 }
 
+// The summons: sent when a soul answers a call, carrying the night itself as
+// an .ics so it lands in their calendar. The send route attaches the file with
+// content_type "text/calendar; method=REQUEST", which is what persuades Apple
+// Mail and Gmail to show an event rather than a download.
+export interface SummonsEmailParams {
+  numberRoman?: string;
+  theme?: string;
+  dateLabel?: string; // "Saturday 8 August 2026"
+  timeLabel?: string; // "19:00"
+  host?: string;
+  venue?: string | null;
+  name?: string; // the soul who answered
+}
+
+export function summonsEmail(sp: SummonsEmailParams): Email {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const gathering = `Gathering ${esc(sp.numberRoman || "")}`.trim();
+
+  const details = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px;border-top:1px solid #241f18;border-bottom:1px solid #241f18;">
+    ${sp.theme ? detailRow("Theme", esc(sp.theme)) : ""}
+    ${sp.dateLabel ? detailRow("When", `${esc(sp.dateLabel)}${sp.timeLabel ? ` &middot; from ${esc(sp.timeLabel)}` : ""}`) : ""}
+    ${sp.host ? detailRow("Host", esc(sp.host)) : ""}
+    ${sp.venue ? detailRow("Where", esc(sp.venue.split("\n")[0])) : ""}
+  </table>`;
+
+  return {
+    subject: `${gathering}${sp.theme ? ` · ${esc(sp.theme)}` : ""}`,
+    html: layout(
+      moons() +
+      heading(`Your place is set`) +
+      p(`We look forward to welcoming you to the next Council meeting.`) +
+      details +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 4px;">
+        <tr><td style="border:1px solid #241f18;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0 0 8px;font-family:${HEAD_FONT};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#9c8a5f;">To add it to your calendar</p>
+          <p style="margin:0 0 6px;font-family:${BODY_FONT};font-size:15px;color:#cabfa2;line-height:1.6;"><strong style="color:#cbbd93;">On an iPhone or Mac:</strong> tap the invitation card above the attachment, then choose <em>Add to Calendar</em>. If you see only the file, tap <strong style="color:#cbbd93;">invite.ics</strong> and confirm.</p>
+          <p style="margin:0 0 6px;font-family:${BODY_FONT};font-size:15px;color:#cabfa2;line-height:1.6;"><strong style="color:#cbbd93;">In Gmail:</strong> open the attachment at the foot of this letter, then choose <em>Add to calendar</em>.</p>
+          <p style="margin:0;font-family:${BODY_FONT};font-size:15px;color:#cabfa2;line-height:1.6;"><strong style="color:#cbbd93;">Anywhere else:</strong> download <strong style="color:#cbbd93;">invite.ics</strong> and open it. Every calendar of consequence knows what to do with it.</p>
+          <p style="margin:8px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#7c766a;">Once kept, your own calendar will alert you the evening before.</p>
+        </td></tr>
+      </table>` +
+      `<p style="margin:0 0 14px;color:#cabfa2;font-family:${BODY_FONT};font-size:16px;line-height:1.62;text-align:center;">Bring a bottle true to the theme, cloaked and unmarked.</p>` +
+      button(`${SITE}/convene`, "Meeting details"),
+      `Your seat is kept for ${gathering}. The night is attached for your calendar.`,
+      `<p style="margin:14px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#5a554c;">should the hour change, a fresh summons will amend the night in your calendar; it will not double it</p>`
+    ),
+  };
+}
+
 // Magic-link login email — the HTML to paste into Supabase → Auth → Email
 // Templates → Magic Link. Defaults the button to Supabase's {{ .ConfirmationURL }}
 // variable; pass a real URL only for previews.

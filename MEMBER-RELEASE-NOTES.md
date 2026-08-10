@@ -2,6 +2,11 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 18 July 2026
+
+- **Answer a call, and the night finds your calendar.** Say you are coming on the convening and a letter follows at once, carrying the gathering itself. Open the attachment and the night takes its place in your calendar, theme, hour, host and door code with it, and your own device will stir the evening before so no bottle is chosen in haste. The letter tells you plainly what to tap, whichever way you read your mail. Withdraw your answer and nothing is sent: the night is yours to remove.
+- **Behind the curtain: built for the ways these usually fail.** A calendar invitation is a fussy thing, and most arrive as a dead file, land an hour out, or breed duplicates every time they are sent. The Council's own is written to the letter of the standard, and stands behind thirty-eight automated checks covering exactly those three failures. Send it twice and it amends the night rather than doubling it. The Keiser can prove the whole path on his own vessel before a single member receives one.
+
 ## 17 July 2026
 
 - **Sleep, made real.** A sleeping seat could still type into its own record: the fields were live even though the Council would not have kept a word of it. Now every field on every page falls dead to a sleeping hand, not merely the buttons. One thing stays open, by the Keiser's decree: **photographs of past nights**. A sleeping soul may still hang a picture in the codex, though never touch their own portrait.

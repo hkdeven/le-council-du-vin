@@ -70,7 +70,7 @@ export default function Initiation() {
       if (hits[0]) { lat = hits[0].latitude; lon = hits[0].longitude; zone = hits[0].timezone; }
     }
     const record = {
-      cult_name: cultName,
+      cult_name: cultName.trim(),
       email,
       date_of_birth: dob || null,
       time_of_birth: tob || null,
@@ -102,7 +102,7 @@ export default function Initiation() {
     fetch("/api/notify-petition", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cult_name: cultName, email }),
+      body: JSON.stringify({ cult_name: cultName.trim(), email }),
     }).catch(() => {});
     setSent(true);
   };
