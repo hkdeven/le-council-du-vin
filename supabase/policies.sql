@@ -18,7 +18,7 @@ create or replace function is_keiser() returns boolean
 as $$
   select exists (
     select 1 from members
-    where email = (auth.jwt() ->> 'email') and role = 'keiser'
+    where lower(email) = lower(auth.jwt() ->> 'email') and role = 'keiser'
   );
 $$;
 
@@ -154,7 +154,7 @@ create or replace function is_member() returns boolean
 as $$
   select exists (
     select 1 from members
-    where email = (auth.jwt() ->> 'email')
+    where lower(email) = lower(auth.jwt() ->> 'email')
   );
 $$;
 
@@ -209,7 +209,7 @@ create or replace function is_full_member() returns boolean
 as $$
   select exists (
     select 1 from members
-    where email = (auth.jwt() ->> 'email') and role in ('member','keiser')
+    where lower(email) = lower(auth.jwt() ->> 'email') and role in ('member','keiser')
   );
 $$;
 
@@ -218,7 +218,7 @@ create or replace function my_member_id() returns uuid
   language sql security definer stable
   set search_path = public
 as $$
-  select id from members where email = (auth.jwt() ->> 'email') limit 1;
+  select id from members where lower(email) = lower(auth.jwt() ->> 'email') limit 1;
 $$;
 
 -- Applications: the tribunal is read by every FULL member (the old
@@ -244,7 +244,7 @@ begin
     raise exception 'Unknown counsel.';
   end if;
   select id into mid from members
-    where email = (auth.jwt() ->> 'email') and role in ('member','keiser') and active;
+    where lower(email) = lower(auth.jwt() ->> 'email') and role in ('member','keiser') and active;
   if mid is null then
     raise exception 'Only full members of the Council may counsel.';
   end if;
@@ -364,7 +364,7 @@ create or replace function is_awake() returns boolean
 as $$
   select not exists (
     select 1 from members
-    where email = (auth.jwt() ->> 'email') and active = false
+    where lower(email) = lower(auth.jwt() ->> 'email') and active = false
   );
 $$;
 revoke all on function is_awake() from public;
@@ -519,7 +519,7 @@ create or replace function add_reveal_photo(gid uuid, url text) returns void
   set search_path = public
 as $$
 begin
-  if not exists (select 1 from members where email = (auth.jwt() ->> 'email')) then
+  if not exists (select 1 from members where lower(email) = lower(auth.jwt() ->> 'email')) then
     raise exception 'Only members of the Council may hang a photograph.';
   end if;
   update gatherings
@@ -531,3 +531,59 @@ begin
 end $$;
 revoke all on function add_reveal_photo(uuid, text) from public;
 grant execute on function add_reveal_photo(uuid, text) to authenticated;
+
+-- ── The door, made forgiving (2026-08-10) ──────────────────────────────────
+-- A member's access hangs on their auth address matching their members row.
+-- Both the app's lookup and this policy compared EXACTLY, so a single capital
+-- letter or a stray space locked a soul out of the Council entirely, showing
+-- them "known to the gate, but not yet of the Council" forever. (Found when
+-- James could not log in.) Emails are case-insensitive by convention, so the
+-- comparison is now made on the canonical form at both ends.
+--
+-- 1. Canonicalise what is already stored, everywhere an address lives.
+update members      set email = lower(trim(email)) where email <> lower(trim(email));
+update applications set email = lower(trim(email)) where email <> lower(trim(email));
+
+-- 2. Compare canonically from here on, so a legacy oddity cannot bar the door.
+drop policy if exists "members self read" on members;
+create policy "members self read" on members
+  for select
+  using (lower(auth.jwt() ->> 'email') = lower(email));
+
+drop policy if exists "members self update" on members;
+create policy "members self update" on members
+  for update using (lower(auth.jwt() ->> 'email') = lower(email));
+
+-- 3. The helpers that decide rank and standing must agree, or a member could
+--    read their row yet still be judged a stranger by is_keiser()/is_awake().
+create or replace function is_keiser() returns boolean
+  language sql security definer stable
+  set search_path = public
+as $$
+  select exists (
+    select 1 from members
+    where lower(email) = lower(auth.jwt() ->> 'email') and role = 'keiser'
+  );
+$$;
+
+create or replace function is_awake() returns boolean
+  language sql security definer stable
+  set search_path = public
+as $$
+  select not exists (
+    select 1 from members
+    where lower(email) = lower(auth.jwt() ->> 'email') and active = false
+  );
+$$;
+
+-- 4. The same for is_member() and the two SECURITY DEFINER doors, or a member
+--    with an oddly-cased address could read their row yet be refused the
+--    roster, the tribunal's counsel, and the hanging of a photograph.
+create or replace function is_member() returns boolean
+  language sql security definer stable
+  set search_path = public
+as $$
+  select exists (
+    select 1 from members where lower(email) = lower(auth.jwt() ->> 'email')
+  );
+$$;

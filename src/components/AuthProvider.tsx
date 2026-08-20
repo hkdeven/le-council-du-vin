@@ -116,7 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const resolve = async (sess: Session | null) => {
       if (!active) return;
       setSession(sess);
-      const email = sess?.user?.email;
+      // Canonical form, always. Access hangs on this matching the members row
+      // exactly (the RLS policy compares exactly too), so a capital letter or
+      // a stray space would lock a member out of the Council entirely.
+      const email = sess?.user?.email?.trim().toLowerCase();
       if (email) {
         const cached = readCache(email);
         if (cached) {

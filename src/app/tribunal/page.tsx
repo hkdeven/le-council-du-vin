@@ -405,7 +405,7 @@ export default function Tribunal() {
       };
       if (mode === "live" && supabase) {
         const { error } = await supabase.from("members").upsert(
-          { email: member.email, cult_name: member.cult_name, short_name: member.short_name, role: "initiate", date_of_birth: member.date_of_birth, time_of_birth: member.time_of_birth, birth_place: member.birth_place, birth_lat: member.birth_lat, birth_lon: member.birth_lon, birth_tz: member.birth_tz, active: true },
+          { email: member.email.trim().toLowerCase(), cult_name: member.cult_name, short_name: member.short_name, role: "initiate", date_of_birth: member.date_of_birth, time_of_birth: member.time_of_birth, birth_place: member.birth_place, birth_lat: member.birth_lat, birth_lon: member.birth_lon, birth_tz: member.birth_tz, active: true },
           { onConflict: "email" }
         );
         // Surface the real reason instead of silently failing (e.g. an RLS

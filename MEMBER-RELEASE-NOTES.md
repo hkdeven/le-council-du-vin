@@ -4,6 +4,8 @@ A running record for the members: every release, and the unseen work behind it. 
 
 ## 18 July 2026
 
+- **A door that would not open.** One member had been shut out of the Council since the day he was anointed, told at every attempt that he was known to the gate but not yet of it. The cause was a single capital letter in the address on his record, which the instrument compared too strictly to recognise as his own. The door now reads an address as any post office would, caring nothing for capitals or a stray space, and the same blindness has been given to every check that decides rank and standing, so no soul can be turned away by their own spelling again.
+
 - **Answer a call, and the night finds your calendar.** Say you are coming on the convening and a letter follows at once, carrying the gathering itself. Open the attachment and the night takes its place in your calendar, theme, hour, host and door code with it, and your own device will stir the evening before so no bottle is chosen in haste. The letter tells you plainly what to tap, whichever way you read your mail. Withdraw your answer and nothing is sent: the night is yours to remove.
 - **Behind the curtain: built for the ways these usually fail.** A calendar invitation is a fussy thing, and most arrive as a dead file, land an hour out, or breed duplicates every time they are sent. The Council's own is written to the letter of the standard, and stands behind thirty-eight automated checks covering exactly those three failures. Send it twice and it amends the night rather than doubling it. The Keiser can prove the whole path on his own vessel before a single member receives one.
 

@@ -298,7 +298,8 @@ function RosterEditor() {
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: "1 1 60%" }}>
                     <label className="field" style={{ marginTop: 0 }}>Email</label>
-                    <input value={m.email} onChange={(e) => edit(m.id, { email: e.target.value })} />
+                    <input value={m.email} onChange={(e) => edit(m.id, { email: e.target.value })}
+                      onBlur={(e) => { const t = e.target.value.trim().toLowerCase(); if (t !== e.target.value) edit(m.id, { email: t }); }} />
                   </div>
                   <div style={{ flex: "1 1 40%" }}>
                     <label className="field" style={{ marginTop: 0 }}>Initials</label>

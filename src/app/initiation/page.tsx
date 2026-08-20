@@ -71,7 +71,7 @@ export default function Initiation() {
     }
     const record = {
       cult_name: cultName.trim(),
-      email,
+      email: email.trim().toLowerCase(),
       date_of_birth: dob || null,
       time_of_birth: tob || null,
       birth_place: place || null,
