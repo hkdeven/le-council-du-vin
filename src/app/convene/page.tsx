@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers, rosterOrder } from "@/lib/members";
@@ -167,6 +167,31 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
   const [record, setRecord] = useState<{ right: number; total: number } | null>(null);
   const attendees = g.attendees || [];
 
+  // How many answered souls have yet to seal an offering. Watched from the
+  // moment the card is drawn, so the button can be DARK until the vine may
+  // truly speak, rather than inviting a tap only to refuse it. null = not yet
+  // counted (the gate stays shut until we know).
+  const [unsealed, setUnsealed] = useState<number | null>(null);
+  const sleepingIds = useMemo(
+    () => new Set(members.filter((m) => m.active === false).map((m) => m.id)),
+    [members]
+  );
+  const waking = useMemo(() => attendees.filter((id) => !sleepingIds.has(id)), [attendees, sleepingIds]);
+  useEffect(() => {
+    // An already-spoken verdict is a matter of record: it needs no gate to be
+    // read back, and the vine can never un-know what it knew.
+    if (g.prophecy) { setUnsealed(0); return; }
+    let alive = true;
+    fetchAllOfferings(g.id)
+      .then((offerings) => { if (alive) setUnsealed(waking.filter((id: string) => !offerings[id]?.title).length); })
+      .catch(() => { if (alive) setUnsealed(null); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g.id, g.prophecy, waking.join(",")]);
+
+  // The vine may speak only with full knowledge of the room.
+  const mayConsult = !!g.prophecy || (waking.length > 0 && unsealed === 0);
+
   const consult = async () => {
     setRefusal(null);
     if (open) { setOpen(false); return; }
@@ -185,7 +210,7 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
           return;
         }
         const offerings = await fetchAllOfferings(g.id);
-        const missing = waking.filter((id) => !offerings[id]?.title).length;
+        const missing = waking.filter((id: string) => !offerings[id]?.title).length;
         if (missing > 0) {
           setRefusal(`The vine holds its tongue: ${missing} of ${waking.length} offerings remain unsealed.`);
           return;
@@ -208,8 +233,9 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
 
   return (
     <div style={{ textAlign: "center", marginTop: 14 }}>
-      <button onClick={consult} disabled={busy}
-        style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
+      <button onClick={consult} disabled={busy || !mayConsult}
+        title={mayConsult ? undefined : "The vine speaks only once every soul who has answered has sealed an offering."}
+        style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "11px 20px", cursor: mayConsult ? "pointer" : "not-allowed", opacity: busy || !mayConsult ? 0.45 : 1 }}>
         <i className="ti ti-crystal-ball" style={{ fontSize: 14 }} />
         {open ? "Let it be veiled" : busy ? "Consulting…" : "Consult the Prophecy"}
       </button>

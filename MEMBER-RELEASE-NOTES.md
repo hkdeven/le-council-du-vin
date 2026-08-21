@@ -2,6 +2,11 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 10 August 2026
+
+- **The vine holds its tongue in earnest.** The Prophecy was only ever meant to speak once every soul who has answered the call has sealed an offering, but that condition was tested only before its first word: once the vine had spoken, the door stood open ever after. Now the invitation itself stays dark until the room is complete, and says why. A verdict already given still reveals, as it must, for the vine cannot un-know what it knew.
+- **A door that would not open.** One member had been shut out since the day he was anointed, told at every attempt that he was known to the gate but not yet of it. The cause was a single capital letter in the address on his record. The door now reads an address as any post office would, caring nothing for capitals or a stray space, and the same blindness was given to every check that decides rank and standing.
+
 ## 18 July 2026
 
 - **A door that would not open.** One member had been shut out of the Council since the day he was anointed, told at every attempt that he was known to the gate but not yet of it. The cause was a single capital letter in the address on his record, which the instrument compared too strictly to recognise as his own. The door now reads an address as any post office would, caring nothing for capitals or a stray space, and the same blindness has been given to every check that decides rank and standing, so no soul can be turned away by their own spelling again.
