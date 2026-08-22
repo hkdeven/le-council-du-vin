@@ -712,14 +712,22 @@ export default function Convene() {
             <div className="eyebrow" style={{ marginBottom: 8, fontSize: 14 }}>Summon a new gathering · Keiser</div>
             <input value={newTheme} onChange={(e) => setNewTheme(e.target.value)} placeholder="The theme…" style={{ marginBottom: 8 }} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
-              <input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
-                style={{ flex: "1 1 150px", cursor: "pointer" }}
-              />
+              <div style={{ flex: "1 1 150px" }}>
+                <label className="eyebrow" htmlFor="new-gathering-date" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>
+                  The night
+                </label>
+                <input
+                  id="new-gathering-date"
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+                  aria-label="Date of the gathering"
+                  style={{ width: "100%", cursor: "pointer", colorScheme: "dark" }}
+                />
+              </div>
               <div style={{ position: "relative", flex: "1 1 150px" }}>
+                <span className="eyebrow" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>The host</span>
                 <button
                   onClick={() => setHostOpen((o) => !o)}
                   style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}

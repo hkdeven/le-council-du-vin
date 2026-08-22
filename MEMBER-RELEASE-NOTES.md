@@ -2,6 +2,23 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 21 August 2026
+
+The first true gathering held on the instrument, and the night taught us six things. All six are mended.
+
+- **A sealed reckoning is now final.** Returning to the scoring after sealing did not merely look dangerous, it undid the seal: a single touch of one orb marked the whole ballot unsealed again, so the table waited on a soul who believed themselves long finished, and the cloths would not lift. Once you seal, the scoring is closed to you. Your verdicts are shown back, and they stand.
+- **One button, not two.** Sealing carries you straight to the revelation. The second press is gone.
+- **The aromas are simply your words.** The pills and their little input are retired: nobody could tell where the cloud on their card came from. There is one field per wine now, and what you write there becomes your Nose. Every aroma marked on past nights still counts, and every note ever whispered still feeds the cloud, as it always quietly did.
+- **A word could no longer follow you.** An aroma typed but not added would appear against the next wine. It goes with the input that caused it.
+- **Claiming your own wine works.** On the night every soul but the Keiser was refused when they tried to claim their bottle, the record itself turning them away. The annals are the Keiser's to write, as a record must be, so claiming now passes through a door built for exactly that one purpose: one unowned bottle, once per night, for the soul who brings it.
+- **The summoning knows what it wants.** The date field on a new gathering was a blank cell that explained nothing. It is labelled.
+- **Your words are attributed at last.** In the codex, open any bottle and each soul's note now sits beneath their verdict, in their own name. Nothing was lost: the words were always kept against the one who wrote them, and were merely never shown. Every note from every night, including the sixteen before the instrument existed, is there now.
+- **Behind the curtain: the whole flow can be rehearsed.** The convening, the rite and the revelation can now be walked end to end by one pair of hands, with the rest of the table played by strings, so every gate is tested before a real night depends on it.
+
+## 22 August 2026
+
+- **The sealed reckoning now names who it waits for.** Held at the locked door, the page used to say only how many ballots were in. It now lists the souls still to judge, your own name marked, so the table can look to the right phone instead of guessing. The list refreshes as each ballot is sealed, and a soul who sleeps or has left the roll appears in neither the count nor the list, since the night never waits on them.
+
 ## 10 August 2026
 
 - **The vine holds its tongue in earnest.** The Prophecy was only ever meant to speak once every soul who has answered the call has sealed an offering, but that condition was tested only before its first word: once the vine had spoken, the door stood open ever after. Now the invitation itself stays dark until the room is complete, and says why. A verdict already given still reveals, as it must, for the vine cannot un-know what it knew.

@@ -164,6 +164,20 @@ export async function commitAnnal(entry: AnnalEntry): Promise<void> {
   } catch {}
 }
 
+// Claim an unowned bottle as your own. The annals are Keiser-only to write
+// (as they must be: they are the record), so a member's claim goes through a
+// SECURITY DEFINER door that can do exactly this one thing and nothing else:
+// set the owner on ONE unowned row, for the calling member, once per night.
+// Without it a member's claim was simply refused by the vault, which is what
+// members hit on the first real night ("new row violates row-level security
+// policy for table annals").
+export async function claimBottle(gatheringId: string, rowIndex: number): Promise<void> {
+  assertWrite();
+  if (!gatheringsLive()) return;
+  const { error } = await supabase!.rpc("claim_bottle", { gid: gatheringId, row_index: rowIndex });
+  if (error) throw new Error(error.message);
+}
+
 // Victories per member name, derived fresh from the committed entries — never
 // incremented in place, so an amended or re-entered night can never double a
 // crown, and a DQ applied after entry takes a wrongly credited win with it.

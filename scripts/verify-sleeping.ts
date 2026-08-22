@@ -75,6 +75,8 @@ async function main() {
   // write a sleeping hand keeps.
   check("sleeping: reveal-photos upload UNTOUCHED", allowed(() => sb.storage.from("reveal-photos").upload("p", blob)));
   check("sleeping: add_reveal_photo RPC UNTOUCHED", allowed(() => sb.rpc("add_reveal_photo", { gid: "x", url: "u" })));
+  check("sleeping: claim_bottle is REFUSED (a claim is a write on the record)",
+    sealed(() => sb.rpc("claim_bottle", { gid: "x", row_index: 0 })));
   check("sleeping: a gatherings update is still refused (the RPC is the only door)", sealed(() => sb.from("gatherings").update({ theme_title: "x" })));
   check("sleeping: charts upload UNTOUCHED (their own sky, their own inbox)",
     allowed(() => sb.storage.from("charts").upload("p", blob)));

@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toRoman } from "@/lib/util";
-import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, type AnnalRow, championsOf, victoriesFrom } from "@/lib/annals";
+import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, type AnnalRow, championsOf, victoriesFrom, claimBottle } from "@/lib/annals";
 import { validateMeetingDraft, reckonRows, type DraftRowInput } from "@/lib/meeting-entry";
 import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
 import { prophecyRecord } from "@/lib/prophecy";
+import { fetchAllOfferings } from "@/lib/bottles";
 import { loadMembers } from "@/lib/members";
 import { uploadRevealPhoto, attachRevealPhoto, removeRevealPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
@@ -85,9 +86,11 @@ function draftFrom(a: AnnalEntry, g?: Gathering): Draft {
   };
 }
 
-function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }: {
+function GatheringEditor({ draft: initial, members, offerings, onCancel, onSave, onErase }: {
   draft: Draft;
   members: Pick<Member, "id" | "cult_name">[];
+  // What each soul logged before the night: their wine, its price, its grapes.
+  offerings: Record<string, { title: string; price: number | null; varietals: string[] }>;
   onCancel: () => void;
   onSave: (d: Draft) => Promise<void>;
   onErase?: () => Promise<void>;
@@ -136,6 +139,18 @@ function GatheringEditor({ draft: initial, members, onCancel, onSave, onErase }:
             return;
           }
           setRow(i, { owner: v });
+          // Their sealed offering fills what is still blank: the wine, its
+          // price, its grapes. Never overwrites the Keiser's own hand.
+          const m = members.find((x) => x.cult_name === v);
+          const off = m ? offerings[m.id] : undefined;
+          if (off) {
+            setRow(i, {
+              owner: v,
+              title: r.title.trim() ? r.title : off.title || "",
+              price: r.price !== "" ? r.price : (off.price != null ? String(off.price) : ""),
+              varietals: r.varietals.length ? r.varietals : (off.varietals || []),
+            });
+          }
         }}
         style={{ flex: 1, colorScheme: "dark" }}
       >
@@ -245,6 +260,17 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // What each soul logged before the night, so naming an owner can bring
+  // their wine, price and grapes with it instead of the Keiser retyping them.
+  const [offerings, setOfferings] = useState<Record<string, { title: string; price: number | null; varietals: string[] }>>({});
+  useEffect(() => {
+    if (!editing) return;
+    let alive = true;
+    fetchAllOfferings(a.gatheringId)
+      .then((o: Record<string, { title: string; price: number | null; varietals: string[] }>) => { if (alive) setOfferings(o); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [editing, a.gatheringId]);
   const [uploading, setUploading] = useState(false);
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
   const { email: myEmail, mode: authMode } = useAuth();
@@ -287,8 +313,8 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
   const scoresFor = (cloth: number | null) => {
     if (cloth == null || !canSeeBreakdown) return [];
     return ballots
-      .map((b) => ({ member: memberById.get(b.memberId), score: b.scores[cloth] }))
-      .filter((x): x is { member: RosterLite; score: number } => !!x.member && typeof x.score === "number" && x.score > 0)
+      .map((b) => ({ member: memberById.get(b.memberId), score: b.scores[cloth], note: (b.notes || {})[cloth] || "" }))
+      .filter((x): x is { member: RosterLite; score: number; note: string } => !!x.member && typeof x.score === "number" && x.score > 0)
       .sort((x, y) => y.score - x.score || x.member.cult_name.localeCompare(y.member.cult_name));
   };
   // One bottle per soul per night: no claiming if a wine is already yours here.
@@ -331,6 +357,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
       {open && editing && isKeiser ? (
         <GatheringEditor
           draft={draftFrom(a, g)}
+          offerings={offerings}
           members={members}
           onCancel={() => setEditing(false)}
           onSave={async (d) => { await onSave(d); setEditing(false); }}
@@ -378,12 +405,19 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
               // Per-member scores (#6): full members and the Keiser only —
               // initiates get no caret, and the database gives them no rows.
               <div style={{ margin: "2px 0 8px 32px", borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
-                {verdicts.map(({ member, score }) => (
-                  <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "3px 0" }}>
-                    <Avatar src={member.avatar_url} initials={member.short_name || member.cult_name.slice(0, 2).toUpperCase()} size={22} />
-                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'Cormorant Garamond', serif", fontSize: 14, color: "var(--parch)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.cult_name}</span>
-                    <ScorePips score={score} />
-                    <span className="disp" style={{ fontSize: 12, width: 20, textAlign: "right", color: "var(--gold2)" }}>{score}</span>
+                {verdicts.map(({ member, score, note }) => (
+                  <div key={member.id} style={{ padding: "3px 0" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <Avatar src={member.avatar_url} initials={member.short_name || member.cult_name.slice(0, 2).toUpperCase()} size={22} />
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: "'Cormorant Garamond', serif", fontSize: 14, color: "var(--parch)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.cult_name}</span>
+                      <ScorePips score={score} />
+                      <span className="disp" style={{ fontSize: 12, width: 20, textAlign: "right", color: "var(--gold2)" }}>{score}</span>
+                    </div>
+                    {note && (
+                      <p className="whisper" style={{ margin: "1px 0 5px 31px", fontSize: 13.5, lineHeight: 1.45, color: "var(--dim)" }}>
+                        &ldquo;{note}&rdquo;
+                      </p>
+                    )}
                   </div>
                 ))}
                 <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "4px 0 1px", borderTop: "1px solid var(--line)", marginTop: 3 }}>
@@ -582,8 +616,14 @@ export default function Codex() {
   // AnnalCard hides the button once a wine that night is already yours).
   const claimWine = async (a: AnnalEntry, rowIdx: number) => {
     if (!myName || a.rows.some((r) => r.owner === myName)) return;
-    const rows = a.rows.map((r, i) => (i === rowIdx && !r.owner ? { ...r, owner: myName } : r));
-    await commitAnnal({ ...a, rows });
+    if (gatheringsLive()) {
+      // The annals are the Keiser's to write; a member claims through the
+      // narrow door instead (see claimBottle).
+      await claimBottle(a.gatheringId, rowIdx);
+    } else {
+      const rows = a.rows.map((r, i) => (i === rowIdx && !r.owner ? { ...r, owner: myName } : r));
+      await commitAnnal({ ...a, rows });
+    }
     await refresh();
   };
 
@@ -903,6 +943,7 @@ export default function Codex() {
           <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
             <div className="eyebrow" style={{ marginBottom: 4 }}>Record a past gathering</div>
             <GatheringEditor
+              offerings={{}}
               draft={{
                 number: Math.max(0, ...annals.map((a) => a.number), ...gatherings.map((g) => g.number || 0)) + 1,
                 theme: "", date: "", host_id: null, host_name: "", host2_id: null, host2_name: "",

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the voting flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:430px;margin:0 auto;padding:0 14px 90px;}
+  .disp{font-family:"Cinzel",serif;font-weight:500;letter-spacing:0.02em;}
+  .scr{font-family:"Cormorant Garamond",serif;font-style:italic;}
+  .gv{font-family:"Great Vibes",cursive;color:var(--gold2);}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  .card{background:linear-gradient(180deg,#100e0c,#0a0908);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .btn{width:100%;background:none;border:1px solid var(--line2);border-radius:10px;color:var(--gold2);font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
+  .btn.gold{background:linear-gradient(180deg,#b09863,#8a7647);border-color:#9c8a5f;color:#120f0c;font-weight:600;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  input,textarea{width:100%;background:#080706;border:1px solid var(--line);border-radius:8px;color:var(--parch);padding:9px 11px;font-family:"EB Garamond",serif;font-size:15px;}
+  textarea{min-height:74px;resize:vertical}
+  label.field{display:block;font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin:14px 0 5px;}
+
+  /* header + stages */
+  header{border-bottom:1px solid var(--line);background:#0a0908;position:sticky;top:0;z-index:20}
+  .hrow{max-width:430px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:12px 14px}
+  .brand{font-family:"Cinzel",serif;font-size:12px;letter-spacing:0.12em;color:var(--parch)}
+  .stages{display:flex;gap:2px;max-width:430px;margin:0 auto;padding:0 10px 8px}
+  .stage{flex:1;font-family:"Cinzel",serif;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);background:none;border:none;padding:7px 4px;border-radius:6px;cursor:pointer}
+  .stage.on{color:var(--gold2);background:rgba(160,150,120,0.1)}
+  .stage:disabled{opacity:0.3;cursor:not-allowed}
+
+  /* orbs */
+  .orbs{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin:8px 0}
+  .orb{width:26px;height:26px;border-radius:50%;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:"Cinzel",serif;font-size:11px;color:#120f0c;background:none}
+  .orb.f{background:linear-gradient(180deg,#cbbd93,#9c8a5f)}
+  .orbs.sm .orb{width:19px;height:19px;font-size:9px}
+  .cloth{width:96px;height:96px;margin:0 auto 12px;border:1px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Cinzel",serif;font-size:26px;color:var(--gold2);background:radial-gradient(circle,#161310,#0a0908)}
+  .rk{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line)}
+  .rk:last-child{border-bottom:none}
+
+  /* the table simulator */
+  .sim{position:fixed;left:0;right:0;bottom:0;background:#0d0b0a;border-top:1px solid var(--gold);z-index:30;max-height:52vh;overflow:auto}
+  .sim .inner{max-width:430px;margin:0 auto;padding:10px 14px 16px}
+  .simhead{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0}
+  .simrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .chip{font-family:"Cinzel",serif;font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;border:1px solid var(--line2);border-radius:9px;padding:2px 7px;color:var(--dim);background:none;cursor:pointer}
+  .chip.on{color:#120f0c;background:var(--gold2);border-color:var(--gold2)}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:13px;line-height:1.5}
+  .flag{border:1px solid var(--wine);background:rgba(122,48,56,0.12);border-radius:8px;padding:9px 12px;margin-top:8px;font-size:14px;color:#e0b9b5}
+  .ok{border:1px solid var(--line2);background:rgba(160,150,120,0.08);border-radius:8px;padding:9px 12px;margin-top:8px;font-size:14px}
+  .emblem{width:64px;height:64px;margin:0 auto 8px;display:block;opacity:.9;animation:breathe 4.6s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <img src="/site-mark.png" alt="" width="28" height="28">
+    <span class="brand">Le Council du Vin</span>
+    <span style="flex:1"></span>
+    <span class="eyebrow" style="font-size:9px" id="whoami">The Keiser</span>
+  </div>
+  <div class="stages">
+    <button class="stage on" id="s-convene" onclick="go('convene')">Convene</button>
+    <button class="stage" id="s-rite" onclick="go('rite')">The rite</button>
+    <button class="stage" id="s-reveal" onclick="go('reveal')">Reveal</button>
+  </div>
+</header>
+
+<div class="wrap" id="view"></div>
+
+<div class="sim">
+  <div class="inner">
+    <div class="simhead" onclick="toggleSim()">
+      <i class="ti ti-adjustments" style="color:var(--gold)"></i>
+      <span class="eyebrow" style="flex:1">The table · simulate the others</span>
+      <i class="ti ti-chevron-up" id="simcaret"></i>
+    </div>
+    <div id="simbody">
+      <p class="note" style="margin:2px 0 8px">Tap a chip to act as that soul. This is the prototype's puppet strings: the real app has each member doing this on their own phone.</p>
+      <div id="simrows"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="chip" onclick="allOfferings()">All log offerings</button>
+        <button class="chip" onclick="allSeal()">All seal ballots</button>
+        <button class="chip" onclick="reset()">Reset everything</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── The night ───────────────────────────────────────────────────────────────
+const WINES = 6;
+const ME = "The Keiser";
+const SOULS = [
+  { name: "Priestess Larissa", wine: "Sadie Palladius 2021", price: 780 },
+  { name: "Adept Wernardt",    wine: "Kanonkop Paul Sauer 2019", price: 950 },
+  { name: "Great Scott",       wine: "Boekenhoutskloof Syrah 2020", price: 620 },
+  { name: "James",             wine: "Rustenberg Peter Barlow 2019", price: 540 },
+  { name: "Elder Martin",      wine: "Barolo 2018", price: 1200 },
+  { name: "Dominiko",          wine: "Meerlust Rubicon 2020", price: 430 },
+  { name: ME,                  wine: "Reyneke Reserve Red 2021", price: 460 },
+];
+const KEY = "lcv_flow_proto_v1";
+
+const blank = () => ({
+  stage: "convene",
+  rsvp: Object.fromEntries(SOULS.map(s => [s.name, true])),
+  offering: Object.fromEntries(SOULS.map(s => [s.name, s.name === ME])),
+  sealed: Object.fromEntries(SOULS.map(s => [s.name, false])),
+  scores: {},           // mine, by wine
+  notes: {},            // mine, by wine
+  current: 1,
+  prophecy: null,
+  committed: false,
+  owners: {},           // cloth -> name
+  tally: null,
+});
+let S = load();
+function load(){ try { return { ...blank(), ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return blank(); } }
+function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function reset(){ S = blank(); save(); render(); }
+
+// The gates, exactly as the app now enforces them.
+const waking = () => SOULS.filter(s => S.rsvp[s.name]).map(s => s.name);
+const unsealedOfferings = () => waking().filter(n => !S.offering[n]).length;
+const unsealedBallots  = () => waking().filter(n => !S.sealed[n]).length;
+const mayProphesy = () => !!S.prophecy || (waking().length > 0 && unsealedOfferings() === 0);
+const revealOpen  = () => waking().length > 0 && unsealedBallots() === 0;
+const judged = () => Object.keys(S.scores).length;
+
+function go(stage){
+  if (stage === "rite" && !S.rsvp[ME]) return alert("Answer the call first: the rite is for those who attend.");
+  S.stage = stage; save(); render();
+}
+
+// ── Views ───────────────────────────────────────────────────────────────────
+function convene(){
+  const mine = S.offering[ME];
+  return `
+  <div class="card">
+    <div class="eyebrow" style="margin-bottom:4px">Gathering XIX</div>
+    <div class="gv" style="font-size:27px;line-height:1.2">Cape Bordeaux Blends</div>
+    <p class="whisper" style="margin:3px 0 0">Friday 18 September, 19:00 · at the table of Seer Matthew</p>
+
+    <div style="border-top:1px solid var(--line);margin:14px 0 10px"></div>
+    <div class="eyebrow" style="font-size:10px;margin-bottom:6px">Who answers the call · ${waking().length}</div>
+    <button class="btn ${S.rsvp[ME] ? "gold" : ""}" onclick="toggleRsvp()">
+      ${S.rsvp[ME] ? "You are attending · withdraw" : "I shall attend"}
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow" style="margin-bottom:4px">Your offering</div>
+    ${mine ? `
+      <p class="whisper" style="margin:0 0 6px">Your wine is sealed: known only to you, until the cloths are lifted.</p>
+      <div class="ok">${SOULS.find(s=>s.name===ME).wine} · R${SOULS.find(s=>s.name===ME).price}</div>
+      <button class="btn" onclick="S.offering[ME]=false;save();render()">Erase it</button>
+    ` : `
+      <p class="whisper" style="margin:0 0 8px">Log the wine you shall bring. Hidden from every other soul, even the Keiser, until the reveal.</p>
+      <input id="wineName" placeholder="The wine…" value="${SOULS.find(s=>s.name===ME).wine}">
+      <button class="btn gold" onclick="S.offering[ME]=true;save();render()">Log your offering</button>
+    `}
+  </div>
+
+  <div class="card" style="text-align:center">
+    <button class="btn" ${mayProphesy() ? "" : "disabled"} onclick="prophesy()"
+      title="${mayProphesy() ? "" : "The vine speaks only once every soul who has answered has sealed an offering."}">
+      <i class="ti ti-crystal-ball"></i>${S.prophecy ? "Let it be veiled" : "Consult the Prophecy"}
+    </button>
+    ${!mayProphesy() ? `<p class="whisper" style="margin:8px 0 0">${unsealedOfferings()} of ${waking().length} offerings remain unsealed.</p>` : ""}
+    ${S.prophecy ? `
+      <div style="margin-top:14px">
+        <img class="emblem" src="/site-mark.png" alt="">
+        <div class="eyebrow" style="font-size:10px">The vine has spoken</div>
+        <div class="gv" style="font-size:30px">${S.prophecy}</div>
+        <p style="margin:0;font-size:15px;color:var(--bright)">shall be crowned this night.</p>
+        <p class="whisper" style="margin:8px 0 0;font-size:12px">spoken once, before the cloths · the vine's first foretelling · graded at the reckoning</p>
+      </div>` : ""}
+  </div>
+
+  <button class="btn gold" onclick="go('rite')"><i class="ti ti-glass-full"></i>Enter the rite</button>`;
+}
+
+function rite(){
+  // A sealed reckoning is final: the scoring card is never drawn.
+  if (S.sealed[ME]) {
+    return `
+    <div class="card" style="text-align:center">
+      <i class="ti ti-lock-check" style="font-size:30px;color:var(--gold)"></i>
+      <h2 class="disp" style="font-size:17px;margin:10px 0 0">Your reckoning is sealed</h2>
+      <p class="whisper" style="font-size:15px;margin:8px 0 0">${judged()} verdict${judged()===1?"":"s"} cast, and they stand. No hand may revise them now, not even your own.</p>
+      <div style="margin-top:16px;text-align:left">
+        ${Array.from({length:WINES},(_,i)=>i+1).map(w=>`
+          <div class="rk"><span style="width:74px;font-family:'Cinzel',serif;font-size:12px;color:var(--dim)">Wine ${roman(w)}</span>
+          <span style="flex:1"></span><span class="disp" style="color:var(--gold2)">${S.scores[w] ?? "—"}</span></div>`).join("")}
+      </div>
+      <button class="btn gold" onclick="go('reveal')"><i class="ti ti-eye"></i>To the revelation</button>
+      <p class="whisper" style="margin:10px 0 0;font-size:12px">Try the stage tabs above: there is no way back to scoring.</p>
+    </div>`;
+  }
+
+  const w = S.current, sc = S.scores[w] || 0;
+  return `
+  <div class="card">
+    <h2 class="disp" style="font-size:17px;margin:0">The rite of judgement</h2>
+    <p class="whisper" style="margin:3px 0 0">Judging wine ${w} of ${WINES} · ${judged()} verdict${judged()===1?"":"s"} cast · revise any at will</p>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <div class="cloth">${roman(w)}</div>
+    <label class="field" style="color:#fff">The verdict</label>
+    <div class="orbs">
+      ${Array.from({length:10},(_,i)=>i+1).map(i=>`<span class="orb ${i<=sc?"f":""}" onclick="setScore(${w},${i})">${i===sc?i:""}</span>`).join("")}
+    </div>
+
+    <label class="field" style="color:#fff">Aromas</label>
+    <textarea id="note" placeholder="What the wine confessed to you… your words become your Nose."
+      oninput="S.notes[${w}]=this.value;save()">${S.notes[w] || ""}</textarea>
+    <p class="whisper" style="margin:6px 0 0;font-size:12px">One field only. The aroma pills are gone; these words feed your Nose.</p>
+  </div>
+
+  <div style="display:flex;gap:10px">
+    <button class="btn" style="flex:1;margin-top:0" ${w<=1?"disabled":""} onclick="S.current=${w-1};save();render()"><i class="ti ti-arrow-left"></i>Wine ${w>1?roman(w-1):"—"}</button>
+    <button class="btn" style="flex:1;margin-top:0" ${w>=WINES?"disabled":""} onclick="S.current=${w+1};save();render()">Wine ${w<WINES?roman(w+1):"—"}<i class="ti ti-arrow-right"></i></button>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="eyebrow" style="margin-bottom:4px">Your ballot</div>
+    <p class="whisper" style="margin:0 0 10px">Tap any wine to revise it: later pours may unseat your earlier favourites.</p>
+    ${Array.from({length:WINES},(_,i)=>i+1).map(n=>`
+      <div class="rk" style="${n===w?"background:rgba(160,150,120,0.08);border-radius:8px":""}">
+        <button style="width:60px;background:none;border:none;color:${n===w?"var(--gold2)":"var(--dim)"};font-family:'Cinzel',serif;font-size:12px;cursor:pointer;text-align:left" onclick="S.current=${n};save();render()">Wine ${roman(n)}</button>
+        <div class="orbs sm" style="flex:1;margin:0">
+          ${Array.from({length:10},(_,i)=>i+1).map(i=>`<span class="orb ${i<=(S.scores[n]||0)?"f":""}" onclick="setScore(${n},${i})">${i===(S.scores[n]||0)?i:""}</span>`).join("")}
+        </div>
+      </div>`).join("")}
+  </div>
+
+  <button class="btn gold" ${judged()<WINES?"disabled":""} onclick="seal()">
+    ${judged()<WINES ? `Seal and continue · ${judged()}/${WINES} judged` : "Seal and continue"}
+  </button>
+  <p class="whisper" style="margin:8px 0 0;text-align:center;font-size:12px">One button. It seals, then carries you to the revelation.</p>`;
+}
+
+function reveal(){
+  if (!revealOpen()) {
+    return `
+    <div class="card" style="text-align:center">
+      <i class="ti ti-lock" style="font-size:30px;color:var(--gold)"></i>
+      <h2 class="disp" style="font-size:17px;margin:10px 0 0">The cloths are not yet lifted</h2>
+      <p class="whisper" style="font-size:15px;margin:8px 0 0">
+        ${waking().length - unsealedBallots()} of ${waking().length} ballots have been sealed. The cloths are not lifted until every soul has judged.
+      </p>
+      <p class="whisper" style="margin:10px 0 0;font-size:12px">Use the panel below to seal the others and watch this open.</p>
+    </div>`;
+  }
+  const table = tally();
+  const myClaim = Object.values(S.owners).includes(ME);
+  return `
+  <div class="card" style="text-align:center">
+    <h2 class="disp" style="font-size:17px;margin:0">The revelation</h2>
+    <p class="whisper" style="margin:3px 0 0">every ballot sealed · the cloths may lift</p>
+  </div>
+  <div class="card">
+    <div class="eyebrow" style="margin-bottom:8px">As the table ranked them</div>
+    ${table.map((r,i)=>`
+      <div class="rk">
+        <span class="disp" style="width:26px;font-size:12px">${roman(i+1)}</span>
+        <span style="flex:1">
+          <span class="scr" style="font-size:15px;color:var(--gold2)">Bottle ${roman(r.cloth)}</span>
+          ${S.owners[r.cloth] ? `<span style="color:var(--dim)"> · ${S.owners[r.cloth]}</span>` : `
+            ${myClaim ? `<span class="whisper" style="font-size:12px"> · unclaimed</span>` :
+              `<button class="chip" style="margin-left:8px" onclick="claim(${r.cloth})">claim it</button>`}`}
+        </span>
+        <span class="disp" style="font-size:13px">${r.avg.toFixed(1)}</span>
+      </div>`).join("")}
+    <p class="whisper" style="margin:10px 0 0;font-size:12px">
+      Claiming is the fix from the first real night: every member may claim, one bottle each, and it no longer refuses all but the Keiser.
+    </p>
+  </div>`;
+}
+
+// ── Actions ─────────────────────────────────────────────────────────────────
+function toggleRsvp(){ S.rsvp[ME] = !S.rsvp[ME]; if(!S.rsvp[ME]) S.sealed[ME]=false; save(); render(); }
+function setScore(w,v){
+  if (S.sealed[ME]) return;            // a sealed ballot cannot be touched
+  S.scores[w]=v; save(); render();
+}
+function seal(){
+  if (judged() < WINES) return;
+  S.sealed[ME]=true; save();
+  go("reveal");                        // one motion: seal, then onward
+}
+function prophesy(){
+  if (S.prophecy) { S.prophecy=null; save(); return render(); }
+  S.prophecy = "Seer Matthew"; save(); render();
+}
+function claim(cloth){
+  if (Object.values(S.owners).includes(ME)) return alert("You have already claimed a bottle this night.");
+  if (S.owners[cloth]) return alert("That bottle is already claimed.");
+  S.owners[cloth]=ME; save(); render();
+}
+function tally(){
+  // Deterministic pseudo-scores for the others, plus my real ones.
+  const rows = Array.from({length:WINES},(_,i)=>{
+    const c=i+1;
+    const others = waking().filter(n=>n!==ME).map((n,j)=>4 + ((c*7 + j*3 + n.length) % 6));
+    const mine = S.scores[c] ? [S.scores[c]] : [];
+    const all=[...others,...mine];
+    return { cloth:c, avg: all.reduce((a,b)=>a+b,0)/all.length };
+  });
+  return rows.sort((a,b)=>b.avg-a.avg);
+}
+
+// ── The puppet strings ──────────────────────────────────────────────────────
+function simRows(){
+  return SOULS.map(s=>`
+    <div class="simrow">
+      <span style="flex:1;${s.name===ME?"color:var(--gold2)":""}">${s.name}${s.name===ME?" (you)":""}</span>
+      <button class="chip ${S.rsvp[s.name]?"on":""}" onclick="S.rsvp['${s.name}']=!S.rsvp['${s.name}'];save();render()">rsvp</button>
+      <button class="chip ${S.offering[s.name]?"on":""}" onclick="S.offering['${s.name}']=!S.offering['${s.name}'];save();render()">offering</button>
+      <button class="chip ${S.sealed[s.name]?"on":""}" onclick="S.sealed['${s.name}']=!S.sealed['${s.name}'];save();render()">ballot</button>
+    </div>`).join("");
+}
+function allOfferings(){ SOULS.forEach(s=>S.offering[s.name]=true); save(); render(); }
+function allSeal(){ SOULS.forEach(s=>{ if(s.name!==ME) S.sealed[s.name]=true; }); save(); render(); }
+function toggleSim(){
+  const b=document.getElementById("simbody");
+  b.style.display = b.style.display==="none" ? "block" : "none";
+  document.getElementById("simcaret").className = "ti ti-chevron-" + (b.style.display==="none"?"down":"up");
+}
+
+function roman(n){const m=[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];let o="";for(const[v,s]of m)while(n>=v){o+=s;n-=v}return o||"I"}
+
+function render(){
+  document.getElementById("view").innerHTML =
+    S.stage==="convene" ? convene() : S.stage==="rite" ? rite() : reveal();
+  for (const st of ["convene","rite","reveal"]) {
+    document.getElementById("s-"+st).className = "stage" + (S.stage===st?" on":"");
+  }
+  document.getElementById("simrows").innerHTML = simRows();
+}
+render();
+</script>
+</body>
+</html>

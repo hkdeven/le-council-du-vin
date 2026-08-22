@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { aromasFor, cleanAromaText } from "@/lib/aromas";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import { useWineCount } from "@/lib/useWineCount";
@@ -33,10 +33,12 @@ export default function Rite() {
 
   const [current, setCurrent] = useState(1);
   const [scores, setScores] = useState<Record<number, number>>({});
+  // Kept though nothing writes it any more: ballots sealed before the aroma
+  // input was retired still carry marked aromas, and the Nose still counts them.
   const [aromasByWine, setAromasByWine] = useState<Record<number, string[]>>({});
   const [notesByWine, setNotesByWine] = useState<Record<number, string>>({});
-  const [newAroma, setNewAroma] = useState("");
   const [sealed, setSealed] = useState(false);
+  const router = useRouter();
 
   // Restore a previously sealed (or in-progress) ballot for this member.
   useEffect(() => {
@@ -54,12 +56,7 @@ export default function Rite() {
   }, [meId, g]);
 
   const score = scores[current] ?? 0;
-  const aromas = aromasByWine[current] ?? [];
   const notes = notesByWine[current] ?? "";
-  // A small random handful of aromas per wine (deterministic), plus any the
-  // taster has added themselves so they stay visible/selected.
-  const suggestions = aromasFor(`${gid}-${current}`);
-  const displayedAromas = [...suggestions, ...aromas.filter((a) => !suggestions.includes(a))];
   const judged = wines.filter((w) => scores[w] != null).length;
 
   const addWine = () => setTotal(total + 1);
@@ -103,27 +100,10 @@ export default function Rite() {
       }
     }
     setSealed(true);
-  };
-
-  const toggleAroma = (a: string) =>
-    setAromasByWine((m) => {
-      const list = m[current] ?? [];
-      const next = { ...m, [current]: list.includes(a) ? list.filter((x) => x !== a) : [...list, a] };
-      // Aromas feed the Palate Dossier's Nose, so they persist with the ballot.
-      if (meId) saveBallot(gid, meId, { scores, sealed, aromas: next, notes: notesByWine }).catch(() => {});
-      return next;
-    });
-
-  const addAroma = () => {
-    // Fillers stripped ("a hint of black cherry" → "black cherry") so only
-    // real scent words reach the ballot and, later, the Nose cloud.
-    const a = cleanAromaText(newAroma);
-    if (!a) return;
-    setAromasByWine((m) => {
-      const list = m[current] ?? [];
-      return { ...m, [current]: list.includes(a) ? list : [...list, a] };
-    });
-    setNewAroma("");
+    // One motion, not two: the seal carries them to the revelation. Going back
+    // to score would UNSEAL the ballot (setScore writes sealed:false), which
+    // drops the reveal's count and re-locks the night for the whole table.
+    router.push("/reveal");
   };
 
   if (ready && !g) {
@@ -149,6 +129,35 @@ export default function Rite() {
           Judgement begins half an hour after the gathering convenes. Return at{" "}
           <span className="scr" style={{ color: "var(--gold2)" }}>{opensStr}</span>.
         </p>
+      </section>
+    );
+  }
+
+  // A sealed reckoning is final. The scoring card is not merely disabled but
+  // never drawn: touching a single orb would set sealed:false on the ballot,
+  // and the table would wait on a member who believed they were done.
+  if (ready && sealed) {
+    return (
+      <section style={{ textAlign: "center", padding: "50px 0" }}>
+        <i className="ti ti-lock-check" style={{ fontSize: 32, color: "var(--gold)" }} aria-hidden="true" />
+        <h1 className="disp" style={{ fontSize: 18, fontWeight: 500, marginTop: 12 }}>Your reckoning is sealed</h1>
+        <p className="whisper" style={{ fontSize: 16, maxWidth: 380, margin: "10px auto 0" }}>
+          {judged} verdict{judged === 1 ? "" : "s"} cast, and they stand. No hand may revise them now, not even your own.
+        </p>
+        <div style={{ maxWidth: 330, margin: "18px auto 0", textAlign: "left" }}>
+          {wines.map((w) => (
+            <div key={w} className="rk" style={{ padding: "9px 8px" }}>
+              <span style={{ width: 74, fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.08em", color: "var(--dim)" }}>
+                Wine {toRoman(w)}
+              </span>
+              <span style={{ flex: 1 }} />
+              <span className="disp" style={{ fontSize: 15, color: "var(--gold2)" }}>{scores[w] ?? "—"}</span>
+            </div>
+          ))}
+        </div>
+        <Link href="/reveal" className="btn gold" style={{ display: "block", maxWidth: 330, margin: "20px auto 0", textDecoration: "none", textAlign: "center" }}>
+          <i className="ti ti-eye" style={{ marginRight: 6 }} />To the revelation
+        </Link>
       </section>
     );
   }
@@ -216,33 +225,12 @@ export default function Rite() {
           </div>
 
           <label className="field" style={{ fontSize: 14, color: "#fff" }}>Aromas</label>
-          <div className="pills" style={{ justifyContent: "center" }}>
-            {displayedAromas.map((a) => (
-              <span key={a} className={`pill${aromas.includes(a) ? " on" : ""}`} onClick={() => toggleAroma(a)}>
-                {a}
-              </span>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <input
-              value={newAroma}
-              onChange={(e) => setNewAroma(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAroma())}
-              placeholder="Name another aroma…"
-              style={{ flex: 1 }}
-            />
-            <button className="btn" style={{ width: "auto", padding: "0 12px" }} onClick={addAroma} aria-label="Add aroma">
-              <i className="ti ti-plus" />
-            </button>
-          </div>
-
-          <label className="field" style={{ fontSize: 14, color: "#fff" }}>Whispered notes</label>
           <textarea
             value={notes}
             disabled={sleeping}
             onChange={(e) => setNotesByWine((m) => ({ ...m, [current]: e.target.value }))}
             onBlur={() => { if (meId && !sleeping) saveBallot(gid, meId, { scores, sealed, aromas: aromasByWine, notes: notesByWine }).catch(() => {}); }}
-            placeholder={sleeping ? "A sleeping hand writes no notes." : "What the wine confessed to you…"}
+            placeholder={sleeping ? "A sleeping hand writes no notes." : "What the wine confessed to you… your words become your Nose."}
           />
         </div>
       </div>
@@ -296,14 +284,8 @@ export default function Rite() {
         disabled={judged < total || sealed || sleeping}
         onClick={sealReckoning}
       >
-        {sealed ? "Sealed" : judged < total ? `Seal the reckoning · ${judged}/${total} judged` : "Seal the reckoning"}
+        {judged < total ? `Seal and continue · ${judged}/${total} judged` : "Seal and continue"}
       </button>
-
-      {sealed && (
-        <Link href="/reveal" className="btn" style={{ display: "block", textDecoration: "none", textAlign: "center", fontSize: 14, marginTop: 10 }}>
-          <i className="ti ti-eye" style={{ marginRight: 6 }} /> Proceed to the revelation
-        </Link>
-      )}
     </section>
   );
 }

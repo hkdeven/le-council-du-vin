@@ -587,3 +587,50 @@ as $$
     select 1 from members where lower(email) = lower(auth.jwt() ->> 'email')
   );
 $$;
+
+-- ── A member may claim their own bottle (2026-08-21) ───────────────────────
+-- The annals are the record, so only the Keiser may write them. That left a
+-- member's claim on the codex refused outright: "new row violates row-level
+-- security policy for table annals" (hit by every member but the Keiser on
+-- the first real night). RLS cannot open one field of one row inside a jsonb
+-- array, so the claim goes through a door that does exactly one thing.
+--
+-- It refuses: a stranger, a sleeping member, a bottle already spoken for, and
+-- a second bottle on a night where the caller already holds one.
+create or replace function claim_bottle(gid uuid, row_index int) returns void
+  language plpgsql security definer
+  set search_path = public
+as $$
+declare
+  me text;
+  rows_json jsonb;
+begin
+  select cult_name into me from members
+   where lower(email) = lower(auth.jwt() ->> 'email') and active;
+  if me is null then
+    raise exception 'Only a waking member of the Council may claim a bottle.';
+  end if;
+
+  select rows into rows_json from annals where gathering_id = gid;
+  if rows_json is null then
+    raise exception 'That night is not in the annals.';
+  end if;
+  if rows_json -> row_index is null then
+    raise exception 'No such bottle on that night.';
+  end if;
+  if coalesce(rows_json -> row_index ->> 'owner', '') <> '' then
+    raise exception 'That bottle is already claimed.';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(rows_json) r
+     where lower(trim(coalesce(r ->> 'owner', ''))) = lower(trim(me))
+  ) then
+    raise exception 'You have already claimed a bottle that night.';
+  end if;
+
+  update annals
+     set rows = jsonb_set(rows_json, array[row_index::text, 'owner'], to_jsonb(me))
+   where gathering_id = gid;
+end $$;
+revoke all on function claim_bottle(uuid, int) from public;
+grant execute on function claim_bottle(uuid, int) to authenticated;

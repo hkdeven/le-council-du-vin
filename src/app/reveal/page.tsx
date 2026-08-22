@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { seedMembers } from "@/lib/seed";
+import { loadMembers } from "@/lib/members";
 import { toRoman } from "@/lib/util";
 import { fetchAllOfferings, type Offering } from "@/lib/bottles";
 import { supabase } from "@/lib/supabase";
@@ -278,21 +279,30 @@ export default function Reveal() {
   // a guess. A soul CAST OUT of the roster is excluded too: their id lingers
   // in attendees and, being no member at all, they can never seal either.
   const [awakeIds, setAwakeIds] = useState<Set<string> | null>(null);
+  // The same read carries the cult names, so the locked panel can NAME the
+  // souls still being waited on rather than only counting them.
+  const [rosterNames, setRosterNames] = useState<Record<string, string>>({});
   useEffect(() => {
     if (mode !== "live" || !supabase) return;
     let alive = true;
-    const read = () => supabase!.from("members").select("id,active")
-      .then(({ data, error }: { data: { id: string; active: boolean | null }[] | null; error: { message: string } | null }) => {
+    const read = () => supabase!.from("members").select("id,active,cult_name")
+      .then(({ data, error }: { data: { id: string; active: boolean | null; cult_name: string | null }[] | null; error: { message: string } | null }) => {
         if (!alive) return;
         // The error was swallowed here once, which quietly restored the very
         // deadlock this exists to prevent. Retry, and say so if it persists.
         if (error || !data) { console.error("The roll would not open:", error?.message); return; }
         setAwakeIds(new Set(data.filter((m) => m.active !== false).map((m) => m.id)));
+        setRosterNames(Object.fromEntries(data.map((m) => [m.id, m.cult_name || ""])));
       });
     read();
     const t = setInterval(() => { if (!awakeIds) read(); }, 15000);
     return () => { alive = false; clearInterval(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+  // Demo mode has no roll to read: the local roster supplies the names.
+  useEffect(() => {
+    if (mode === "live") return;
+    setRosterNames(Object.fromEntries(loadMembers().map((m) => [m.id, m.cult_name || ""])));
   }, [mode]);
   const awaited = awakeIds ? attendees.filter((id) => awakeIds.has(id)) : attendees;
   const sleepingAmong = attendees.length - awaited.length;
@@ -346,6 +356,13 @@ export default function Reveal() {
   const riteOpen = useRiteOpen(g);
   const sealedCount = stats.sealedIds.filter((id) => awaited.includes(id)).length;
   const locked = !committed && (!riteOpen || awaited.length === 0 || sealedCount < awaited.length);
+  // Who, not just how many: the souls whose ballots the night is still waiting
+  // on. A soul whose name has not loaded yet is still listed, unnamed, so the
+  // count and the list can never disagree.
+  const awaiting = awaited
+    .filter((id) => !stats.sealedIds.includes(id))
+    .map((id) => (id === meId ? `${rosterNames[id] || myName || "You"} (you)` : rosterNames[id] || "A soul yet unnamed"))
+    .sort((a, b) => a.localeCompare(b));
 
   // While still sealed, poll for newly-sealed ballots so the reveal unlocks and
   // tallies live — no refresh needed. Stops the moment it opens (so it never
@@ -480,6 +497,24 @@ export default function Reveal() {
             ? "No souls have answered the call. RSVP on the convening, then judge in the rite."
             : `${sealedCount} of ${awaited.length} ballots have been sealed. The cloths are not lifted until every soul has judged.`}
         </p>
+        {riteOpen && awaited.length > 0 && awaiting.length > 0 && (
+          <div style={{ maxWidth: 380, margin: "18px auto 0" }}>
+            <p className="whisper" style={{ fontSize: 12, letterSpacing: ".08em", textTransform: "uppercase", margin: "0 0 8px" }}>
+              Still to judge
+            </p>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+              {awaiting.map((name, i) => (
+                <li key={`${name}-${i}`} style={{
+                  fontSize: 13, color: "var(--gold2)", border: "1px solid var(--line)",
+                  borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap",
+                }}>
+                  <i className="ti ti-hourglass" style={{ fontSize: 11, marginRight: 6, color: "var(--faint)" }} aria-hidden="true" />
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     );
   }
