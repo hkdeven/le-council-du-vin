@@ -11,6 +11,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, isLive, enforceLogin } from "@/lib/supabase";
 import type { Member, Role } from "@/lib/types";
 import { setWriteLock } from "@/lib/writeLock";
+import { canonicalEmail, pickMemberRow } from "@/lib/memberLookup";
 
 // The login wall is only active when Supabase is connected AND enforcement is on.
 // Otherwise the app runs open (demo behaviour) so it stays navigable.
@@ -124,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Canonical form, always. Access hangs on this matching the members row
       // exactly (the RLS policy compares exactly too), so a capital letter or
       // a stray space would lock a member out of the Council entirely.
-      const email = sess?.user?.email?.trim().toLowerCase();
+      const email = canonicalEmail(sess?.user?.email);
       if (email) {
         const cached = readCache(email);
         if (cached) {
@@ -143,8 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .from("members")
           .select("*")
           .ilike("email", email);
-        const data =
-          (rows as Member[] | null)?.find((r) => (r.email || "").trim().toLowerCase() === email) ?? null;
+        const data = pickMemberRow(rows as Member[] | null, email);
         if (active) {
           if (error) {
             // A register that could not be read is NOT a soul who is not in it.

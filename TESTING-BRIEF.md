@@ -223,3 +223,150 @@ visibility.
   is `revealed`.
 - `writeLock.ts`'s header comment still says a sleeping hand may write "no photos", which
   the decree and the code below it contradict. Cosmetic.
+
+---
+
+# Second pass, same day: tests that can actually fail
+
+The Keiser did not trust the analysis, which was the right instinct. Green tests
+prove nothing until they are shown going red.
+
+**The two decisions behind the Council's two worst bugs are now pure functions**,
+out of the components where nothing could be tested:
+
+- `src/lib/riteScreen.ts` + `scripts/verify-rite-guard.ts` (21 checks) — exhaustive
+  over **all 32 state combinations**, enforcing one rule: the writable scoring card
+  is reachable ONLY when every state it depends on is genuinely known. Exactly one
+  of the 32 states may write.
+- `src/lib/memberLookup.ts` + `scripts/verify-member-lookup.ts` (33 checks) — the
+  auth door. James's real stored address, leading/trailing space, SHOUTED storage,
+  and the `_`/`%` cases where `ilike` matches a DIFFERENT member's row at the
+  database and the code comparison must refuse it.
+
+**Mutation testing: nine broken versions fed in, all nine caught.**
+
+| Mutant | Result |
+|---|---|
+| The original August rite ladder (every guard `ready &&`, no ballot gate) | 12 failed |
+| ballotReady gate removed | 6 failed |
+| sealed check removed | 5 failed |
+| clock check removed | 6 failed |
+| The original exact-match lookup (the one that shut James out) | 7 failed |
+| Trusts the ilike, takes the first row back | 15 failed |
+| Lowercases but forgets to trim | 2 failed |
+| Matches on substring instead of equality | 1 failed |
+| Forgets the empty-address guard | 2 failed |
+
+**Live mode exercised for the first time** (ENFORCE_LOGIN=true against the real
+Supabase, then restored; `.env.local` verified byte-identical afterwards):
+
+- anonymous `/convene` redirects to the gate: the login wall holds
+- all three doors render: Google, email + password, magic link, plus Forgot password
+- a real failed sign-in round-trips to Supabase and surfaces "Invalid login
+  credentials" on the gate, no hang and no crash
+- the new `.ilike` lookup was run against the production `members` table with
+  `_` and `%` in the value: valid, clean, no error. That mattered, because a bad
+  query shape there would lock out every member on the next deploy.
+
+Twelve suites, **342 checks**, green.
+
+## What this pass did NOT do
+
+It did not overturn anything in the first pass; it turned those findings into
+tests that provably catch the bugs. Two things remained unproven at this point.
+**The first has since been closed (see below).**
+
+1. ~~A real non-Keiser member claiming a bottle.~~ **CLOSED, on production, 11 Sep 2026.**
+2. **What the members who struggled to sign in actually saw.** The spelling fault
+   is now closed at both ends, but email delivery and Google redirect config are
+   different causes with different fixes, and nothing here distinguishes them.
+   The gate ledger on the profile page records every successful sign-in.
+
+---
+
+# Third pass: the untestable made testable
+
+The Keiser's ruling: being unable to test a member's claim is unacceptable.
+It was also the precise reason bug #6 reached a real gathering, so it was fixed
+as a capability, not as a one-off.
+
+## The problem, stated plainly
+
+The anon key cannot read `members`, `annals`, `gatherings` or `ballots` at all,
+and PostgREST cannot run SQL, so RLS-as-a-specific-member and every SECURITY
+DEFINER door were beyond reach. The Keiser's own account passes those tests
+whether or not they work. That is the whole trap.
+
+## The answer: a local replica the real policies run inside
+
+`./scripts/local-replica.sh` builds a throwaway Postgres database from the REAL
+`supabase/schema.sql` and `supabase/policies.sql`, plus `supabase/probe/00-supabase-shim.sql`,
+a faithful stand-in for the Supabase furniture the policies lean on: the
+`authenticated` and `anon` roles, and `auth.jwt()` / `auth.uid()` defined exactly
+as Supabase defines them, reading the `request.jwt.claims` GUC. 60 policies and
+all 7 functions load; only the `storage.*` policies fail, and nothing under test
+touches a bucket. Inside it, ANY member can be impersonated.
+
+## `supabase/verify-claim.sql` — 13 checks, bug #6 finally proven
+
+Builds a throwaway member and night, becomes that member, and asserts:
+
+    PASS  the probe is seen as a member of the Council
+    PASS  the probe is NOT the Keiser (this is the whole point)
+    PASS  a member still cannot write the annals directly (42501, as on the night)
+    PASS  *** A REAL NON-KEISER MEMBER CLAIMED THEIR BOTTLE (bug #6) ***
+    PASS  and the bottle now carries their name: Probe the Waking
+    PASS  exactly one bottle was touched, the others are untouched
+    PASS  a second bottle is refused
+    PASS  an already-claimed bottle is refused
+    PASS  a sleeping hand is refused
+    PASS  a stranger is refused
+    PASS  a second member claimed a different bottle on the same night
+    PASS  BOTH claims stand together (the first was not erased)
+    PASS  claim_bottle holds the row lock (for update), so claims queue
+
+**It cannot commit.** The whole run is one DO block that always ends by raising
+an exception, which prints the report and rolls back everything it made. There
+is no COMMIT in the file and no path that reaches one, so it is safe to run
+against production, repeatedly. Residue after every run: zero rows.
+
+## `./scripts/verify-claim-race.sh` — the lock, with two real connections
+
+Two members claim at the same moment, which is how every claim actually happens.
+Run against a deliberately unlocked copy of the function and then the real one:
+
+    unlocked (the bug) : Racer Alpha | - | - | -             [1 of 2 survived]
+    locked   (the fix) : Racer Alpha | Racer Beta | - | -     [2 of 2 survived]
+
+Ten consecutive runs: the unlocked door lost a claim EVERY time, the locked door
+kept both EVERY time. Which member loses varies with the scheduler, so the
+assertion counts survivors rather than names (the first version of this test
+asserted on a name and wrongly reported "the race did not reproduce").
+
+**That script rewrites `claim_bottle` while it runs.** It therefore refuses any
+argument that looks like a remote connection string, and restores the real
+function from `policies.sql` on exit, verifying the restore before it returns.
+An earlier version left its stripped test copy installed and silently
+invalidated the next suite run, which is exactly the failure it now guards.
+
+## Totals
+
+12 JS suites, 342 checks. 2 SQL suites, 16 checks. **358 in all, green.**
+
+## RUN AGAINST PRODUCTION, 11 September 2026: 13 passed, 0 failed
+
+The Keiser ran `supabase/verify-claim.sql` in the Supabase SQL editor against
+the live database. All thirteen checks passed, including the two that matter
+most:
+
+    PASS  a member still cannot write the annals directly (42501, as on the night)
+    PASS  *** A REAL NON-KEISER MEMBER CLAIMED THEIR BOTTLE (bug #6) ***
+    PASS  BOTH claims stand together (the first was not erased)
+    PASS  claim_bottle holds the row lock (for update), so claims queue
+
+**Bug #6 is closed, on production, proven rather than assumed.** The deployed
+policies match `policies.sql`. The run rolled itself back as designed.
+
+The sign-in question is still open and still needs the members' own accounts:
+what they saw distinguishes a spelling fault (now closed at both ends) from
+email delivery or Google redirect config, which are different fixes.

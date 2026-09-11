@@ -10,6 +10,7 @@ import { useWineCount } from "@/lib/useWineCount";
 import { fetchBallot, saveBallot } from "@/lib/ballots";
 import { fetchCurrentGathering, riteOpensAt } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
+import { riteScreen } from "@/lib/riteScreen";
 import type { Gathering } from "@/lib/types";
 
 export default function Rite() {
@@ -141,15 +142,18 @@ export default function Rite() {
     router.push("/reveal");
   };
 
-  // Nothing is known until the gathering is: before this the page fell straight
-  // through to the scoring card, showing a writable ballot to a member whose
-  // rite may not be open, whose gathering may not exist, and whose reckoning may
-  // already be sealed. Every guard below now stands on solid ground.
-  if (!ready) {
+  // Which screen to draw is decided in one pure place (src/lib/riteScreen.ts),
+  // not by a ladder of inline conditions: a mistake in exactly this decision is
+  // what let one tap wipe a sealed reckoning. scripts/verify-rite-guard.ts holds
+  // it to the rule that the writable card is reachable ONLY when every state it
+  // depends on is genuinely known.
+  const screen = riteScreen({ ready, hasGathering: !!g, riteOpen, ballotReady, sealed });
+
+  if (screen === "loading-gathering") {
     return <Loading text="Approaching the table…" />;
   }
 
-  if (!g) {
+  if (screen === "no-gathering" || !g) {
     return (
       <section style={{ textAlign: "center", padding: "70px 0" }}>
         <i className="ti ti-glass-full" style={{ fontSize: 30, color: "var(--gold)" }} aria-hidden="true" />
@@ -161,7 +165,7 @@ export default function Rite() {
   }
 
   // The rite is sealed until 30 minutes after the gathering's scheduled start.
-  if (!riteOpen) {
+  if (screen === "not-open") {
     const opens = riteOpensAt(g);
     const opensStr = opens.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     return (
@@ -181,11 +185,11 @@ export default function Rite() {
   // and the table would wait on a member who believed they were done.
   // The seal is unknown until the ballot lands; drawing the card meanwhile is
   // exactly how a sealed reckoning got wiped by one tap.
-  if (!ballotReady) {
+  if (screen === "loading-ballot") {
     return <Loading text="Recalling your reckoning…" />;
   }
 
-  if (sealed) {
+  if (screen === "sealed") {
     return (
       <section style={{ textAlign: "center", padding: "50px 0" }}>
         <i className="ti ti-lock-check" style={{ fontSize: 32, color: "var(--gold)" }} aria-hidden="true" />
