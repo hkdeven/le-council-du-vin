@@ -1,5 +1,98 @@
 # Le Council — Test Log
 
+## 2026-09-11 — pre-gathering hardening: NOT yet pushed
+
+**SQL to run in the Supabase SQL editor before this deploys.** Both statements are
+idempotent and safe to run now, against the live database, ahead of the deploy.
+They are already written into `supabase/policies.sql`; this is the delta.
+
+```sql
+-- 1. claim_bottle: take the row lock. Without it, two members claiming in the
+--    same moment each read the same jsonb array and write their own copy back,
+--    so the second claim silently erases the first. Everyone claims at once
+--    the instant the cloths lift, so this fires on a real night.
+create or replace function claim_bottle(gid uuid, row_index int) returns void
+  language plpgsql security definer
+  set search_path = public
+as $$
+declare
+  me text;
+  rows_json jsonb;
+begin
+  select cult_name into me from members
+   where lower(email) = lower(auth.jwt() ->> 'email') and active;
+  if me is null then
+    raise exception 'Only a waking member of the Council may claim a bottle.';
+  end if;
+
+  select rows into rows_json from annals where gathering_id = gid for update;
+  if rows_json is null then
+    raise exception 'That night is not in the annals.';
+  end if;
+  if rows_json -> row_index is null then
+    raise exception 'No such bottle on that night.';
+  end if;
+  if coalesce(rows_json -> row_index ->> 'owner', '') <> '' then
+    raise exception 'That bottle is already claimed.';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(rows_json) r
+     where lower(trim(coalesce(r ->> 'owner', ''))) = lower(trim(me))
+  ) then
+    raise exception 'You have already claimed a bottle that night.';
+  end if;
+
+  update annals
+     set rows = jsonb_set(rows_json, array[row_index::text, 'owner'], to_jsonb(me))
+   where gathering_id = gid;
+end $$;
+revoke all on function claim_bottle(uuid, int) from public;
+grant execute on function claim_bottle(uuid, int) to authenticated;
+
+-- 2. annals had SELECT, INSERT and UPDATE policies but no permissive DELETE, so
+--    with RLS on, erasing a night matched zero rows for everyone including the
+--    Keiser, and PostgREST reported that as success. eraseGathering deletes the
+--    gathering first, so the night left the convening and stayed in the codex.
+drop policy if exists "annals keiser delete" on annals;
+create policy "annals keiser delete" on annals for delete using (is_keiser());
+```
+
+**To confirm both landed, run this afterwards. Both columns must come back true:**
+```sql
+select
+  (select count(*) = 1 from pg_policies
+    where tablename = 'annals' and cmd = 'DELETE'
+      and permissive = 'PERMISSIVE') as annals_delete_policy,
+  (select pg_get_functiondef(oid) like '%for update%' from pg_proc
+    where proname = 'claim_bottle') as claim_bottle_locked;
+```
+NOTE: `permissive = 'PERMISSIVE'` is required in that count. `annals` also carries the
+RESTRICTIVE "annals sleeping seal delete" policy, so counting every DELETE policy returns
+2 and reads as a failure when the grant is in fact present. Both were confirmed run
+against production on 2026-09-11.
+
+| # | Change | How to verify live | Demo | Live |
+|---|--------|--------------------|------|------|
+| 1 | **The rite drew a writable scoring card before it knew the ballot.** Every guard was written `if (ready && ...)`, so before the fetch resolved all of them were false and the page fell through to the live scoring card. One tap in that window wrote `sealed:false` over a sealed ballot. Now: a waiting mark until both the gathering and the ballot have landed, then the gate, then the sealed view, then the card | Seal a ballot, throttle the network to 3G, reopen /rite and tap the instant anything appears. The reckoning must survive | ✓ reproduced then fixed (6 verdicts reduced to 1 before, intact after) | [ ] |
+| 2 | **A verdict cast before the gathering loaded was written to gathering `"none"`** and silently dropped (`.catch(() => {})`); in live it is not even a uuid. `gid` is now null until real, the card cannot render without it, and a refused draft save shows a line under the ballot | Score with the network off: the refusal must appear under the ballot | ✓ | [ ] |
+| 3 | **claim_bottle had no row lock** (SQL above): concurrent claims overwrote each other, each member told they succeeded | Two members claim different bottles on one night at the same moment; both names must hold | n/a | [ ] |
+| 4 | **annals had no DELETE policy** (SQL above): erasing a night silently did nothing | Keiser erases a test night; it must leave the codex too | n/a | [ ] |
+| 5 | **saveOffering ignored its error**, so convene's "Could not seal your offering" catch was dead code: the offering showed sealed and the Prophecy went on refusing. Now throws | Seal an offering with the network off: the alert must appear | ✓ | [ ] |
+| 6 | **AuthProvider ignored the members-fetch error** and called `setMember(null)`, so one dropped request showed a full member the "your petition awaits" screen and cached that null. Now a failed read is held apart from a genuine non-member, keeps the cached row, and offers the gate again | Sign in, block the /members request, reload: must say the register could not be read, not that you are pending | ✓ (code + types) | [ ] |
+| 7 | **The Prophecy button explained its darkness only via `title`**, invisible on the phone the table actually holds, and hand-rolled rather than the shared Tip. Now a Tip naming the live count | On a phone, tap the mark beside a dark Prophecy button | ✓ ("2 of 2 remain unsealed") | [ ] |
+| 8 | **favourTheme and deleteApplicationsByEmail ignored their errors**; oracle's existing catch was dead code. Both now throw | Favour a theme with the network off: the alert must appear | ✓ | [ ] |
+
+**Proven against production this session (anon key, no writes):** `claim_bottle`,
+`reveal_summary` and `add_reveal_photo` all exist and refuse a stranger with their
+own worded exceptions, and `cast_counsel` refuses a non-full-member. Every table
+refuses the anon key. A column-by-column probe of all ten tables against
+`types.ts` found **no schema drift**.
+
+**Still unproven, and only a real member can prove it:** claiming a bottle in
+production as a genuine non-Keiser account (bug #6 of the last gathering). The
+door is deployed and refuses strangers correctly, but the Keiser's own account
+cannot test it, which is exactly how it survived to the gathering.
+
 ## 2026-07-12 — the July backlog: twelve tickets — NOT yet pushed
 
 **SQL for the live DB before this deploys** (safe to run right now; all of it

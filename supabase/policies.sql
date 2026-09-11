@@ -611,7 +611,13 @@ begin
     raise exception 'Only a waking member of the Council may claim a bottle.';
   end if;
 
-  select rows into rows_json from annals where gathering_id = gid;
+  -- FOR UPDATE is load-bearing, not decoration. Every soul claims their bottle
+  -- in the same half-minute after the cloths lift, and `rows` is ONE jsonb
+  -- column: without the lock two claims read the same array, each writes its
+  -- own copy back, and the second silently erases the first. The member saw
+  -- a success and their name is simply gone. The lock serialises the
+  -- read-modify-write so concurrent claims queue instead of overwriting.
+  select rows into rows_json from annals where gathering_id = gid for update;
   if rows_json is null then
     raise exception 'That night is not in the annals.';
   end if;
@@ -634,3 +640,13 @@ begin
 end $$;
 revoke all on function claim_bottle(uuid, int) from public;
 grant execute on function claim_bottle(uuid, int) to authenticated;
+
+-- ── The Keiser may erase a night (2026-09-11) ──────────────────────────────
+-- The annals had SELECT, INSERT and UPDATE policies but no permissive DELETE,
+-- so with RLS on, a delete matched zero rows for everyone, the Keiser included.
+-- PostgREST reports that as success: `deleteAnnal` returned without error and
+-- the row stayed. `eraseGathering` deletes the gathering FIRST and loudly, so
+-- the failure landed in the worst place, with the gathering gone and its annal
+-- left orphaned, and the erased night still standing in the codex.
+drop policy if exists "annals keiser delete" on annals;
+create policy "annals keiser delete" on annals for delete using (is_keiser());

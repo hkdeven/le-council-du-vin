@@ -18,6 +18,7 @@ import { speakProphecy, prophecyRecord } from "@/lib/prophecy";
 import { fetchAnnals } from "@/lib/annals";
 import { fetchBallotHistory } from "@/lib/ballots";
 import GrapePicker from "@/components/GrapePicker";
+import Tip from "@/components/Tip";
 import { detectVarietals } from "@/lib/varietals";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
@@ -234,11 +235,25 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
   return (
     <div style={{ textAlign: "center", marginTop: 14 }}>
       <button onClick={consult} disabled={busy || !mayConsult}
-        title={mayConsult ? undefined : "The vine speaks only once every soul who has answered has sealed an offering."}
         style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "11px 20px", cursor: mayConsult ? "pointer" : "not-allowed", opacity: busy || !mayConsult ? 0.45 : 1 }}>
         <i className="ti ti-crystal-ball" style={{ fontSize: 14 }} />
         {open ? "Let it be veiled" : busy ? "Consulting…" : "Consult the Prophecy"}
       </button>
+      {/* A dark button explains nothing on a phone, and the phone is what the
+          table holds: `title` only ever spoke to a mouse. The shared Tip opens
+          on a tap and names exactly how many offerings the vine still waits on. */}
+      {!mayConsult && !busy && (
+        <Tip
+          align="left"
+          text={
+            waking.length === 0
+              ? "The vine speaks only once souls have answered the call, and none have yet."
+              : unsealed === null
+              ? "The vine cannot yet count the offerings sealed. Give it a moment, or draw the page again."
+              : `The vine speaks only once every soul who has answered has sealed an offering. ${unsealed} of ${waking.length} remain unsealed.`
+          }
+        />
+      )}
       <div style={{ overflow: "hidden", maxHeight: refusal ? 300 : 0, opacity: refusal ? 1 : 0, transform: refusal ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.98)", transition: "max-height 0.7s cubic-bezier(.2,.8,.25,1), opacity 0.6s ease 0.1s, transform 0.6s cubic-bezier(.2,.8,.25,1) 0.05s" }}>
         {refusal && (
           <>

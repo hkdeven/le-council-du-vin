@@ -73,7 +73,8 @@ export function updateApplication(id: string, patch: Partial<Application>) {
 export async function deleteApplicationsByEmail(email: string): Promise<void> {
   assertWrite();
   if (gatheringsLive()) {
-    await supabase!.from("applications").delete().eq("email", email);
+    const { error } = await supabase!.from("applications").delete().eq("email", email);
+    if (error) throw new Error(error.message);
     return;
   }
   writeAll(loadApplications().filter((a) => a.email !== email));

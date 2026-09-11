@@ -2,6 +2,19 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 11 September 2026
+
+A hard testing pass before the coming gathering. Most of what follows is repair, and one of them is the same wound as last time, found still open.
+
+- **The sealed reckoning is final in earnest now.** The mend made in August closed the door only once the page had finished opening. While it was still opening, and on a phone on the night that is the whole time you are looking at it, the scoring card was drawn anyway, live and ready to take a tap. One touch in that moment wiped the reckoning you had sealed, left a single verdict where six had stood, and re-locked the night for the entire table. Proven, not suspected: a sealed ballot of six was reduced to one by a single tap. The rite now holds a quiet waiting mark until it knows your reckoning, and shows the scoring card to nobody until it does.
+- **A verdict cast too early is no longer swallowed.** Tapping an orb before the page knew which gathering it was looking at wrote the score against nothing at all. The orb filled, and the verdict went nowhere. That window is closed, and a verdict that genuinely cannot be written now says so beneath your ballot instead of failing in silence.
+- **Claiming your bottle no longer races the table.** Every soul claims in the same half-minute after the cloths lift, and all the claims are written into a single record. Two landing together meant the second quietly erased the first, with both members told they had succeeded. Claims are now taken one at a time, so every name holds.
+- **Your offering cannot fail in silence.** If sealing an offering was refused, the screen said it was sealed and the Prophecy went on insisting that offerings were still outstanding. A refusal is now shown to you.
+- **The Prophecy says what it is waiting for.** The button explained its own darkness only to a mouse hovering over it, which no phone has. It now carries a mark you can tap, naming exactly how many offerings the vine is still waiting on.
+- **A dropped connection can no longer cast you out.** If the register failed to answer even once, a full member was shown the screen that tells a stranger their petition is pending, and the answer was remembered so that opening the app again said the same thing. A register that will not answer is now told apart from a soul who is not in it, and offers you the gate again.
+- **The door is case-blind in earnest now.** The checks that decide your standing were all taught to read an address as a post office does, ignoring capitals and stray spaces, but the one lookup that actually finds your seat was still comparing letter for letter. Your record could be readable by you and still not be found for you, which is exactly the fault that shut a member out for six weeks. Both halves now agree, and no soul can be turned away by the spelling of their own address.
+- **The Keiser may erase a night again.** Striking a gathering from the annals had been refused outright since the record was sealed, and the refusal was reported as success, so the night vanished from the convening and stayed in the codex for ever.
+
 ## 21 August 2026
 
 The first true gathering held on the instrument, and the night taught us six things. All six are mended.

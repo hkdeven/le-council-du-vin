@@ -51,13 +51,20 @@ export async function saveOffering(gatheringId: string, memberId: string, offeri
   assertWrite();
   const t = offering?.title.trim() || "";
   if (gatheringsLive()) {
+    // The refusal must be thrown, not dropped. Convene wraps this call in a
+    // .catch that shows "Could not seal your offering", and that catch was dead
+    // code while the error sat unread in `error`: the member saw their offering
+    // sealed, and the Prophecy went on refusing to speak because the row the
+    // gate counts was never written.
     if (t) {
-      await supabase!.from("offerings").upsert(
+      const { error } = await supabase!.from("offerings").upsert(
         { gathering_id: gatheringId, member_id: memberId, title: t, price: offering!.price, varietals: offering!.varietals },
         { onConflict: "gathering_id,member_id" }
       );
+      if (error) throw new Error(error.message);
     } else {
-      await supabase!.from("offerings").delete().eq("gathering_id", gatheringId).eq("member_id", memberId);
+      const { error } = await supabase!.from("offerings").delete().eq("gathering_id", gatheringId).eq("member_id", memberId);
+      if (error) throw new Error(error.message);
     }
     return;
   }

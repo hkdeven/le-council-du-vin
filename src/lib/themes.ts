@@ -65,8 +65,13 @@ export async function favourTheme(themeId: string, myId: string | null, on: bool
   assertWrite();
   if (gatheringsLive()) {
     if (!myId) return;
-    if (on) await supabase!.from("theme_favours").upsert({ theme_id: themeId, member_id: myId }, { onConflict: "theme_id,member_id" });
-    else await supabase!.from("theme_favours").delete().eq("theme_id", themeId).eq("member_id", myId);
+    // A favour that was refused must say so: the almanac counts the rows, so a
+    // dropped error leaves the member's mark showing on their screen and
+    // nowhere else, and the tally they are voting with is a lie.
+    const { error } = on
+      ? await supabase!.from("theme_favours").upsert({ theme_id: themeId, member_id: myId }, { onConflict: "theme_id,member_id" })
+      : await supabase!.from("theme_favours").delete().eq("theme_id", themeId).eq("member_id", myId);
+    if (error) throw new Error(error.message);
     return;
   }
   const favs = new Set(localFavs());

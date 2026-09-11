@@ -36,7 +36,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { mode, loading, signedIn, hasAccess, role, member, email, avatar, sleeping, signOut } = useAuth();
+  const { mode, loading, signedIn, hasAccess, memberError, role, member, email, avatar, sleeping, signOut } = useAuth();
 
   const bare = PUBLIC.includes(pathname);
 
@@ -132,9 +132,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return (
         <Centered>
           <Emblem size={84} />
+          {/* A register that would not answer must never be read aloud as a
+              refusal: telling a full member their petition is pending, because
+              one request failed on a phone, is the worst possible lie. */}
           <p className="whisper" style={{ fontSize: 16, maxWidth: 400, margin: "14px auto 0" }}>
-            You are known to the gate, but not yet of the Council. Your petition awaits the Keiser&rsquo;s decree.
+            {memberError
+              ? "The register could not be read just now. This is the connection, not your standing. Draw the page again in a moment."
+              : "You are known to the gate, but not yet of the Council. Your petition awaits the Keiser\u2019s decree."}
           </p>
+          {memberError && (
+            <button className="btn gold" style={{ width: "auto", padding: "12px 24px", marginTop: 20 }} onClick={() => window.location.reload()}>
+              Try the gate again
+            </button>
+          )}
           <button className="btn" style={{ width: "auto", padding: "12px 24px", marginTop: 22 }} onClick={signOut}>
             Withdraw
           </button>

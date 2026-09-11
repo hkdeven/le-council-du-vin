@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
+import Loading from "@/components/Loading";
 import { useWineCount } from "@/lib/useWineCount";
 import { fetchBallot, saveBallot } from "@/lib/ballots";
 import { fetchCurrentGathering, riteOpensAt } from "@/lib/gatherings";
@@ -24,7 +25,10 @@ export default function Rite() {
       setReady(true);
     });
   }, []);
-  const gid = g?.id ?? "none";
+  // Never a placeholder id: a draft saved against "none" is silently discarded
+  // (in live it is not even a uuid), so the orb fills and the verdict is lost.
+  // The render guards below keep the card off the screen until `g` is real.
+  const gid = g?.id ?? null;
   // Re-renders the moment the rite opens, so the gate below lifts without a refresh.
   const riteOpen = useRiteOpen(g);
 
@@ -33,25 +37,47 @@ export default function Rite() {
 
   const [current, setCurrent] = useState(1);
   const [scores, setScores] = useState<Record<number, number>>({});
+  // Mirrors `scores` so a burst of taps in one tick cannot read a stale copy.
+  const scoresRef = useRef<Record<number, number>>({});
   // Kept though nothing writes it any more: ballots sealed before the aroma
   // input was retired still carry marked aromas, and the Nose still counts them.
   const [aromasByWine, setAromasByWine] = useState<Record<number, string[]>>({});
   const [notesByWine, setNotesByWine] = useState<Record<number, string>>({});
   const [sealed, setSealed] = useState(false);
+  // Whether this member's ballot has come back. Until it has we know NOTHING
+  // about their seal, and the scoring card must not be drawn: a single tap on
+  // it wrote sealed:false over a sealed reckoning, wiping every verdict but
+  // that one and re-locking the night for the whole table. That is the bug of
+  // the first true gathering, reaching through the loading window.
+  const [ballotReady, setBallotReady] = useState(false);
+  // The last draft save that would not land, shown under the ballot so a
+  // member never scores a whole night into a refusal they cannot see.
+  const [draftError, setDraftError] = useState<string | null>(null);
   const router = useRouter();
 
   // Restore a previously sealed (or in-progress) ballot for this member.
   useEffect(() => {
-    if (!meId || !g) return;
+    if (!g) return;
+    // No member to load a ballot for: nothing is pending, so nothing is hidden.
+    if (!meId) { setBallotReady(true); return; }
     let active = true;
-    fetchBallot(g.id, meId).then((b) => {
-      if (active && b) {
-        setScores(b.scores || {});
-        setSealed(!!b.sealed);
-        if (b.aromas) setAromasByWine(b.aromas);
-        if (b.notes) setNotesByWine(b.notes);
-      }
-    });
+    setBallotReady(false);
+    fetchBallot(g.id, meId)
+      .then((b) => {
+        if (!active) return;
+        if (b) {
+          scoresRef.current = b.scores || {};
+          setScores(b.scores || {});
+          setSealed(!!b.sealed);
+          if (b.aromas) setAromasByWine(b.aromas);
+          if (b.notes) setNotesByWine(b.notes);
+        }
+        setBallotReady(true);
+      })
+      // A ballot that cannot be read is not a ballot that does not exist, but
+      // holding the card back for ever helps no one: open it and let the seal,
+      // which surfaces its errors, be the guard.
+      .catch(() => { if (active) setBallotReady(true); });
     return () => { active = false; };
   }, [meId, g]);
 
@@ -79,19 +105,28 @@ export default function Rite() {
   // an earlier wine while judging a later one (relative scoring). Revising a
   // sealed ballot breaks the seal until it is sealed again.
   const setScore = (wine: number, val: number) => {
-    setScores((s) => {
-      const next = { ...s, [wine]: val };
-      // A sleeping hand judges nothing: the draft save was swallowed silently
-      // (.catch(() => {})), so a sleeping member could score a whole night and
-      // only learn at the seal that none of it was ever written.
-      if (meId && !sleeping) saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine, notes: notesByWine }).catch(() => {});
-      return next;
-    });
+    // The ref, not the render's `scores`, is the source of truth here. Two orbs
+    // tapped in the same tick both close over the SAME stale `scores`, so the
+    // second silently discards the first (three taps became one verdict). The
+    // ref is moved forward synchronously, so rapid taps accumulate, and the
+    // save still gets the whole ballot rather than a fragment of one.
+    const next = { ...scoresRef.current, [wine]: val };
+    scoresRef.current = next;
+    setScores(next);
+    // A sleeping hand judges nothing: the draft save was swallowed silently
+    // (.catch(() => {})), so a sleeping member could score a whole night and
+    // only learn at the seal that none of it was ever written. A refusal now
+    // shows as a quiet line under the ballot rather than an alert on every orb.
+    if (gid && meId && !sleeping) {
+      saveBallot(gid, meId, { scores: next, sealed: false, aromas: aromasByWine, notes: notesByWine })
+        .then(() => setDraftError(null))
+        .catch((e) => setDraftError((e as Error).message));
+    }
     setSealed(false);
   };
 
   const sealReckoning = async () => {
-    if (meId) {
+    if (gid && meId) {
       try {
         await saveBallot(gid, meId, { scores, sealed: true, aromas: aromasByWine, notes: notesByWine });
       } catch (e) {
@@ -106,7 +141,15 @@ export default function Rite() {
     router.push("/reveal");
   };
 
-  if (ready && !g) {
+  // Nothing is known until the gathering is: before this the page fell straight
+  // through to the scoring card, showing a writable ballot to a member whose
+  // rite may not be open, whose gathering may not exist, and whose reckoning may
+  // already be sealed. Every guard below now stands on solid ground.
+  if (!ready) {
+    return <Loading text="Approaching the table…" />;
+  }
+
+  if (!g) {
     return (
       <section style={{ textAlign: "center", padding: "70px 0" }}>
         <i className="ti ti-glass-full" style={{ fontSize: 30, color: "var(--gold)" }} aria-hidden="true" />
@@ -118,7 +161,7 @@ export default function Rite() {
   }
 
   // The rite is sealed until 30 minutes after the gathering's scheduled start.
-  if (ready && g && !riteOpen) {
+  if (!riteOpen) {
     const opens = riteOpensAt(g);
     const opensStr = opens.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     return (
@@ -136,7 +179,13 @@ export default function Rite() {
   // A sealed reckoning is final. The scoring card is not merely disabled but
   // never drawn: touching a single orb would set sealed:false on the ballot,
   // and the table would wait on a member who believed they were done.
-  if (ready && sealed) {
+  // The seal is unknown until the ballot lands; drawing the card meanwhile is
+  // exactly how a sealed reckoning got wiped by one tap.
+  if (!ballotReady) {
+    return <Loading text="Recalling your reckoning…" />;
+  }
+
+  if (sealed) {
     return (
       <section style={{ textAlign: "center", padding: "50px 0" }}>
         <i className="ti ti-lock-check" style={{ fontSize: 32, color: "var(--gold)" }} aria-hidden="true" />
@@ -229,7 +278,7 @@ export default function Rite() {
             value={notes}
             disabled={sleeping}
             onChange={(e) => setNotesByWine((m) => ({ ...m, [current]: e.target.value }))}
-            onBlur={() => { if (meId && !sleeping) saveBallot(gid, meId, { scores, sealed, aromas: aromasByWine, notes: notesByWine }).catch(() => {}); }}
+            onBlur={() => { if (gid && meId && !sleeping) saveBallot(gid, meId, { scores, sealed, aromas: aromasByWine, notes: notesByWine }).then(() => setDraftError(null)).catch((e) => setDraftError((e as Error).message)); }}
             placeholder={sleeping ? "A sleeping hand writes no notes." : "What the wine confessed to you… your words become your Nose."}
           />
         </div>
@@ -277,6 +326,13 @@ export default function Rite() {
           );
         })}
       </div>
+
+      {draftError && (
+        <p className="whisper" style={{ fontSize: 13, color: "var(--gold2)", margin: "12px 0 0", textAlign: "center" }} role="alert">
+          <i className="ti ti-alert-triangle" style={{ marginRight: 6 }} aria-hidden="true" />
+          Your last verdict would not be written: {draftError}
+        </p>
+      )}
 
       <button
         className="btn gold"

@@ -31,6 +31,7 @@ interface AuthValue {
   loading: boolean;
   signedIn: boolean;
   hasAccess: boolean;
+  memberError: string | null;
   role: Role;
   member: Member | null;
   // A sleeping (deactivated) member keeps their rank's reading rights but may
@@ -60,6 +61,7 @@ const AuthContext = createContext<AuthValue>({
   loading: false,
   signedIn: true,
   hasAccess: true,
+  memberError: null,
   role: "keiser",
   member: null,
   sleeping: false,
@@ -89,6 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [resolved, setResolved] = useState(false);
   const [loading, setLoading] = useState(gated);
   const [authError, setAuthError] = useState<string | null>(null);
+  // The register itself would not answer (network, a refused read). Distinct
+  // from "this soul is not a member", which is a successful read of nothing.
+  const [memberError, setMemberError] = useState<string | null>(null);
 
   useEffect(() => {
     if (gated) return;
@@ -126,14 +131,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setMember(cached);
           setLoading(false);
         }
-        const { data } = await supabase!
+        // Case-blind at BOTH ends. Every policy in policies.sql compares with
+        // lower(), but this lookup was still an exact .eq(), so access hung on
+        // every stored address happening to be canonical: one capital letter in
+        // a row and RLS would hand the member their row while this query failed
+        // to ask for it. That is precisely what shut James out for six weeks.
+        // ilike matches without regard to case; it also treats _ and % as
+        // wildcards, so the canonical comparison below is what actually decides
+        // the match and a near-miss row can never be mistaken for this member.
+        const { data: rows, error } = await supabase!
           .from("members")
           .select("*")
-          .eq("email", email)
-          .maybeSingle();
+          .ilike("email", email);
+        const data =
+          (rows as Member[] | null)?.find((r) => (r.email || "").trim().toLowerCase() === email) ?? null;
         if (active) {
-          setMember((data as Member) ?? null);
-          try { localStorage.setItem(CACHE_KEY, JSON.stringify({ email, member: data ?? null })); } catch {}
+          if (error) {
+            // A register that could not be read is NOT a soul who is not in it.
+            // The error was unread here, so one dropped request on a phone set
+            // member to null: hasAccess went false and a full member was shown
+            // the pending screen mid-gathering, with null written to the cache
+            // so a refresh painted them out again. Hold what we have instead
+            // and let the next resolve correct it.
+            setMemberError(error.message);
+          } else {
+            setMemberError(null);
+            setMember((data as Member) ?? null);
+            try { localStorage.setItem(CACHE_KEY, JSON.stringify({ email, member: data ?? null })); } catch {}
+          }
         }
       } else if (active) {
         setMember(null);
@@ -285,6 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         signedIn,
         hasAccess,
+        memberError,
         role,
         member,
         sleeping,
