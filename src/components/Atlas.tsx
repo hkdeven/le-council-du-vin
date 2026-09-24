@@ -37,6 +37,28 @@ function PlaceName({ city }: { city: AtlasCity }) {
   );
 }
 
+// A collapsed fold, closed by default, in the Methodology's dress.
+function Fold({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", background: "none", border: "none", cursor: "pointer", fontFamily: "'Cinzel', serif", textTransform: "uppercase", letterSpacing: "0.12em", fontSize: 10.5, color: "var(--dim)", padding: "4px 0" }}>
+        <i className="ti ti-chevron-right" style={{ fontSize: 12, color: "var(--gold)", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />{title}
+      </button>
+      {open && <div style={{ padding: "4px 2px 0" }}>{children}</div>}
+    </div>
+  );
+}
+
+// The moon row the Wheel, Foretelling and Kundli use between their sections.
+function MoonRow() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 11, color: "var(--gold)", opacity: 0.55, fontSize: 14, margin: "18px 0 12px" }} aria-hidden="true">
+      <i className="ti ti-moon-stars" /><i className="ti ti-moon" /><i className="ti ti-circle" /><i className="ti ti-moon-2" /><i className="ti ti-moon-stars" />
+    </div>
+  );
+}
+
 function StrengthTag({ s }: { s: Strength }) {
   return <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: STRENGTH_COLOUR[s], whiteSpace: "nowrap" }}>{s}</span>;
 }
@@ -100,22 +122,24 @@ function TheMap({ chart, member }: { chart: AtlasChart; member: CardMember }) {
       <p className="whisper" style={{ margin: "6px 0 4px", fontSize: 13 }}>
         {focused ? `${focused.name}: ${PLANET_PLAIN[focused.key]}. Nearest cities marked.` : "Tap a symbol to read one planet's lines; tap again to release. The small eye is the birthplace."}
       </p>
-      <div style={{ ...left, display: "grid", gap: 5, margin: "10px 0 2px" }}>
-        {(["asc", "mc", "dsc", "ic"] as const).map((k) => (
-          <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, fontSize: 14, lineHeight: 1.4 }}>
-            <span style={{ flex: "none", width: 22, borderTop: `1.4px ${k === "asc" || k === "mc" ? "solid" : "dashed"} var(--gold2)`, position: "relative", top: -4 }} />
-            <span><b style={{ fontFamily: "'Cinzel', serif", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em", color: "var(--gold2)" }}>{LINE_NAME[k].toUpperCase()}</b> · {LINE_PLAIN[k]}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ ...left, display: "grid", gap: 5, margin: "12px 0 2px" }}>
-        {chart.planets.map((p) => (
-          <div key={p.key} style={{ display: "flex", alignItems: "baseline", gap: 10, fontSize: 14, lineHeight: 1.4 }}>
-            <span style={{ flex: "none", width: 22, textAlign: "center", color: PLANET_COLOUR[p.key], fontSize: 16, position: "relative", top: 1 }}>{p.glyph}</span>
-            <span><b style={{ fontFamily: "'Cinzel', serif", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em", color: "var(--gold2)" }}>{p.name.toUpperCase()}</b> · {PLANET_PLAIN[p.key]}</span>
-          </div>
-        ))}
-      </div>
+      <Fold title="What the lines and symbols mean">
+        <div style={{ ...left, display: "grid", gap: 5, margin: "4px 0 2px" }}>
+          {(["asc", "mc", "dsc", "ic"] as const).map((k) => (
+            <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, fontSize: 14, lineHeight: 1.4 }}>
+              <span style={{ flex: "none", width: 22, borderTop: `1.4px ${k === "asc" || k === "mc" ? "solid" : "dashed"} var(--gold2)`, position: "relative", top: -4 }} />
+              <span><b style={{ fontFamily: "'Cinzel', serif", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em", color: "var(--gold2)" }}>{LINE_NAME[k].toUpperCase()}</b> · {LINE_PLAIN[k]}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...left, display: "grid", gap: 5, margin: "12px 0 2px" }}>
+          {chart.planets.map((p) => (
+            <div key={p.key} style={{ display: "flex", alignItems: "baseline", gap: 10, fontSize: 14, lineHeight: 1.4 }}>
+              <span style={{ flex: "none", width: 22, textAlign: "center", color: PLANET_COLOUR[p.key], fontSize: 16, position: "relative", top: 1 }}>{p.glyph}</span>
+              <span><b style={{ fontFamily: "'Cinzel', serif", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em", color: "var(--gold2)" }}>{p.name.toUpperCase()}</b> · {PLANET_PLAIN[p.key]}</span>
+            </div>
+          ))}
+        </div>
+      </Fold>
     </>
   );
 }
@@ -125,7 +149,10 @@ function TheMap({ chart, member }: { chart: AtlasChart; member: CardMember }) {
 function Favours({ chart, your }: { chart: AtlasChart; your: string }) {
   const groups = useMemo(() => QUESTIONS.map((q) => ({ q, rows: citiesFor(chart, q, 4) })), [chart]);
   return (
-    <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 12 }}>
+    <div>
+      {/* The full-width gold rule the Wheel and Foretelling draw before a new part. */}
+      <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 0" }} />
+      <MoonRow />
       <div style={{ ...eyebrow, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12 }}>
         <i className="ti ti-compass" /> Where the sky favours {your === "your" ? "you" : "them"}
       </div>
@@ -144,10 +171,9 @@ function Favours({ chart, your }: { chart: AtlasChart; your: string }) {
               <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, lineHeight: 1.4 }}>{q.why}</div>
             </div>
             {rows.length ? rows.map((r) => (
-              <div key={r.city[0] + r.city[1]} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 10px", padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
+              <div key={r.city[0] + r.city[1]} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 10px", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
                 <PlaceName city={r.city} />
                 <span style={{ alignSelf: "center" }}><StrengthTag s={r.strength} /></span>
-                <span style={{ gridColumn: "1 / 3", fontSize: 13.5, color: "var(--dim)" }}>{p.name} {LINE_NAME[r.kind]} line passes {roundKm(r.km)} km away</span>
               </div>
             )) : (
               <p className="whisper" style={{ margin: "4px 0", fontSize: 13, textAlign: "left" }}>No major city is within 600 km of this line. It runs mostly over sea or open country.</p>
@@ -181,7 +207,9 @@ function AskOfPlace({ chart, you, your }: { chart: AtlasChart; you: string; your
   const reading = useMemo(() => (place ? askOfPlace(chart, place.latitude, place.longitude) : null), [chart, place]);
   const town = place ? place.label.split(",")[0] : "";
   return (
-    <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 12 }}>
+    <div>
+      <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 0" }} />
+      <MoonRow />
       <div style={{ ...eyebrow, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12 }}>
         <i className="ti ti-map-pin" /> Ask of a place
       </div>
@@ -287,7 +315,8 @@ function CouncilMap() {
   if (!allowed) return null;
   const planetGlyph = (key: string) => souls?.[0]?.chart.planets.find((p) => p.key === key)?.glyph || "";
   return (
-    <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 12 }}>
+    <div>
+      <MoonRow />
       <div style={{ ...eyebrow, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12 }}>
         <i className="ti ti-users" /> The council&apos;s map
       </div>

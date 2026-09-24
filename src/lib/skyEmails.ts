@@ -12,7 +12,7 @@ import { pillarsOf, detectYogas, mangalDosha, muhurtaDays, sanskritLord } from "
 import * as T from "./kundli-text";
 import { panchangOf, dayStarFor, gocharaFor, gocharaPassage, yearTurnings, ironPassageFor, clockWithin } from "./gochara";
 import { wheelSvgString } from "@/components/NatalChart";
-import { atlasChart, citiesFor, roundKm, placeContext, DEFAULT_SHOWN, LINE_NAME, QUESTIONS } from "./atlas";
+import { atlasChart, citiesFor, placeContext, DEFAULT_SHOWN, QUESTIONS } from "./atlas";
 import { atlasMapSvg, layerFor } from "./atlas-svg";
 import type { CardMember } from "@/components/MemberCard";
 
@@ -58,8 +58,7 @@ export async function emailAtlas(self: CardMember, email: string): Promise<SendR
   return sendEmail("atlas", [email], {
     name: self.cult_name, birthLine: birthLineOf(self), mapUrl,
     groups: QUESTIONS.map((q) => {
-      const planet = chart.planets.find((x) => x.key === q.planet)!;
-      return { title: q.title, why: q.why, rows: citiesFor(chart, q, 4).map((r) => ({ city: `${r.city[0]} <span style="color:#8a7f66;font-size:13px;font-style:italic;">${placeContext(r.city)}</span>`, detail: `${planet.name} ${LINE_NAME[r.kind]} line passes ${roundKm(r.km)} km away`, strength: r.strength })) };
+      return { title: q.title, why: q.why, rows: citiesFor(chart, q, 4).map((r) => ({ city: r.city[0], detail: placeContext(r.city), strength: r.strength })) };
     }),
   });
 }

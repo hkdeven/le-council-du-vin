@@ -102,6 +102,7 @@ export const strengthOf = (km: number): Strength => (km < 200 ? "Strong" : km < 
 export interface AtlasQuestion { key: string; title: string; planet: string; kinds: LineKind[]; why: string; warn?: boolean }
 export const QUESTIONS: AtlasQuestion[] = [
   { key: "love", title: "Love", planet: "venus", kinds: ["dsc", "asc"], why: "Romance and friendship come easily near these cities. Venus setting or rising." },
+  { key: "fun", title: "Fun", planet: "sun", kinds: ["asc"], why: "Feeling alive, playful and at your best; good for holidays. Sun rising." },
   { key: "luck", title: "Luck and money", planet: "jupiter", kinds: ["mc", "asc"], why: "Opportunities, growth and generous people. Jupiter overhead or rising." },
   { key: "work", title: "Work and reputation", planet: "sun", kinds: ["mc"], why: "Being seen and recognised for what you do. Sun overhead." },
   { key: "home", title: "Home", planet: "moon", kinds: ["ic"], why: "Comfort, belonging, a place that feels like yours. Moon underfoot." },
