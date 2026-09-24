@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { summonsIcs } from "@/lib/ics";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, atlasEmail, type AtlasEmailParams, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -34,7 +34,7 @@ async function callerIdentity(req: Request): Promise<{ email: string | null; nam
   }
 }
 
-const SELF_TYPES = new Set(["natal", "foretelling", "kundli", "vedic-foretelling", "reckoning", "summons"]);
+const SELF_TYPES = new Set(["natal", "atlas", "foretelling", "kundli", "vedic-foretelling", "reckoning", "summons"]);
 
 export async function POST(req: Request) {
   const key = process.env.RESEND_API_KEY;
@@ -91,6 +91,7 @@ export async function POST(req: Request) {
     case "invite": email = inviteEmail(params || {}); break;
     case "expulsion": email = expulsionEmail(params?.name || "", params?.count); break;
     case "natal": email = natalChartEmail(params || {}); break;
+    case "atlas": email = atlasEmail((params || {}) as AtlasEmailParams); break;
     case "foretelling": email = foretellingEmail(params || {}); break;
     case "kundli": email = kundliEmail((params || {}) as KundliEmailParams); break;
     case "vedic-foretelling": email = vedicForetellingEmail((params || {}) as VedicForetellingEmailParams); break;

@@ -12,6 +12,8 @@ import { pillarsOf, detectYogas, mangalDosha, muhurtaDays, sanskritLord } from "
 import * as T from "./kundli-text";
 import { panchangOf, dayStarFor, gocharaFor, gocharaPassage, yearTurnings, ironPassageFor, clockWithin } from "./gochara";
 import { wheelSvgString } from "@/components/NatalChart";
+import { atlasChart, citiesFor, roundKm, DEFAULT_SHOWN, LINE_NAME, QUESTIONS } from "./atlas";
+import { atlasMapSvg, layerFor } from "./atlas-svg";
 import type { CardMember } from "@/components/MemberCard";
 
 export type SendResult = { ok: boolean; sent?: number; failed?: number; skipped?: string; error?: string };
@@ -21,20 +23,18 @@ const birthLineOf = (m: CardMember) =>
     ? `${new Date(m.date_of_birth).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${m.time_of_birth ? `, ${m.time_of_birth}` : ""}${m.birth_place ? `, ${m.birth_place.split(",")[0]}` : ""}`
     : undefined;
 
-// Rasterise the wheel and stage it in Storage so the email can carry it.
-async function wheelPngUrl(chart: NonNullable<ReturnType<typeof fullChart>>): Promise<string | undefined> {
+// Rasterise an SVG and stage it in Storage so an email can carry it.
+async function svgPngUrl(svg: string, w: number, h: number, prefix: string): Promise<string | undefined> {
   try {
-    const svg = wheelSvgString(chart);
     return await new Promise<string | undefined>((resolve) => {
       const img = new window.Image();
       img.onload = () => {
-        const S = 660;
         const c = document.createElement("canvas");
-        c.width = S; c.height = S;
-        c.getContext("2d")!.drawImage(img, 0, 0, S, S);
+        c.width = w; c.height = h;
+        c.getContext("2d")!.drawImage(img, 0, 0, w, h);
         c.toBlob(async (blob) => {
           if (!blob || !supabase) return resolve(undefined);
-          const path = `wheel-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
+          const path = `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
           const { error } = await supabase.storage.from("charts").upload(path, blob, { contentType: "image/png" });
           if (error) return resolve(undefined);
           resolve(supabase.storage.from("charts").getPublicUrl(path).data.publicUrl);
@@ -46,6 +46,22 @@ async function wheelPngUrl(chart: NonNullable<ReturnType<typeof fullChart>>): Pr
   } catch {
     return undefined;
   }
+}
+
+const wheelPngUrl = (chart: NonNullable<ReturnType<typeof fullChart>>) => svgPngUrl(wheelSvgString(chart), 660, 660, "wheel");
+
+export async function emailAtlas(self: CardMember, email: string): Promise<SendResult> {
+  const chart = atlasChart({ dateStr: self.date_of_birth || "", timeStr: self.time_of_birth, tz: self.birth_tz, lat: self.birth_lat, lon: self.birth_lon });
+  if (!chart) return { ok: false, error: "The sky is veiled; complete the record first." };
+  const svg = atlasMapSvg(chart.planets.filter((p) => DEFAULT_SHOWN.includes(p.key)).map((p) => layerFor(p)), { home: { lat: self.birth_lat!, lon: self.birth_lon! } });
+  const mapUrl = await svgPngUrl(svg, 1200, 600, "atlas");
+  return sendEmail("atlas", [email], {
+    name: self.cult_name, birthLine: birthLineOf(self), mapUrl,
+    groups: QUESTIONS.map((q) => {
+      const planet = chart.planets.find((x) => x.key === q.planet)!;
+      return { title: q.title, why: q.why, rows: citiesFor(chart, q, 4).map((r) => ({ city: r.city[0], detail: `${planet.name} ${LINE_NAME[r.kind]} line passes ${roundKm(r.km)} km away`, strength: r.strength })) };
+    }),
+  });
 }
 
 export async function emailWheel(self: CardMember, email: string): Promise<SendResult> {

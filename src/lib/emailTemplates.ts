@@ -573,3 +573,36 @@ export function expulsionEmail(name: string, count?: number): Email {
     ),
   };
 }
+
+// The Atlas, emailed to the member's own inbox on request from the Wheel's
+// "earth" lens. The map goes as a snapshot; the cities as plain rows.
+export interface AtlasEmailParams {
+  name?: string;
+  birthLine?: string;
+  mapUrl?: string; // hosted PNG of the member's map, snapshotted client-side at send time
+  groups?: { title: string; why: string; rows: { city: string; detail: string; strength: string }[] }[];
+}
+export function atlasEmail(ap: AtlasEmailParams): Email {
+  const groups = (ap.groups || []).map((g) =>
+    sectionBand(g.title, g.why) +
+    (g.rows.length
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 4px;border-top:1px solid #241f18;border-bottom:1px solid #241f18;">
+          ${g.rows.map((r) => detailRow(`${r.city}<br><span style="color:#8a7f66;font-size:12.5px;">${r.detail}</span>`, r.strength)).join("")}
+        </table>`
+      : p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">No major city is within 600 km of this line.</span>`))
+  ).join("");
+  return {
+    subject: "Your atlas: where your sky touches the earth",
+    html: layout(
+      moons() +
+      heading("Your Atlas") +
+      p(`${ap.name || "Member of the Council"}, at the minute you were born${ap.birthLine ? ` (${ap.birthLine})` : ""} each planet was rising in one part of the world, overhead in another, setting in another and directly below in another. Joined up, those places make four lines per planet across the globe. Near a line, that planet's themes are said to come forward.`) +
+      (ap.mapUrl ? rule() + `<img src="${ap.mapUrl}" alt="Your atlas" width="560" style="display:block;margin:4px auto 16px;width:100%;max-width:560px;height:auto;border:1px solid #241f18;">` : "") +
+      p(`<span style="color:#8a7f66;font-size:13px;font-style:italic;">Solid lines: rising and overhead. Dashed: setting and underfoot. Strong means the line passes within 200 km, Noticeable within 400, Faint within 600.</span>`) +
+      groups +
+      p(`To ask about any town in the world, <strong style="color:#cbbd93;">open your Wheel in the Council</strong> and turn it to the earth.`) +
+      button(`${SITE}/profile`, "Open the atlas"),
+      "Where your sky touches the earth, in the Council's colours."
+    ),
+  };
+}
