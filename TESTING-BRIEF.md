@@ -497,3 +497,6 @@ works without it (it is hardening, not a dependency). Run in the SQL editor:
       using (member_id = my_member_id() or is_keiser());
 
 Then `./scripts/run-sql.sh supabase/verify-cloth-claim.sql`: expect 15 passed.
+
+RUN ON PRODUCTION, 24 September 2026, after the Keiser applied the policy: 15 passed,
+0 failed, rolled back. verify-claim.sql: 13 passed. Nothing is pending on production.
