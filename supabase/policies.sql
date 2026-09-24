@@ -641,6 +641,29 @@ end $$;
 revoke all on function claim_bottle(uuid, int) from public;
 grant execute on function claim_bottle(uuid, int) to authenticated;
 
+-- ── An offering is its owner's row alone (2026-09-24) ──────────────────────
+-- The three write policies above let ANY signed-in member write ANY member's
+-- offering (auth.uid() is not null, nothing binding member_id). Tolerable
+-- while an offering was a private note; not once offerings.cloth decides who
+-- brought which bottle. From here a member writes only the row that is theirs.
+-- The Keiser keeps the hand the codex has always had. Reads are unchanged.
+create or replace function my_member_id() returns uuid
+  language sql security definer stable
+  set search_path = public
+as $$
+  select id from members where lower(email) = lower(auth.jwt() ->> 'email') limit 1;
+$$;
+drop policy if exists "offerings insert" on offerings;
+create policy "offerings insert" on offerings for insert
+  with check (member_id = my_member_id() or is_keiser());
+drop policy if exists "offerings update" on offerings;
+create policy "offerings update" on offerings for update
+  using (member_id = my_member_id() or is_keiser())
+  with check (member_id = my_member_id() or is_keiser());
+drop policy if exists "offerings delete" on offerings;
+create policy "offerings delete" on offerings for delete
+  using (member_id = my_member_id() or is_keiser());
+
 -- ── The Keiser may erase a night (2026-09-11) ──────────────────────────────
 -- The annals had SELECT, INSERT and UPDATE policies but no permissive DELETE,
 -- so with RLS on, a delete matched zero rows for everyone, the Keiser included.

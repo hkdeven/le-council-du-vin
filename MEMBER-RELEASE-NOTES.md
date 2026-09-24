@@ -2,6 +2,12 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 24 September 2026
+
+One repair, for the wound that would not close.
+
+- **Your claim now reaches the table.** On two gatherings running, every soul but the Keiser found their bottle unclaimed when the night was committed, and the Keiser had to name each hand by hand in the codex afterwards. It was not a refusal this time. When you tapped "claim this bottle" on the revelation, your name was written into your own phone and nowhere else: nobody at the table saw it, and the Keiser's commit, made from the Keiser's phone, never knew of it. A claim is now written to the vault the moment you tap, on your own offering, and every phone at the table, the Keiser's above all, shows it within a few seconds. The wine, grapes and price you logged before the night ride along with it, as they always meant to. One hand per bottle is a rule of the vault now: if two souls tap the same bottle in the same breath, the second is told it is already claimed, not quietly dropped. Behind the curtain: a new column on the offerings table, twelve checks run as a real non-Keiser member against a local copy of the live vault, and twenty checks on the laying of claims over the tallies, each suite shown going red first. Nothing is asked of you before the night; the column fills only from the revelation. A second, independent pass over the repair then closed six smaller gaps the same day: if the vault cannot be reached at the very moment the Keiser commits, nothing is written and the Keiser is told, rather than the record being sealed with every hand blank; a page left open through the commit now turns into the Reckoning by itself; the Keiser sees every name on the Reckoning the instant it is sealed; no hand but yours can move, take or erase your claim; erasing your wine no longer erases your claim with it; and a slow phone can no longer briefly show your claim as not taken.
+
 ## 11 September 2026
 
 A hard testing pass before the coming gathering. Most of what follows is repair, and one of them is the same wound as last time, found still open.

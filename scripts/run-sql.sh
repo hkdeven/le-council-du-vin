@@ -25,7 +25,7 @@ SUPABASE_DB_URL is not set.
 
 Add one line to .env.local (it is gitignored and never leaves this machine):
 
-  SUPABASE_DB_URL=postgresql://postgres.pdxdllxyvejtchbzybfa:YOUR_DB_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+  SUPABASE_DB_URL=postgresql://postgres.pdxdllxyvejtchbzybfa:YOUR_DB_PASSWORD@aws-1-eu-central-2.pooler.supabase.com:5432/postgres
 
 Get the exact string (region and host included) from:
   https://supabase.com/dashboard/project/pdxdllxyvejtchbzybfa/settings/database

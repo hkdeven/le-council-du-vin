@@ -193,6 +193,21 @@ create table if not exists offerings (
   primary key (gathering_id, member_id)
 );
 
+-- A member's claim on the night (2026-09-24): which numbered cloth their
+-- offering turned out to be. Set by the reveal page after the cloths lift,
+-- never by the offering form, and never asked of a member before the night.
+-- Until now a member's claim on the reveal lived only in their own browser
+-- and was lost the moment the Keiser committed, which is why every hand but
+-- the Keiser's came up "unclaimed" on two gatherings running.
+-- One hand per bottle is the vault's rule, not the client's.
+-- Price (rand) and grapes were added to the live table by hand and never
+-- recorded here; a replica built from this file had neither.
+alter table offerings add column if not exists price numeric;
+alter table offerings add column if not exists varietals text[];
+alter table offerings add column if not exists cloth int;
+create unique index if not exists offerings_one_hand_per_cloth
+  on offerings (gathering_id, cloth) where cloth is not null;
+
 -- Annals: committed, locked gathering results (the codex) -----------
 create table if not exists annals (
   gathering_id uuid primary key references gatherings(id) on delete cascade,

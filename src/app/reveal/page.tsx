@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers } from "@/lib/members";
 import { toRoman } from "@/lib/util";
-import { fetchAllOfferings, type Offering } from "@/lib/bottles";
+import { fetchAllOfferings, claimCloth, type Offering } from "@/lib/bottles";
+import { applyClaims, claimedCloth, unnamedClaimants } from "@/lib/revealClaims";
 import { supabase } from "@/lib/supabase";
 import { fetchAllBallots, statsFromBallots, fetchRevealStats, type RevealStats } from "@/lib/ballots";
 import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
@@ -246,7 +247,7 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
 }
 
 export default function Reveal() {
-  const { mode, role, member, email } = useAuth();
+  const { mode, role, member, email, sleeping } = useAuth();
   const router = useRouter();
   const isKeiser = role === "keiser";
   const meId = mode === "live" ? member?.id ?? null : role === "keiser" ? "m-keiser" : role === "member" ? "m-larissa" : null;
@@ -331,7 +332,9 @@ export default function Reveal() {
     (async () => {
       const [st, offs, annal] = await Promise.all([
         loadStats(g.id),
-        fetchAllOfferings(g.id),
+        // A failed first read is not "no claims": leave it empty and let the
+        // poll below bring the claims in. Only the commit must refuse.
+        fetchAllOfferings(g.id).catch(() => ({} as Record<string, Offering>)),
         fetchAnnal(g.id),
       ]);
       if (!active) return;
@@ -365,25 +368,62 @@ export default function Reveal() {
     .sort((a, b) => a.localeCompare(b));
 
   // While still sealed, poll for newly-sealed ballots so the reveal unlocks and
-  // tallies live — no refresh needed. Stops the moment it opens (so it never
-  // clobbers the Keiser's claims/disqualifications, which only happen after).
+  // tallies live — no refresh needed. The tally poll stops the moment it opens
+  // (so it never clobbers the Keiser's disqualifications, which only happen
+  // after), but the OFFERINGS keep being read until the night is committed:
+  // every claim lands on the claimant's own offering row, and the whole table,
+  // the Keiser above all, must see each name arrive without a refresh.
+  // Every read of the offerings goes through here, numbered: a slow poll that
+  // set out BEFORE a tap and lands AFTER it must not paint the pre-tap claims
+  // over the fresh ones (which, for the five seconds until the next poll,
+  // looked exactly like "my claim did not take" and offered every bottle
+  // again). Only the latest read issued may land. A failed read leaves the
+  // last good claims on screen.
+  const offSeq = useRef(0);
+  const refreshOfferings = async (gatheringId: string) => {
+    const n = ++offSeq.current;
+    try {
+      const offs = await fetchAllOfferings(gatheringId);
+      if (n === offSeq.current) setOfferings(offs);
+    } catch (e) {
+      console.error((e as Error).message);
+    }
+  };
   useEffect(() => {
-    if (!g || committed || !locked) return;
+    if (!g || committed) return;
     const iv = setInterval(async () => {
-      const st = await loadStats(g.id);
-      setStats(st);
-      setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
-        cloth, title: "", owner: "", score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false,
-      })));
+      if (locked) {
+        const st = await loadStats(g.id);
+        setStats(st);
+        setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
+          cloth, title: "", owner: "", score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false,
+        })));
+      }
+      // A member's page that was open when the Keiser committed must learn
+      // of it, or its claim buttons stay live and a late tap lands on an
+      // offering the record no longer reads: accepted on screen, lost in
+      // the annals. Once the night is in the annals, the annals are drawn.
+      const annal = await fetchAnnal(g.id);
+      if (annal) {
+        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, varietals: r.varietals, price: r.price })));
+        setCommitted(true);
+        return;
+      }
+      await refreshOfferings(g.id);
     }, 5000);
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [g, committed, locked, wineCount, mode, role]);
 
+  // The rows as the table sees them. Before the commit, the claims are laid
+  // over the tallies here (owner, and the wine the owner logged); after it,
+  // the annals are the record and carry their own owners.
+  const view = committed ? rows : applyClaims(rows, offerings, rosterNames);
+
   // Ranking is computed, never stored. Ties share a rank (competition style:
   // two 2nds → next is 4th), and a tie for the top score crowns co-champions.
-  const qualified = [...rows].filter((r) => !r.dq).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
-  const dqRows = rows.filter((r) => r.dq);
+  const qualified = [...view].filter((r) => !r.dq).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
+  const dqRows = view.filter((r) => r.dq);
   const rankOf = (row: RevealRow) => 1 + qualified.filter((x) => x.score > row.score).length;
   const topScore = qualified[0]?.score ?? 0;
   const champions = topScore > 0 ? qualified.filter((r) => r.score === topScore) : [];
@@ -424,7 +464,30 @@ export default function Reveal() {
   const commit = async () => {
     if (!isKeiser) return;
     try {
-      await writeAnnal(rows);
+      // Read the claims AND the roll once more, right now: a name that landed
+      // between the last poll and this tap must not be missed on the one
+      // write that counts, and a claimant whose name never loaded must stop
+      // the commit rather than enter the record as "A soul yet unnamed".
+      // fetchAllOfferings THROWS on a failed read (it once returned {}, which
+      // would have committed every bottle as unclaimed); the catch below then
+      // reports it and nothing is written.
+      const fresh = await fetchAllOfferings(g!.id);
+      offSeq.current++;
+      setOfferings(fresh);
+      let names = rosterNames;
+      if (mode === "live" && supabase) {
+        const { data, error } = await supabase.from("members").select("id,cult_name");
+        if (error || !data) throw new Error(`The roll would not open: ${error?.message || "no answer"}. Nothing was written; try again.`);
+        names = Object.fromEntries(data.map((m: { id: string; cult_name: string | null }) => [m.id, m.cult_name || ""]));
+        setRosterNames(names);
+      }
+      const unnamed = unnamedClaimants(fresh, names);
+      if (unnamed.length) throw new Error(`${unnamed.length} claim${unnamed.length > 1 ? "s" : ""} could not be matched to a name on the roll. Nothing was written; try again.`);
+      const applied = applyClaims(rows, fresh, names);
+      await writeAnnal(applied);
+      // The Reckoning drawn right after the commit reads `rows`: hand it the
+      // rows as written, names and all, not the bare tallies.
+      setRows(applied);
       setCommitted(true);
     } catch (e) {
       alert(`Could not commit to the Annals: ${(e as Error).message}`);
@@ -434,22 +497,23 @@ export default function Reveal() {
   const patch = (cloth: number, p: Partial<RevealRow>) =>
     persist(rows.map((r) => (r.cloth === cloth ? { ...r, ...p } : r)));
 
-  const myClaim = rows.find((r) => r.owner === myName) ?? null;
+  // A claim is a number on your own offering row, written to the vault the
+  // moment you tap, and read back by every soul at the table. It was once a
+  // change to this page's local state alone, which no other browser ever
+  // saw: every hand but the Keiser's came up unclaimed at the commit, on two
+  // gatherings running. These only run before the commit: once the night is
+  // in the annals this page draws the Reckoning, and amendments, the Keiser's
+  // by hand and a member's late claim through claim_bottle, live in the codex.
+  const myClaim = claimedCloth(offerings, meId) != null;
+  const reread = () => { if (g) return refreshOfferings(g.id); };
   const claim = (cloth: number) => {
-    if (!meId || myClaim) return;
-    const mine = offerings[meId];
-    persist(rows.map((r) => (r.cloth === cloth ? {
-      ...r,
-      owner: myName,
-      title: r.title || mine?.title || "",
-      varietals: r.varietals?.length ? r.varietals : mine?.varietals,
-      price: r.price ?? mine?.price ?? undefined,
-    } : r)));
+    if (!meId || myClaim || committed) return;
+    claimCloth(g!.id, meId, cloth).then(reread).catch((e) => { reread(); alert(`The claim would not hold: ${(e as Error).message}`); });
   };
   const release = (cloth: number) => {
-    if (!meId) return;
-    const mine = offerings[meId];
-    persist(rows.map((r) => (r.cloth === cloth && r.owner === myName ? { ...r, owner: "", title: r.title === mine?.title ? "" : r.title, varietals: undefined, price: undefined } : r)));
+    if (!meId || committed) return;
+    if (claimedCloth(offerings, meId) !== cloth) return;
+    claimCloth(g!.id, meId, null).then(reread).catch((e) => alert(`The release would not hold: ${(e as Error).message}`));
   };
 
   if (!ready) return <section />;
@@ -540,7 +604,7 @@ export default function Reveal() {
         <div style={{ flex: 1 }}>
           <div>
             <span style={{ textDecoration: isDq ? "line-through" : "none" }}>Bottle {toRoman(w.cloth)}</span> ·{" "}
-            <OwnerSlot owner={w.owner} mine={w.owner === myName && !!myName} canClaim={!!meId && !myClaim} canAct={canAct}
+            <OwnerSlot owner={w.owner} mine={w.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
               onClaim={() => claim(w.cloth)} onRelease={() => release(w.cloth)}
               style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold2)" }} />
             {isDq && <span className="tag" style={{ marginLeft: 8, color: "var(--wine)", borderColor: "var(--wine)" }}>off theme · disqualified</span>}
@@ -590,7 +654,7 @@ export default function Reveal() {
               <div key={champ.cloth} style={{ marginTop: idx === 0 ? 8 : 10, ...(idx > 0 ? { borderTop: "1px solid var(--line)", paddingTop: 10, width: "100%" } : {}) }}>
                 <div className="disp" style={{ fontSize: champions.length > 1 ? 17 : 19, margin: "0 0 2px" }}>Bottle {toRoman(champ.cloth)}</div>
                 <div style={{ color: "var(--parch)", fontSize: 14 }}>
-                  <OwnerSlot owner={champ.owner} mine={champ.owner === myName && !!myName} canClaim={!!meId && !myClaim} canAct={canAct}
+                  <OwnerSlot owner={champ.owner} mine={champ.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
                     onClaim={() => claim(champ.cloth)} onRelease={() => release(champ.cloth)}
                     style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 16, color: "var(--gold2)" }} />
                 </div>

@@ -370,3 +370,130 @@ policies match `policies.sql`. The run rolled itself back as designed.
 The sign-in question is still open and still needs the members' own accounts:
 what they saw distinguishes a spelling fault (now closed at both ends) from
 email delivery or Google redirect config, which are different fixes.
+
+
+# Fourth pass, 24 September 2026: the claim that never left the phone
+
+## What the second gathering showed
+
+The same symptom as the first: every soul but the Keiser unclaimed at the commit, the
+Keiser naming each hand in the codex afterwards. The offerings (wine, price, grapes)
+had all carried over. Bug #6 was closed on evidence on 11 September and stayed closed:
+`claim_bottle` works. It was never the door the members were using.
+
+## The cause, in one line
+
+`src/app/reveal/page.tsx`: `claim()` called `persist()`, and `persist()` wrote the
+annals only `if (committed && isKeiser)`. A member's claim on the reveal was React
+state in that member's browser. The Keiser's commit wrote the Keiser's rows.
+
+Why every test passed: the SQL suites prove `claim_bottle`, which the reveal does not
+call (it cannot; the annals row does not exist before the commit). The JS suites never
+covered the reveal. The flow prototype drives one browser, and one browser cannot see
+that another browser's state never reached it.
+
+## The fix
+
+The claim is a number on the claimant's own offering row, `offerings.cloth`, which the
+member may already write. The reveal polls the offerings until the commit; the commit
+re-reads them once more. `src/lib/revealClaims.ts` is the single place an owner is
+laid over a tallied row. A partial unique index makes one hand per bottle the vault's
+rule.
+
+## Proof
+
+- `scripts/verify-reveal-claims.ts`: 20 checks. Mutation: claims never laid over (the
+  old behaviour) fails 9; the Keiser's hand overwritten fails 1.
+- `supabase/verify-cloth-claim.sql`: 12 checks as a genuine non-Keiser member on the
+  local replica. Mutation: the unique index dropped fails 2. Rolls itself back.
+- All 13 prior JS suites and `verify-claim.sql` still green. Typecheck clean.
+
+## SQL that MUST be run on production before the deploy
+
+Three statements, all idempotent (they are in `supabase/schema.sql`):
+
+    alter table offerings add column if not exists cloth int;
+    create unique index if not exists offerings_one_hand_per_cloth
+      on offerings (gathering_id, cloth) where cloth is not null;
+
+Then `./scripts/run-sql.sh supabase/verify-cloth-claim.sql` against production: expect
+12 passed, 0 failed, rolled back.
+
+## Still only a real member can prove
+
+Two phones on one night: a member claims on the reveal, and the Keiser's screen shows
+the name within 5 seconds without a refresh, then the commit carries it.
+
+## RUN AGAINST PRODUCTION, 24 September 2026: 12 passed, 0 failed
+
+`supabase/verify-cloth-claim.sql` run against the live database through the session
+pooler, as a throwaway non-Keiser member: the column and the unique index are on
+production, the claim lands, survives an edit of the wine, a second hand is refused,
+a sleeping hand is refused, and every claim is readable by the table. Rolled back,
+nothing kept. `verify-claim.sql` re-run the same way: still 13 passed.
+
+Note for the next session: the project pooler host is
+`aws-1-eu-central-2.pooler.supabase.com` (Zurich), not eu-central-1. The direct
+`db.<ref>.supabase.co` host is IPv6 only and does not resolve on Deven's network.
+
+## Adversarial review of the fix, same day: six gaps, all closed
+
+An independent reviewer was given the diff and told the last fix passed every test and
+still failed at a gathering. It found:
+
+1. BLOCKER. `fetchAllOfferings` returned `{}` on a failed read. The commit re-reads
+   the claims through it: one dropped request at the tap would have written every
+   bottle as unclaimed, silently. Now throws; the commit refuses and says so; the
+   poll keeps the last good claims.
+2. A member's page open at the commit never learned of it: claim buttons stayed live,
+   a late tap wrote a claim the record no longer reads. The poll now reads the annal
+   and flips the page to the Reckoning.
+3. The Keiser's Reckoning right after the commit drew the bare tallies (no names)
+   until a refresh. `setRows(applied)` before `setCommitted(true)`.
+4. Any signed-in member could write any member's offering (the policies bound
+   nothing to member_id). `my_member_id()` + rebound insert/update/delete policies,
+   Keiser exempt. Three new SQL checks; the old policy fails one of them.
+5. Erasing a wine on Convene deleted the row, claim included. Now blanks the wine.
+6. A poll issued before a tap could land after it and hide the claim for 5 s, during
+   which a second tap would move it. Reads are sequence-numbered.
+
+Not changed, noted: the Keiser cannot blank a claimant's logged title pre-commit
+(clearing the field restores the logged wine; replace it instead); no range check on
+`cloth` at the vault (the page only offers real rows).
+
+## Driven in the real app, two tabs, demo mode
+
+Seeded a night with two sealed ballots. Member tab: claim Bottle III, name and logged
+wine appear, other bottles read "unclaimed"; release; claim Bottle I; reload, claim
+survives. Keiser tab: sees "Priestess Larissa" on load, no release button for her;
+claims Bottle III; the member tab shows "The Keiser" within one poll, no refresh;
+disqualifies Bottle II; waits through a poll, the DQ stands; commits. Keiser's
+Reckoning carries every name at once. Member's untouched tab becomes the Reckoning
+within 6 s. Annals: cloth 1 Larissa/Meerlust/R350/Cabernet, cloth 2 DQ, cloth 3 Keiser.
+Codex card shows both owners. Zero console errors in either tab.
+
+## Totals after the fourth pass
+
+15 JS suites, 372 checks. 2 SQL suites, 28 checks, both run on production as a
+non-Keiser member and rolled back. Typecheck clean.
+
+## SQL still to run on production (the owner-bound offering policy)
+
+The column and index are on production. The policy from item 4 is not yet; the app
+works without it (it is hardening, not a dependency). Run in the SQL editor:
+
+    create or replace function my_member_id() returns uuid
+      language sql security definer stable set search_path = public
+    as $$ select id from members where lower(email) = lower(auth.jwt() ->> 'email') limit 1; $$;
+    drop policy if exists "offerings insert" on offerings;
+    create policy "offerings insert" on offerings for insert
+      with check (member_id = my_member_id() or is_keiser());
+    drop policy if exists "offerings update" on offerings;
+    create policy "offerings update" on offerings for update
+      using (member_id = my_member_id() or is_keiser())
+      with check (member_id = my_member_id() or is_keiser());
+    drop policy if exists "offerings delete" on offerings;
+    create policy "offerings delete" on offerings for delete
+      using (member_id = my_member_id() or is_keiser());
+
+Then `./scripts/run-sql.sh supabase/verify-cloth-claim.sql`: expect 15 passed.
