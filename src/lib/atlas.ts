@@ -194,6 +194,38 @@ export function distanceToLine(chart: AtlasChart, p: PlanetLines, kind: LineKind
   return best;
 }
 
+// ── Places and their metros ─────────────────────────────────────────────────
+// The nearest place is named exactly (Benoni, not Johannesburg), with the
+// nearest major city beside it in a quieter voice. Places that share a major
+// city collapse into one row, so a list is never four suburbs of one metro.
+
+export const MAJOR_POP = 1_000_000;
+export const METRO_KM = 120;
+const MAJORS = ATLAS_CITIES.filter((c) => c[4] >= MAJOR_POP);
+const metroCache = new Map<AtlasCity, AtlasCity | null>();
+
+// The major city a place belongs to: the LARGEST city of a million or more
+// within reach, itself included (so Shubra al Khaymah folds into Cairo and
+// Soweto into Johannesburg), or null when no major city is near.
+export function metroOf(c: AtlasCity): AtlasCity | null {
+  const hit = metroCache.get(c);
+  if (hit !== undefined) return hit;
+  let best: AtlasCity | null = c[4] >= MAJOR_POP ? c : null;
+  for (const m of MAJORS) {
+    if (best && m[4] <= best[4]) continue;
+    if (Math.abs(m[2] - c[2]) > 1.5 || Math.abs(((m[3] - c[3] + 540) % 360) - 180) > 3) continue;
+    if (haversineKm(c[2], c[3], m[2], m[3]) < METRO_KM) best = m;
+  }
+  metroCache.set(c, best);
+  return best;
+}
+// "near Johannesburg", or nothing when the place is the major city itself.
+export function nearLabel(c: AtlasCity): string | null {
+  const m = metroOf(c);
+  return m && m !== c ? m[0] : null;
+}
+const metroKey = (c: AtlasCity) => { const m = metroOf(c); return m ? `${m[0]}|${m[1]}` : `${c[0]}|${c[1]}|${c[2]}|${c[3]}`; };
+
 // ── Readings ────────────────────────────────────────────────────────────────
 
 export interface LineHit { planet: PlanetLines; kind: LineKind; km: number; strength: Strength }
@@ -223,19 +255,30 @@ export function citiesFor(chart: AtlasChart, q: AtlasQuestion, limit = 5, cities
     }
     if (bestKm < REACH_KM) out.push({ city: c, kind: bestKind, km: bestKm, strength: strengthOf(bestKm) });
   }
-  return out.sort((a, b) => a.km - b.km).slice(0, limit);
+  return collapseByMetro(out.sort((a, b) => a.km - b.km), (h) => h.city).slice(0, limit);
+}
+
+// Keep the first (nearest) entry per metro.
+function collapseByMetro<T>(sorted: T[], cityOf: (t: T) => AtlasCity): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const t of sorted) {
+    const k = metroKey(cityOf(t));
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(t);
+  }
+  return out;
 }
 
 // Cities near a planet's lines of any kind (the map's "nearest cities marked").
 export function nearestCities(chart: AtlasChart, planetKey: string, limit = 6): AtlasCity[] {
   const p = chart.planets.find((x) => x.key === planetKey);
   if (!p) return [];
-  return ATLAS_CITIES
+  const ranked = ATLAS_CITIES
     .map((c) => ({ c, km: Math.min(...LINE_KINDS.map((k) => distanceToLine(chart, p, k, c[2], c[3]))) }))
     .filter((x) => x.km < REACH_KM)
-    .sort((a, b) => a.km - b.km)
-    .slice(0, limit)
-    .map((x) => x.c);
+    .sort((a, b) => a.km - b.km);
+  return collapseByMetro(ranked, (x) => x.c).slice(0, limit).map((x) => x.c);
 }
 
 // The council's map: which cities gather the most members for one theme.
@@ -250,7 +293,8 @@ export function councilCities(souls: CouncilSoul[], theme: AtlasQuestion, limit 
     });
     if (who.length >= 2) out.push({ city: c, who });
   }
-  return out.sort((a, b) => b.who.length - a.who.length || a.city[0].localeCompare(b.city[0])).slice(0, limit);
+  out.sort((a, b) => b.who.length - a.who.length || b.city[4] - a.city[4]);
+  return collapseByMetro(out, (r) => r.city).slice(0, limit);
 }
 
 export const roundKm = (km: number) => Math.max(10, Math.round(km / 10) * 10);

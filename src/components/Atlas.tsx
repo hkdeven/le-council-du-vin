@@ -13,18 +13,30 @@ import { supabase } from "@/lib/supabase";
 import { loadMembers } from "@/lib/members";
 import { geocodePlace, type GeoHit } from "@/lib/geo";
 import {
-  atlasChart, askOfPlace, citiesFor, nearestCities, councilCities, roundKm,
+  atlasChart, askOfPlace, citiesFor, nearestCities, councilCities, roundKm, nearLabel,
   DEFAULT_SHOWN, PLANET_COLOUR, PLANET_PLAIN, LINE_NAME, LINE_PLAIN, LINE_SAY, QUESTIONS, COUNCIL_THEMES,
   type AtlasChart, type CouncilSoul, type Strength,
 } from "@/lib/atlas";
 import { atlasMapSvg, layerFor } from "@/lib/atlas-svg";
 import type { Member } from "@/lib/types";
+import type { AtlasCity } from "@/lib/atlas-cities";
 
 const STRENGTH_COLOUR: Record<Strength, string> = { Strong: "var(--gold2)", Noticeable: "var(--gold)", Faint: "var(--faint)" };
 const eyebrow: React.CSSProperties = { fontFamily: "'Cinzel', serif", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--gold)", fontSize: 10.5 };
 const left: React.CSSProperties = { textAlign: "left" };
 
 export const birthInputOf = (m: CardMember) => ({ dateStr: m.date_of_birth || "", timeStr: m.time_of_birth, tz: m.birth_tz, lat: m.birth_lat, lon: m.birth_lon });
+
+// The exact place, with its major city beside it in a quieter voice.
+function PlaceName({ city }: { city: AtlasCity }) {
+  const near = nearLabel(city);
+  return (
+    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: "var(--gold2)", lineHeight: 1.2 }}>
+      {city[0]}
+      {near && <span style={{ fontSize: 13.5, fontStyle: "italic", color: "var(--dim)", marginLeft: 7 }}>near {near}</span>}
+    </span>
+  );
+}
 
 function StrengthTag({ s }: { s: Strength }) {
   return <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: STRENGTH_COLOUR[s], whiteSpace: "nowrap" }}>{s}</span>;
@@ -134,7 +146,7 @@ function Favours({ chart, your }: { chart: AtlasChart; your: string }) {
             </div>
             {rows.length ? rows.map((r) => (
               <div key={r.city[0] + r.city[1]} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 10px", padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
-                <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: "var(--gold2)" }}>{r.city[0]}</span>
+                <PlaceName city={r.city} />
                 <span style={{ alignSelf: "center" }}><StrengthTag s={r.strength} /></span>
                 <span style={{ gridColumn: "1 / 3", fontSize: 13.5, color: "var(--dim)" }}>{p.name} {LINE_NAME[r.kind]} line passes {roundKm(r.km)} km away</span>
               </div>
@@ -307,7 +319,7 @@ function CouncilMap() {
             <p className="whisper" style={{ fontSize: 13, textAlign: "left", margin: "4px 0" }}>No city gathers more than one member for this theme.</p>
           ) : ranked.map((r) => (
             <div key={r.city[0] + r.city[1]} style={{ ...left, display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 10px", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: "var(--gold2)" }}>{r.city[0]}</span>
+              <PlaceName city={r.city} />
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: "0.1em", color: "var(--gold2)", alignSelf: "center", whiteSpace: "nowrap" }}>{r.who.length} of {souls.length}</span>
               <span style={{ gridColumn: "1 / 3", display: "flex", flexWrap: "wrap", gap: 4, marginTop: 3 }}>
                 {r.who.map((w) => (
