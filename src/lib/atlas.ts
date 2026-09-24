@@ -112,7 +112,7 @@ export const QUESTIONS: AtlasQuestion[] = [
 export const COUNCIL_THEMES: AtlasQuestion[] = [
   { key: "luck", title: "Luck", planet: "jupiter", kinds: ["mc", "asc"], why: "" },
   { key: "love", title: "Love", planet: "venus", kinds: ["dsc", "asc"], why: "" },
-  { key: "work", title: "Work", planet: "sun", kinds: ["mc"], why: "" },
+  { key: "fun", title: "Fun", planet: "sun", kinds: ["asc"], why: "" },
   { key: "home", title: "Home", planet: "moon", kinds: ["ic"], why: "" },
 ];
 
