@@ -8,8 +8,9 @@
 //
 // Method, plainly:
 //   - Greenwich sidereal time at birth (the formula the ascendant already uses).
-//   - Each planet's ecliptic longitude becomes right ascension + declination
-//     (ecliptic latitude is ignored: the Moon's lines may drift up to ~1°).
+//   - Each planet's ecliptic longitude AND latitude become right ascension
+//     + declination (latitude matters: the Moon strays 5° from the ecliptic,
+//     Pluto up to 17°, and a rising curve follows the declination).
 //   - Overhead (MC) line: the meridian where local sidereal time equals the
 //     planet's RA, i.e. longitude = RA - GMST. Underfoot (IC) is 180° away.
 //   - Rising / setting curves: at longitude L the hour angle is
@@ -18,7 +19,7 @@
 // A line's pull is read as strongest on the line and gone by ~600 km.
 
 import { julianDay } from "./astrology";
-import { PLANETS, planetLongitude } from "./natal";
+import { PLANETS, planetLongitude, planetLatitude } from "./natal";
 import { ATLAS_CITIES, type AtlasCity } from "./atlas-cities";
 
 const RAD = Math.PI / 180;
@@ -159,8 +160,13 @@ export function atlasChart(b: BirthInput): AtlasChart | null {
   const eps = (23.4393 - 3.563e-7 * n) * RAD;
   const planets = PLANETS.map((p) => {
     const lam = planetLongitude(p.key, jd) * RAD;
-    const ra = rev(Math.atan2(Math.sin(lam) * Math.cos(eps), Math.cos(lam)) / RAD);
-    const dec = Math.asin(Math.sin(eps) * Math.sin(lam)) / RAD;
+    const bet = planetLatitude(p.key, jd) * RAD;
+    // Ecliptic (λ, β) to equatorial (α, δ), rotating about the x-axis by ε.
+    const x = Math.cos(bet) * Math.cos(lam);
+    const y = Math.cos(bet) * Math.sin(lam) * Math.cos(eps) - Math.sin(bet) * Math.sin(eps);
+    const z = Math.cos(bet) * Math.sin(lam) * Math.sin(eps) + Math.sin(bet) * Math.cos(eps);
+    const ra = rev(Math.atan2(y, x) / RAD);
+    const dec = Math.asin(Math.max(-1, Math.min(1, z))) / RAD;
     return planetLines(gmst, p.key, p.name, p.glyph, ra, dec);
   });
   return { jd, gmst, planets };
@@ -234,10 +240,12 @@ export function countryName(cc: string): string {
   }
   try { return regionNames?.of(cc) || cc; } catch { return cc; }
 }
-// "near Johannesburg, South Africa" or just "South Africa".
-export function placeContext(c: AtlasCity): string {
+// "near Johannesburg, South Africa" or just "South Africa". On the card the
+// home country is shortened to SA (the Keiser's decree); the email keeps it long.
+export function placeContext(c: AtlasCity, short = false): string {
   const near = nearLabel(c);
-  return near ? `near ${near}, ${countryName(c[1])}` : countryName(c[1]);
+  const country = short && c[1] === "ZA" ? "SA" : countryName(c[1]);
+  return near ? `near ${near}, ${country}` : country;
 }
 const metroKey = (c: AtlasCity) => { const m = metroOf(c); return m ? `${m[0]}|${m[1]}` : `${c[0]}|${c[1]}|${c[2]}|${c[3]}`; };
 
@@ -298,6 +306,26 @@ export function nearestCities(chart: AtlasChart, planetKey: string, limit = 6): 
 
 // The council's map: which cities gather the most members for one theme.
 export interface CouncilSoul { id: string; initials: string; name: string; chart: AtlasChart; self?: boolean }
+
+// Who stands on the council's map: living full members and the Keiser whose
+// record is complete. Initiates, sleeping seats and veiled charts never do.
+export const COUNCIL_ROLES = new Set(["member", "keiser"]);
+export interface RosterRow {
+  id: string; cult_name: string; short_name?: string | null; role: string; active?: boolean | null;
+  date_of_birth?: string | null; time_of_birth?: string | null; birth_lat?: number | null; birth_lon?: number | null; birth_tz?: string | null;
+}
+export const initialsOf = (m: { short_name?: string | null; cult_name: string }) =>
+  (m.short_name || m.cult_name.split(" ").map((w) => w[0]).join("").slice(0, 2)).toUpperCase();
+export function foldSouls(list: RosterRow[], meId?: string | null): CouncilSoul[] {
+  const out: CouncilSoul[] = [];
+  for (const m of list) {
+    if (m.active === false || !COUNCIL_ROLES.has(m.role)) continue;
+    const chart = atlasChart({ dateStr: m.date_of_birth || "", timeStr: m.time_of_birth, tz: m.birth_tz, lat: m.birth_lat, lon: m.birth_lon });
+    if (!chart) continue;
+    out.push({ id: m.id, initials: initialsOf(m), name: m.cult_name, chart, self: !!meId && m.id === meId });
+  }
+  return out;
+}
 export interface CouncilCity { city: AtlasCity; who: CouncilSoul[] }
 export function councilCities(souls: CouncilSoul[], theme: AtlasQuestion, limit = 6, cities: AtlasCity[] = ATLAS_CITIES): CouncilCity[] {
   const out: CouncilCity[] = [];
@@ -310,6 +338,39 @@ export function councilCities(souls: CouncilSoul[], theme: AtlasQuestion, limit 
   }
   out.sort((a, b) => b.who.length - a.who.length || b.city[4] - a.city[4]);
   return collapseByMetro(out, (r) => r.city).slice(0, limit);
+}
+
+// ── Kindred ground ──────────────────────────────────────────────────────────
+// Where two members' favourable lines meet: a place within reach of a
+// welcome line of each. Saturn is left out; nobody meets under a trial.
+export const KINDRED_QUESTIONS = QUESTIONS.filter((q) => !q.warn);
+export interface KindredSide { planet: PlanetLines; kind: LineKind; km: number; theme: AtlasQuestion }
+export interface KindredHit { city: AtlasCity; mine: KindredSide; theirs: KindredSide; score: number }
+
+function bestWelcomeLine(chart: AtlasChart, c: AtlasCity): KindredSide | null {
+  let best: KindredSide | null = null;
+  for (const q of KINDRED_QUESTIONS) {
+    const p = chart.planets.find((x) => x.key === q.planet);
+    if (!p) continue;
+    for (const kind of q.kinds) {
+      const km = distanceToLine(chart, p, kind, c[2], c[3]);
+      if (km < REACH_KM && (!best || km < best.km)) best = { planet: p, kind, km, theme: q };
+    }
+  }
+  return best;
+}
+
+export function kindredGround(mine: AtlasChart, theirs: AtlasChart, limit = 3, cities: AtlasCity[] = ATLAS_CITIES): KindredHit[] {
+  const out: KindredHit[] = [];
+  for (const c of cities) {
+    const a = bestWelcomeLine(mine, c);
+    if (!a) continue;
+    const b = bestWelcomeLine(theirs, c);
+    if (!b) continue;
+    out.push({ city: c, mine: a, theirs: b, score: a.km + b.km });
+  }
+  out.sort((x, y) => x.score - y.score);
+  return collapseByMetro(out, (h) => h.city).slice(0, limit);
 }
 
 export const roundKm = (km: number) => Math.max(10, Math.round(km / 10) * 10);

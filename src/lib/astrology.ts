@@ -191,6 +191,39 @@ export function moonLongitude(jd: number): number {
   return rev(lon);
 }
 
+// Geocentric ecliptic LATITUDE of the Moon (Schlyter), the same elements as
+// moonLongitude plus the five latitude perturbations. Reaches about ±5.3°.
+export function moonLatitude(jd: number): number {
+  const day = jd - 2451543.5;
+  const N = rev(125.1228 - 0.0529538083 * day);
+  const i = 5.1454;
+  const w = rev(318.0634 + 0.1643573223 * day);
+  const a = 60.2666;
+  const e = 0.0549;
+  const M = rev(115.3654 + 13.0649929509 * day);
+  const Ms = rev(356.047 + 0.9856002585 * day);
+  const ws = 282.9404 + 4.70935e-5 * day;
+  const E = M + (180 / Math.PI) * e * Math.sin(M * RAD) * (1 + e * Math.cos(M * RAD));
+  const xv = a * (Math.cos(E * RAD) - e);
+  const yv = a * (Math.sqrt(1 - e * e) * Math.sin(E * RAD));
+  const v = rev((Math.atan2(yv, xv) / RAD));
+  const r = Math.sqrt(xv * xv + yv * yv);
+  const xh = r * (Math.cos(N * RAD) * Math.cos((v + w) * RAD) - Math.sin(N * RAD) * Math.sin((v + w) * RAD) * Math.cos(i * RAD));
+  const yh = r * (Math.sin(N * RAD) * Math.cos((v + w) * RAD) + Math.cos(N * RAD) * Math.sin((v + w) * RAD) * Math.cos(i * RAD));
+  const zh = r * Math.sin((v + w) * RAD) * Math.sin(i * RAD);
+  let lat = Math.atan2(zh, Math.sqrt(xh * xh + yh * yh)) / RAD;
+  const Lm = rev(N + w + M);
+  const Ls = rev(Ms + ws);
+  const Dm = rev(Lm - Ls);
+  const F = rev(Lm - N);
+  lat += -0.173 * Math.sin((F - 2 * Dm) * RAD);
+  lat += -0.055 * Math.sin((M - F - 2 * Dm) * RAD);
+  lat += -0.046 * Math.sin((M + F - 2 * Dm) * RAD);
+  lat += 0.033 * Math.sin((F + 2 * Dm) * RAD);
+  lat += 0.017 * Math.sin((2 * M + F) * RAD);
+  return lat;
+}
+
 export function moonSign(dateStr: string, timeStr?: string | null, tz?: string | null): Sign | null {
   const jd = julianDay(dateStr, timeStr, tz || DEFAULT_TZ);
   if (jd == null) return null;

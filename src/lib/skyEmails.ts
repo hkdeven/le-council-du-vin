@@ -58,7 +58,7 @@ export async function emailAtlas(self: CardMember, email: string): Promise<SendR
   return sendEmail("atlas", [email], {
     name: self.cult_name, birthLine: birthLineOf(self), mapUrl,
     groups: QUESTIONS.map((q) => {
-      return { title: q.title, why: q.why, rows: citiesFor(chart, q, 4).map((r) => ({ city: r.city[0], detail: placeContext(r.city), strength: r.strength })) };
+      return { title: q.title, why: q.why, rows: citiesFor(chart, q, 5).map((r) => ({ city: r.city[0], detail: placeContext(r.city), strength: r.strength })) };
     }),
   });
 }

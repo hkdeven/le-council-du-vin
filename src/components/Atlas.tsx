@@ -2,8 +2,8 @@
 
 // The Atlas: the Wheel laid upon the world. Lives behind the Wheel's lens
 // pill ("The sky" / "The earth") inside the Heavens. Four parts: the map,
-// the cities that favour you, the reverse question (ask of a place), and,
-// for full members and the Keiser only, the council's map.
+// the cities that favour you, the reverse question (select a place), and,
+// for full members and the Keiser only, the council's map and kindred ground.
 
 import { useEffect, useMemo, useState } from "react";
 import { chartReady, Methodology, VeiledGate } from "./NatalChart";
@@ -13,13 +13,14 @@ import { supabase } from "@/lib/supabase";
 import { loadMembers } from "@/lib/members";
 import { geocodePlace, type GeoHit } from "@/lib/geo";
 import {
-  atlasChart, askOfPlace, citiesFor, nearestCities, councilCities, roundKm, placeContext,
+  atlasChart, askOfPlace, citiesFor, nearestCities, councilCities, kindredGround, foldSouls, roundKm, placeContext, strengthOf, COUNCIL_ROLES,
   DEFAULT_SHOWN, PLANET_COLOUR, PLANET_PLAIN, LINE_NAME, LINE_PLAIN, LINE_SAY, QUESTIONS, COUNCIL_THEMES,
   type AtlasChart, type CouncilSoul, type Strength,
 } from "@/lib/atlas";
 import { atlasMapSvg, layerFor } from "@/lib/atlas-svg";
 import type { Member } from "@/lib/types";
 import type { AtlasCity } from "@/lib/atlas-cities";
+import Tip from "./Tip";
 
 const STRENGTH_COLOUR: Record<Strength, string> = { Strong: "var(--gold2)", Noticeable: "var(--gold)", Faint: "var(--faint)" };
 const eyebrow: React.CSSProperties = { fontFamily: "'Cinzel', serif", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--gold)", fontSize: 10.5 };
@@ -32,7 +33,7 @@ function PlaceName({ city }: { city: AtlasCity }) {
   return (
     <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: "var(--gold2)", lineHeight: 1.2 }}>
       {city[0]}
-      <span style={{ fontSize: 13.5, fontStyle: "italic", color: "var(--dim)", marginLeft: 7 }}>{placeContext(city)}</span>
+      <span style={{ fontSize: 13.5, fontStyle: "italic", color: "var(--dim)", marginLeft: 7 }}>{placeContext(city, true)}</span>
     </span>
   );
 }
@@ -81,8 +82,9 @@ export function AtlasContent({ member, isSelf, onGo }: { member: CardMember; isS
       <Favours chart={chart} your={your} />
       <AskOfPlace chart={chart} you={you} your={your} />
       <CouncilMap />
+      <KindredGround member={member} chart={chart} isSelf={isSelf} />
       <Methodology title="How the atlas is drawn">
-        The planet positions are the same ones used for the Wheel. Each line is where that planet was rising, overhead, setting or directly below at the minute of birth: the overhead and underfoot lines are meridians, the rising and setting lines are curves found from the planet&apos;s declination and hour angle. A planet&apos;s own latitude above the ecliptic is ignored, which can move the Moon&apos;s lines by up to a degree. A line&apos;s effect is usually said to reach about 600 km either side and to be strongest right on it. Birth time matters: an error of four minutes shifts every line by about 100 km. As with everything in the Heavens, this is for the pleasure of the council and is not advice on where to live.
+        The planet positions are the same ones used for the Wheel, longitude and latitude both, and they are checked against the Swiss Ephemeris, the reference the professional software uses, to within a tenth of a degree for ten birth records across both hemispheres and seven decades. Each line is where that planet was rising, overhead, setting or directly below at the minute of birth: the overhead and underfoot lines are meridians, the rising and setting lines are curves found from the planet&apos;s declination and hour angle. A line&apos;s effect is usually said to reach about 600 km either side and to be strongest right on it. Birth time matters more than anything here: an error of four minutes shifts every line by about 100 km. As with everything in the Heavens, this is for the pleasure of the council and is not advice on where to live.
       </Methodology>
     </>
   );
@@ -120,7 +122,8 @@ function TheMap({ chart, member }: { chart: AtlasChart; member: CardMember }) {
         })}
       </div>
       <p className="whisper" style={{ margin: "6px 0 4px", fontSize: 13 }}>
-        {focused ? `${focused.name}: ${PLANET_PLAIN[focused.key]}. Nearest cities marked.` : "Tap a symbol to read one planet's lines; tap again to release. The small eye is the birthplace."}
+        {focused ? `${focused.name}: ${PLANET_PLAIN[focused.key]}. Nearest cities marked.` : "Tap a symbol to read one planet's lines; tap again to release."}
+        <br />The small eye is the birthplace.
       </p>
       <Fold title="What the lines and symbols mean">
         <div style={{ ...left, display: "grid", gap: 5, margin: "4px 0 2px" }}>
@@ -147,7 +150,7 @@ function TheMap({ chart, member }: { chart: AtlasChart; member: CardMember }) {
 // ── Where the sky favours you ───────────────────────────────────────────────
 
 function Favours({ chart, your }: { chart: AtlasChart; your: string }) {
-  const groups = useMemo(() => QUESTIONS.map((q) => ({ q, rows: citiesFor(chart, q, 4) })), [chart]);
+  const groups = useMemo(() => QUESTIONS.map((q) => ({ q, rows: citiesFor(chart, q, 5) })), [chart]);
   return (
     <div>
       {/* The full-width gold rule the Wheel and Foretelling draw before a new part. */}
@@ -185,7 +188,7 @@ function Favours({ chart, your }: { chart: AtlasChart; your: string }) {
   );
 }
 
-// ── Ask of a place ──────────────────────────────────────────────────────────
+// ── Select a place ──────────────────────────────────────────────────────────
 
 function AskOfPlace({ chart, you, your }: { chart: AtlasChart; you: string; your: string }) {
   const [q, setQ] = useState("");
@@ -211,7 +214,7 @@ function AskOfPlace({ chart, you, your }: { chart: AtlasChart; you: string; your
       <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 0" }} />
       <MoonRow />
       <div style={{ ...eyebrow, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12 }}>
-        <i className="ti ti-map-pin" /> Ask of a place
+        <i className="ti ti-map-pin" /> Select a place
       </div>
       <p className="whisper" style={{ margin: "4px 0 8px", fontSize: 13 }}>Name a town, and read what {your} chart says about {you} being there.</p>
       <div style={{ display: "flex", gap: 6 }}>
@@ -270,28 +273,15 @@ const verdictHead: React.CSSProperties = { display: "block", fontFamily: "'Cinze
 // ── The council's map ───────────────────────────────────────────────────────
 // Full members and the Keiser only: initiates never see it, on any card.
 
-const COUNCIL_ROLES = new Set(["member", "keiser"]);
-
-function CouncilMap() {
-  const { role, mode, member: me } = useAuth();
-  const allowed = COUNCIL_ROLES.has(role);
+// Every living full member (and the Keiser) whose chart is complete, read
+// once and shared by the council's map and kindred ground.
+function useCouncilSouls(allowed: boolean): CouncilSoul[] | null {
+  const { mode, member: me } = useAuth();
   const [souls, setSouls] = useState<CouncilSoul[] | null>(null);
-  const [theme, setTheme] = useState(0);
-
   useEffect(() => {
     if (!allowed) return;
     let cancelled = false;
-    const fold = (list: Member[]) => {
-      const out: CouncilSoul[] = [];
-      for (const m of list) {
-        if (m.active === false || !COUNCIL_ROLES.has(m.role)) continue;
-        if (!chartReady(m)) continue;
-        const chart = atlasChart(birthInputOf(m));
-        if (!chart) continue;
-        out.push({ id: m.id, initials: (m.short_name || m.cult_name.slice(0, 2)).toUpperCase(), name: m.cult_name, chart, self: !!me && m.id === me.id });
-      }
-      if (!cancelled) setSouls(out);
-    };
+    const fold = (list: Member[]) => { if (!cancelled) setSouls(foldSouls(list, me?.id)); };
     if (mode === "live" && supabase) {
       supabase.from("members").select("id,cult_name,short_name,role,active,date_of_birth,time_of_birth,birth_lat,birth_lon,birth_tz")
         .then(({ data }) => fold((data || []) as Member[]));
@@ -300,6 +290,64 @@ function CouncilMap() {
     }
     return () => { cancelled = true; };
   }, [allowed, mode, me]);
+  return souls;
+}
+
+// ── Kindred ground ──────────────────────────────────────────────────────────
+// Where this member's welcome lines meet another's. Full members and the
+// Keiser only, on both sides.
+
+const KINDRED_TIP = "Places within reach of a welcome line of each of you: love, fun, luck or home, never Saturn. The nearer both lines pass, the higher the place ranks. Counted between full members only, and only when both charts are complete.";
+
+function KindredGround({ member, chart, isSelf }: { member: CardMember; chart: AtlasChart; isSelf?: boolean }) {
+  const { role } = useAuth();
+  const allowed = COUNCIL_ROLES.has(role) && !!member.role && COUNCIL_ROLES.has(member.role);
+  const souls = useCouncilSouls(allowed);
+  const rows = useMemo(() => {
+    if (!souls) return null;
+    return souls
+      .filter((s) => s.id !== member.id && s.name !== member.cult_name)
+      .map((s) => ({ soul: s, hits: kindredGround(chart, s.chart, 2) }))
+      .filter((r) => r.hits.length > 0)
+      .sort((a, b) => a.hits[0].score - b.hits[0].score);
+  }, [souls, chart, member.id, member.cult_name]);
+  if (!allowed) return null;
+  const mineWord = isSelf ? "your" : `${member.cult_name.split(" ").pop()}'s`;
+  return (
+    <div>
+      <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 0" }} />
+      <MoonRow />
+      <div style={{ ...eyebrow, display: "flex", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 12 }}>
+        <i className="ti ti-arrows-cross" style={{ marginRight: 4 }} /> Kindred ground<Tip text={KINDRED_TIP} />
+      </div>
+      <p className="whisper" style={{ margin: "4px 0 6px", fontSize: 13 }}>Where {isSelf ? "you" : "they"} and another member would both be met kindly.</p>
+      {!rows ? (
+        <p className="whisper" style={{ fontSize: 13 }}>gathering the council&apos;s skies…</p>
+      ) : rows.length === 0 ? (
+        <p className="whisper" style={{ fontSize: 13 }}>No shared ground yet: no other complete chart shares a welcome line within reach.</p>
+      ) : rows.map((r) => (
+        <div key={r.soul.id} style={{ ...left, padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, letterSpacing: "0.1em", color: "var(--gold2)" }}>{r.soul.name}</div>
+          {r.hits.map((h) => (
+            <div key={h.city[0] + h.city[1]} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1px 10px", marginTop: 5 }}>
+              <PlaceName city={h.city} />
+              <span style={{ alignSelf: "center" }}><StrengthTag s={strengthOf(Math.max(h.mine.km, h.theirs.km))} /></span>
+              <span style={{ gridColumn: "1 / 3", fontSize: 13.5, color: "var(--dim)" }}>
+                {mineWord} {h.mine.planet.name} {LINE_NAME[h.mine.kind]} ({h.mine.theme.title.toLowerCase()}) · {r.soul.name.split(" ").pop()}&apos;s {h.theirs.planet.name} {LINE_NAME[h.theirs.kind]} ({h.theirs.theme.title.toLowerCase()})
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CouncilMap() {
+  const { role } = useAuth();
+  const allowed = COUNCIL_ROLES.has(role);
+  const souls = useCouncilSouls(allowed);
+  const [theme, setTheme] = useState(0);
 
   const T = COUNCIL_THEMES[theme];
   const ranked = useMemo(() => (souls ? councilCities(souls, T) : []), [souls, T]);
@@ -316,6 +364,7 @@ function CouncilMap() {
   const planetGlyph = (key: string) => souls?.[0]?.chart.planets.find((p) => p.key === key)?.glyph || "";
   return (
     <div>
+      <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 0" }} />
       <MoonRow />
       <div style={{ ...eyebrow, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12 }}>
         <i className="ti ti-users" /> The council&apos;s map

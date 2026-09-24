@@ -13,6 +13,7 @@ import { fullChart, placementText, ordinal, type Chart } from "@/lib/natal";
 import { temperamentOf, figuresOf, bearerOf, birthMoonOf, type Voice } from "@/lib/natal-analysis";
 import Tip from "./Tip";
 import type { CardMember } from "./MemberCard";
+import BirthSigns from "./BirthSigns";
 
 // Lock the page's scroll while any modal is open (counted, so stacked modals
 // unlock only when the last closes). Without this, iOS chains the card's
@@ -195,7 +196,7 @@ export function NatalContent({ member, isSelf, onGo }: { member: CardMember; isS
           ))}
           <p className="whisper" style={{ margin: "10px 0 0", fontSize: 13 }}>tap a row to read what the placement signifies</p>
           <p className="whisper" style={{ margin: "4px 0 0", fontSize: 12 }}>whole-sign houses · computed from the true sky</p>
-          <WheelReadings chart={chart} isSelf={isSelf} />
+          <WheelReadings chart={chart} member={member} isSelf={isSelf} />
           <Methodology title="How this chart is drawn">
             Nothing here is guessed or generated. The birth moment is first converted from local time to Universal Time using the historical timezone database, so old dates carry the offsets of their era. Each position is then computed from established astronomical formulae: the sun from its true ecliptic longitude, the moon from a perturbed lunar ephemeris, the planets from their orbital elements, and the ascendant from the exact sidereal time at the birthplace&apos;s latitude and longitude. Houses follow the whole-sign tradition.
             <br /><br />
@@ -210,7 +211,7 @@ export function NatalContent({ member, isSelf, onGo }: { member: CardMember; isS
 // The temperament, the figures, the chart bearer, and the birth moon: the
 // wheel's deeper readings, every value computed (natal-analysis.ts) and every
 // passage hand-written.
-function WheelReadings({ chart, isSelf }: { chart: Chart; isSelf?: boolean }) {
+function WheelReadings({ chart, member, isSelf }: { chart: Chart; member: CardMember; isSelf?: boolean }) {
   const v: Voice = isSelf
     ? { subj: "you", Subj: "You", obj: "you", pos: "your", Pos: "Your" }
     : { subj: "they", Subj: "They", obj: "them", pos: "their", Pos: "Their" };
@@ -253,6 +254,11 @@ function WheelReadings({ chart, isSelf }: { chart: Chart; isSelf?: boolean }) {
 
   return (
     <>
+      <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 16px" }} />
+      <div className="eyebrow" style={{ ...eyebrow, margin: "20px 0 6px" }}>
+        The stars that made {v.obj}<Tip text="The signs and symbols read straight from the birth date, hour and place: the Western big three, the Chinese year and day, the numerologist's path, the tarot birth card and the Maya day sign." />
+      </div>
+      <BirthSigns member={member} isSelf={isSelf} />
       <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -18px 16px" }} />
       <div className="eyebrow" style={{ ...eyebrow, margin: "20px 0 10px" }}>
         The temperament<Tip text="Every placement counted by its element and mode; the balance is the weather of the whole chart." />

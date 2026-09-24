@@ -2,13 +2,14 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { sunSign, moonSign, ascendant, shengxiao, wuXing, venusSign, moonPhase, dayMaster, lifePath, birthArcana, tzolkin, VENUS_IN } from "@/lib/astrology";
+import { moonPhase } from "@/lib/astrology";
 import { fetchAnnals, championsOf } from "@/lib/annals";
 import { dossierFor, type DossierStats } from "@/lib/dossier";
 import { useAuth } from "./AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { useBodyLock } from "./NatalChart";
 import HeavensFace from "./Heavens";
+import { Row } from "./BirthSigns";
 import Avatar from "./Avatar";
 import PortraitLightbox from "./PortraitLightbox";
 import Tip from "./Tip";
@@ -32,28 +33,7 @@ export interface CardMember {
   birth_tz?: string | null;
 }
 
-const ELEMENT_TIP = "This defines the fundamental energy, temperament, and personality traits of each sign.";
-const SUN_TIP = 'Core identity, ego, and life purpose (what most call their "star sign").';
-const MOON_TIP = "Inner emotions, subconscious, and private self.";
-const ASC_TIP = "The sign rising on the eastern horizon at the exact birth time and place: outward personality and how others first perceive them.";
-const SX_TIP = "The Chinese zodiac: a 12-year cycle, each year a specific animal.";
-const WX_TIP = "The five elements govern deeper personality, destiny, and how one moves through the world.";
-const DM_TIP = "The Bazi day-master: the element of the day of birth in the Chinese sexagenary cycle, held to be the truest self.";
-const LP_TIP = "Numerology: the whole birth date reduced to its ruling number.";
-const VENUS_TIP = "Venus, the planet of taste, pleasure, and desire: how they savour.";
-const ARC_TIP = "The tarot birth card: the Major Arcana card hidden in the digits of the birth date. It names the archetype a soul carries for life, the lesson and power that keep returning.";
-const TZ_TIP = "The Tzolk'in, the Maya sacred round of 260 days: thirteen tones crossed with twenty day signs. The day sign names the face a soul wears; the tone, its rhythm.";
-
 const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-
-function Row({ label, tip, value, valueTip }: { label: string; tip: string; value: string; valueTip?: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "5px 0" }}>
-      <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", fontSize: 10 }}>{label}<Tip text={tip} align="left" /></span>
-      <span style={{ display: "inline-flex", alignItems: "center", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 16 }}>{value}{valueTip && <Tip text={valueTip} />}</span>
-    </div>
-  );
-}
 
 // The tarot-style stats card for a member, opened by clicking their avatar.
 // chalices arrives null while it is still being reckoned (loading state).
@@ -67,17 +47,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   const dob = member.date_of_birth || "";
   const tob = member.time_of_birth || "";
   const tz = member.birth_tz || undefined;
-  const sun = dob ? sunSign(dob, tob || undefined, tz) : null;
-  const moon = dob ? moonSign(dob, tob || undefined, tz) : null;
-  const rising = dob ? ascendant(dob, tob || undefined, tz, member.birth_lat, member.birth_lon) : null;
-  const animal = dob ? shengxiao(dob) : null;
-  const wx = dob ? wuXing(dob) : null;
-  const venus = dob ? venusSign(dob, tob || undefined, tz) : null;
   const phase = dob ? moonPhase(dob, tob || undefined, tz) : null;
-  const dm = dob ? dayMaster(dob) : null;
-  const lp = dob ? lifePath(dob) : null;
-  const arc = dob ? birthArcana(dob) : null;
-  const daySign = dob ? tzolkin(dob) : null;
 
   // The Palate Dossier: derived from real ballots + annals (needs an id).
   const [dossier, setDossier] = useState<DossierStats | null>(null);
@@ -286,26 +256,6 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
         ) : (
           <p className="whisper" style={{ fontSize: 14, margin: 0 }}>No moons yet crowned.</p>
         )}
-        <div style={{ borderTop: "2px solid var(--gold)", margin: "16px -20px" }} />
-
-        {dob ? (
-          <div style={{ textAlign: "left" }}>
-            <Row label="Element" tip={ELEMENT_TIP} value={sun?.element || "—"} />
-            <Row label="Sun sign" tip={SUN_TIP} value={sun ? `${sun.symbol} ${sun.name}` : "—"} />
-            <Row label="Moon sign" tip={MOON_TIP} value={moon ? `${moon.symbol} ${moon.name}` : "—"} />
-            <Row label="Ascendant" tip={ASC_TIP} value={rising ? `${rising.symbol} ${rising.name}` : !tob ? "unknown hour" : "unknown place"} />
-            <Row label="Shengxiao" tip={SX_TIP} value={animal ? `${animal.symbol} ${animal.name}` : "—"} />
-            <Row label="Wu Xing" tip={WX_TIP} value={wx ? `${wx.symbol} ${wx.name}` : "—"} valueTip={wx?.meaning} />
-            <Row label="Day-master" tip={DM_TIP} value={dm ? `${dm.hanzi} ${dm.polarity} ${dm.element}` : "—"} valueTip={dm?.meaning} />
-            <Row label="Life path" tip={LP_TIP} value={lp ? String(lp.number) : "—"} valueTip={lp?.meaning} />
-            <Row label="Venus sign" tip={VENUS_TIP} value={venus ? `${venus.symbol} ${venus.name}` : "—"} valueTip={venus ? VENUS_IN[venus.name] : undefined} />
-            <Row label="Birth arcana" tip={ARC_TIP} value={arc ? arc.name : "—"} valueTip={arc?.meaning} />
-            <Row label="Day sign" tip={TZ_TIP} value={daySign ? `${daySign.tone} ${daySign.sign}` : "—"} valueTip={daySign ? `${daySign.meaning} ${daySign.toneMeaning}` : undefined} />
-          </div>
-        ) : (
-          <p className="whisper" style={{ fontSize: 14, margin: "6px 0" }}>The stars that made {isSelf ? "you" : "them"} are unrecorded.</p>
-        )}
-
         <div style={{ borderTop: "2px solid var(--gold)", margin: "16px -20px 30px" }} />
 
         <button className="btn gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }} onClick={() => flipTo(true)}>

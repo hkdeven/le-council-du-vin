@@ -901,6 +901,11 @@ export default function Profile() {
         </p>
       </div>
 
+      <YourSky
+        self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
+        email={email}
+      />
+
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 4 }}>The stars that made you</div>
         <p className="whisper" style={{ margin: "0 0 8px", fontSize: 13 }}>
@@ -960,7 +965,7 @@ export default function Profile() {
         )}
 
         <p className="whisper" style={{ margin: "14px 0 0", fontSize: 13 }}>
-          Your chart is drawn from these. Behold it, and all it derives, on your card and under Your sky below.
+          Your chart is drawn from these. Behold it, and all it derives, on your card and under Your sky above.
         </p>
       </div>
 
@@ -987,11 +992,6 @@ export default function Profile() {
       </div>
 
       {sleeping && <AskToWake />}
-
-      <YourSky
-        self={{ id: self?.id, cult_name: name || "You", avatar_url: avatar, role, date_of_birth: dob || null, time_of_birth: tob || null, birth_place: place || null, birth_lat: placeLat, birth_lon: placeLon, birth_tz: tz }}
-        email={email}
-      />
 
       <RosterEditor />
       {role === "keiser" && <HeraldsEditor />}

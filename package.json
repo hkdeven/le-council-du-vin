@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npx tsx scripts/verify-meeting-entry.ts && npx tsx scripts/verify-annals.ts && npx tsx scripts/verify-reveal-claims.ts && npx tsx scripts/verify-offering-form.ts"
+    "test": "npx tsx scripts/verify-meeting-entry.ts && npx tsx scripts/verify-annals.ts && npx tsx scripts/verify-reveal-claims.ts && npx tsx scripts/verify-offering-form.ts && npx tsx scripts/verify-atlas.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.0",

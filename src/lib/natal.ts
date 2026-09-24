@@ -6,7 +6,7 @@
 // 30° sign bin and comfortable for aspect orbs of several degrees.
 
 import {
-  julianDay, sunLongitude, moonLongitude, ascendantLongitude,
+  julianDay, sunLongitude, moonLongitude, moonLatitude, ascendantLongitude,
   ZODIAC, DEFAULT_TZ, type Sign,
 } from "./astrology";
 
@@ -57,6 +57,78 @@ const ELEMENTS: Record<string, El> = {
   neptune: { N: [131.7806, 3.0173e-5], i: [1.77, -2.55e-7], w: [272.8461, -6.027e-6], a: [30.05826, 3.313e-8], e: [0.008606, 2.15e-9], M: [260.2471, 0.005995147] },
 };
 
+// Pluto: Meeus, Astronomical Algorithms ch. 37 (valid 1885 to 2099). Each
+// row is [J, S, P multipliers, lon A, lon B, lat A, lat B, radius A, radius B];
+// longitude and latitude in millionths of a degree, radius in 1e-7 AU.
+// Heliocentric, ecliptic and equinox J2000; precessed to the date below.
+const PLUTO_TERMS: number[][] = [
+  [0, 0, 1, -19799805, 19850055, -5452852, -14974862, 66865439, 68951812],
+  [0, 0, 2, 897144, -4954829, 3527812, 1672790, -11827535, -332538],
+  [0, 0, 3, 611149, 1211027, -1050748, 327647, 1593179, -1438890],
+  [0, 0, 4, -341243, -189585, 178690, -292153, -18444, 483220],
+  [0, 0, 5, 129287, -34992, 18650, 100340, -65977, -85431],
+  [0, 0, 6, -38164, 30893, -30697, -25823, 31174, -6032],
+  [0, 1, -1, 20442, -9987, 4878, 11248, -5794, 22161],
+  [0, 1, 0, -4063, -5071, 226, -64, 4601, 4032],
+  [0, 1, 1, -6016, -3336, 2030, -836, -1729, 234],
+  [0, 1, 2, -3956, 3039, 69, -604, -415, 702],
+  [0, 1, 3, -667, 3572, -247, -567, 239, 723],
+  [0, 2, -2, 1276, 501, -57, 1, 67, -67],
+  [0, 2, -1, 1152, -917, -122, 175, 1034, -451],
+  [0, 2, 0, 630, -1277, -49, -164, -129, 504],
+  [1, -1, 0, 2571, -459, -197, 199, 480, -231],
+  [1, -1, 1, 899, -1449, -25, 217, 2, -441],
+  [1, 0, -3, -1016, 1043, 589, -248, -3359, 265],
+  [1, 0, -2, -2343, -1012, -269, 711, 7856, -7832],
+  [1, 0, -1, 7042, 788, 185, 193, 36, 45763],
+  [1, 0, 0, 1199, -338, 315, 807, 8663, 8547],
+  [1, 0, 1, 418, -67, -130, -43, -809, -769],
+  [1, 0, 2, 120, -274, 5, 3, 263, -144],
+  [1, 0, 3, -60, -159, 2, 17, -126, 32],
+  [1, 0, 4, -82, -29, 2, 5, -35, -16],
+  [1, 1, -3, -36, -29, 2, 3, -19, -4],
+  [1, 1, -2, -40, 7, 3, 1, -15, 8],
+  [1, 1, -1, -14, 22, 2, -1, -4, 12],
+  [1, 1, 0, 4, 13, 1, -1, 5, 6],
+  [1, 1, 1, 5, 2, 0, -1, 3, 1],
+  [1, 1, 3, -1, 0, 0, 0, 6, -2],
+  [2, 0, -6, 2, 0, 0, -2, 2, 2],
+  [2, 0, -5, -4, 5, 2, 2, -2, -2],
+  [2, 0, -4, 4, -7, -7, 0, 14, 13],
+  [2, 0, -3, 14, 24, 10, -8, -63, 13],
+  [2, 0, -2, -49, -34, -3, 20, 136, -236],
+  [2, 0, -1, 163, -48, 6, 5, 273, 1065],
+  [2, 0, 0, 9, -24, 14, 17, 251, 149],
+  [2, 0, 1, -4, 1, -2, 0, -25, -9],
+  [2, 0, 2, -3, 1, 0, 0, 9, -2],
+  [2, 0, 3, 1, 3, 0, 0, -8, 7],
+  [3, 0, -2, -3, -1, 0, 1, 2, -10],
+  [3, 0, -1, 5, -3, 0, 0, 19, 35],
+  [3, 0, 0, 0, 0, 1, 0, 10, 3],
+];
+function plutoHelioJ2000(jd: number): { l: number; b: number; r: number } {
+  const T = (jd - 2451545.0) / 36525;
+  const J = 34.35 + 3034.9057 * T, S = 50.08 + 1222.1138 * T, P = 238.96 + 144.96 * T;
+  let dl = 0, db = 0, dr = 0;
+  for (const [j, s, p, la, lb, ba, bb, ra, rb] of PLUTO_TERMS) {
+    const a = rev(j * J + s * S + p * P) * RAD;
+    const sa = Math.sin(a), ca = Math.cos(a);
+    dl += la * sa + lb * ca; db += ba * sa + bb * ca; dr += ra * sa + rb * ca;
+  }
+  return { l: rev(238.958116 + 144.96 * T + dl / 1e6), b: -3.908239 + db / 1e6, r: 40.7241346 + dr / 1e7 };
+}
+// Geocentric ecliptic (of date) longitude and latitude of Pluto.
+function plutoGeo(jd: number): { lon: number; lat: number } {
+  const T = (jd - 2451545.0) / 36525;
+  const h = plutoHelioJ2000(jd);
+  const l = (h.l + 1.3969713 * T + 0.0003086 * T * T) * RAD; // precession in longitude, J2000 to date
+  const b = h.b * RAD;
+  const x = h.r * Math.cos(b) * Math.cos(l), y = h.r * Math.cos(b) * Math.sin(l), z = h.r * Math.sin(b);
+  const s = sunVec(jd);
+  const xg = x + s.x, yg = y + s.y;
+  return { lon: rev(Math.atan2(yg, xg) / RAD), lat: Math.atan2(z, Math.sqrt(xg * xg + yg * yg)) / RAD };
+}
+
 function helio(el: El, d: number): { x: number; y: number; z: number } {
   const N = rev(el.N[0] + el.N[1] * d) * RAD;
   const i = (el.i[0] + el.i[1] * d) * RAD;
@@ -90,21 +162,7 @@ export function planetLongitude(key: string, jd: number): number {
   const d = jd - 2451543.5;
   if (key === "sun") return sunLongitude(jd);
   if (key === "moon") return moonLongitude(jd);
-  if (key === "pluto") {
-    // Schlyter's curve fit, valid ~1900–2100.
-    const S = (50.03 + 0.033459652 * d) * RAD;
-    const P = (238.95 + 0.003968789 * d) * RAD;
-    return rev(
-      238.9508 + 0.00400703 * d
-      - 19.799 * Math.sin(P) + 19.848 * Math.cos(P)
-      + 0.897 * Math.sin(2 * P) - 4.956 * Math.cos(2 * P)
-      + 0.61 * Math.sin(3 * P) + 1.211 * Math.cos(3 * P)
-      - 0.341 * Math.sin(4 * P) - 0.19 * Math.cos(4 * P)
-      + 0.128 * Math.sin(5 * P) - 0.034 * Math.cos(5 * P)
-      - 0.038 * Math.sin(6 * P) + 0.031 * Math.cos(6 * P)
-      + 0.02 * Math.sin(S - P) - 0.01 * Math.cos(S - P)
-    );
-  }
+  if (key === "pluto") return plutoGeo(jd).lon;
   const h = helio(ELEMENTS[key], d);
   const s = sunVec(jd);
   let lon = rev(Math.atan2(h.y + s.y, h.x + s.x) / RAD);
@@ -130,6 +188,27 @@ export function planetLongitude(key: string, jd: number): number {
       - 0.015 * Math.sin(Mj - Mu + 20 * D);
   }
   return rev(lon);
+}
+
+// Geocentric ecliptic LATITUDE of any body (degrees, north positive), from
+// the same Schlyter elements as the longitude. The Wheel never needed it;
+// the Atlas does, because a planet 5° off the ecliptic rises and sets along
+// a different curve. Sun: 0 by definition. Pluto: Schlyter's latitude fit.
+export function planetLatitude(key: string, jd: number): number {
+  const d = jd - 2451543.5;
+  if (key === "sun") return 0;
+  if (key === "moon") return moonLatitude(jd);
+  if (key === "pluto") return plutoGeo(jd).lat;
+  const h = helio(ELEMENTS[key], d);
+  const s = sunVec(jd);
+  const xg = h.x + s.x, yg = h.y + s.y, zg = h.z;
+  let lat = Math.atan2(zg, Math.sqrt(xg * xg + yg * yg)) / RAD;
+  if (key === "saturn") {
+    const Mj = rev(19.895 + 0.0830853001 * d) * RAD;
+    const Ms = rev(316.967 + 0.0334442282 * d) * RAD;
+    lat += -0.02 * Math.cos(2 * Mj - 4 * Ms - 2 * RAD) + 0.018 * Math.sin(2 * Mj - 6 * Ms - 49 * RAD);
+  }
+  return lat;
 }
 
 // Whole-sign house of a longitude: the ascendant's sign is the 1st house.
