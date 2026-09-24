@@ -224,6 +224,20 @@ export function nearLabel(c: AtlasCity): string | null {
   const m = metroOf(c);
   return m && m !== c ? m[0] : null;
 }
+// Country name from the ISO code, in English; the code itself if the
+// runtime cannot name it.
+let regionNames: Intl.DisplayNames | null | undefined;
+export function countryName(cc: string): string {
+  if (regionNames === undefined) {
+    try { regionNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch { regionNames = null; }
+  }
+  try { return regionNames?.of(cc) || cc; } catch { return cc; }
+}
+// "near Johannesburg, South Africa" or just "South Africa".
+export function placeContext(c: AtlasCity): string {
+  const near = nearLabel(c);
+  return near ? `near ${near}, ${countryName(c[1])}` : countryName(c[1]);
+}
 const metroKey = (c: AtlasCity) => { const m = metroOf(c); return m ? `${m[0]}|${m[1]}` : `${c[0]}|${c[1]}|${c[2]}|${c[3]}`; };
 
 // ── Readings ────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { loadMembers } from "@/lib/members";
 import { geocodePlace, type GeoHit } from "@/lib/geo";
 import {
-  atlasChart, askOfPlace, citiesFor, nearestCities, councilCities, roundKm, nearLabel,
+  atlasChart, askOfPlace, citiesFor, nearestCities, councilCities, roundKm, placeContext,
   DEFAULT_SHOWN, PLANET_COLOUR, PLANET_PLAIN, LINE_NAME, LINE_PLAIN, LINE_SAY, QUESTIONS, COUNCIL_THEMES,
   type AtlasChart, type CouncilSoul, type Strength,
 } from "@/lib/atlas";
@@ -29,11 +29,10 @@ export const birthInputOf = (m: CardMember) => ({ dateStr: m.date_of_birth || ""
 
 // The exact place, with its major city beside it in a quieter voice.
 function PlaceName({ city }: { city: AtlasCity }) {
-  const near = nearLabel(city);
   return (
     <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: "var(--gold2)", lineHeight: 1.2 }}>
       {city[0]}
-      {near && <span style={{ fontSize: 13.5, fontStyle: "italic", color: "var(--dim)", marginLeft: 7 }}>near {near}</span>}
+      <span style={{ fontSize: 13.5, fontStyle: "italic", color: "var(--dim)", marginLeft: 7 }}>{placeContext(city)}</span>
     </span>
   );
 }
