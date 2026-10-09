@@ -6,7 +6,7 @@ A running record for the members: every release, and the unseen work behind it. 
 
 A small door, and some tidying behind the curtain.
 
-- **Every card has an address.** Your card, and everyone's, can now be opened straight from a link: the Council's address followed by `/soul/` and your given name, so `/soul/dominik` opens the Magus's card and `/soul/keiser` opens the Keiser's. The address is printed on the card itself, just under the rank; tap it and the full link is copied, ready to paste into the group. If you follow a link before you have logged in, the gate lets you in and then takes you to that card, not to Convene. Behind the curtain: the old design mockups that lived beside the app have been cleared out, since every one of them has long since been built for real.
+- **Every card has an address.** Your card, and everyone's, can now be opened straight from a link: the Council's address followed by `/soul/` and your given name, so `/soul/dominik` opens the Magus's card and `/soul/keiser` opens the Keiser's. If you follow a link before you have logged in, the gate lets you in and then takes you to that card, not to Convene. Behind the curtain: the old design mockups that lived beside the app have been cleared out, since every one of them has long since been built for real.
 
 ## 24 September 2026
 

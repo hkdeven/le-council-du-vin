@@ -13,7 +13,6 @@ import { Row } from "./BirthSigns";
 import Avatar from "./Avatar";
 import PortraitLightbox from "./PortraitLightbox";
 import Tip from "./Tip";
-import { givenSlug } from "@/lib/memberSlug";
 
 // A card can be shown for a full member OR a lighter subject (e.g. a tribunal
 // petitioner or a name-only summoned soul). Only cult_name is required.
@@ -70,16 +69,6 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   // Their portrait, enlarged in a small lightbox above the card (Escape closes
   // the photo first, then the card).
   const [photoOpen, setPhotoOpen] = useState(false);
-
-  // A human address for the card (/soul/dominik), copied to the clipboard;
-  // the Keiser can paste it into the WhatsApp group and it opens the card.
-  const cardUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/soul/${givenSlug(member.cult_name)}`;
-  const [copied, setCopied] = useState(false);
-  const copyLink = async () => {
-    try { await navigator.clipboard?.writeText(cardUrl); } catch {}
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && (photoOpen ? setPhotoOpen(false) : onClose());
@@ -162,13 +151,6 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
               </span>
             )}
           </div>
-        )}
-
-        {member.id && (
-          <button onClick={copyLink} aria-label="Copy a link to this card" title={cardUrl}
-            style={{ marginTop: 10, width: "auto", background: "none", border: "none", padding: "4px 8px", cursor: "pointer", color: "var(--dim)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <i className={`ti ${copied ? "ti-check" : "ti-link"}`} style={{ fontSize: 13 }} />{copied ? "link copied" : `/soul/${givenSlug(member.cult_name)}`}
-          </button>
         )}
 
         <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -20px 26px" }} />
