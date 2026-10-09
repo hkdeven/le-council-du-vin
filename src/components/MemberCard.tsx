@@ -38,7 +38,7 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).join("").s
 
 // The tarot-style stats card for a member, opened by clicking their avatar.
 // chalices arrives null while it is still being reckoned (loading state).
-function CardModal({ member, chalices, shown, onClose }: { member: CardMember; chalices: number | null; shown: boolean; onClose: () => void }) {
+function CardModal({ member, chalices, shown, onClose, initialFlipped = false, onFace }: { member: CardMember; chalices: number | null; shown: boolean; onClose: () => void; initialFlipped?: boolean; onFace?: (flipped: boolean) => void }) {
   useBodyLock();
   // Is the viewer looking at their own card? Pronouns bend accordingly.
   const { member: authMember, role, mode } = useAuth();
@@ -57,7 +57,7 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   // subjects still get the separately fetched count.
   const shownChalices = member.id ? (dossier ? dossier.bottlesCrowned : null) : chalices;
   // The card turns over to reveal the Heavens; one card, one close.
-  const [flipped, setFlipped] = useState(false);
+  const [flipped, setFlipped] = useState(initialFlipped);
   useEffect(() => {
     if (!member.id) return;
     let active = true;
@@ -83,10 +83,11 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const [faceHeight, setFaceHeight] = useState<number | undefined>(undefined);
-  const [flipOnce, setFlipOnce] = useState(false); // mount the Heavens on first turn
+  const [flipOnce, setFlipOnce] = useState(initialFlipped); // mount the Heavens on first turn
   const flipTo = (to: boolean) => {
     if (to) setFlipOnce(true);
     setFlipped(to);
+    onFace?.(to);
     overlayRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
   useLayoutEffect(() => {
@@ -319,7 +320,12 @@ function noseSpread(nose: { aroma: string; count: number }[]): { aroma: string; 
 
 // A member's avatar that opens their tarot-style stats card on click. Drop-in
 // replacement wherever a member circle-icon appears.
-export default function MemberCard({ member, size = 30, initiallyOpen = false, onClosed }: { member: CardMember; size?: number; initiallyOpen?: boolean; onClosed?: () => void }) {
+export type CardFace = "card" | "heavens";
+
+/** The address of one face of a member's card. */
+export const cardAddress = (cultName: string, face: CardFace) => `/${face === "heavens" ? "heavens" : "member"}/${givenSlug(cultName)}`;
+
+export default function MemberCard({ member, size = 30, initiallyOpen = false, initialFace = "card", onClosed }: { member: CardMember; size?: number; initiallyOpen?: boolean; initialFace?: CardFace; onClosed?: () => void }) {
   // initiallyOpen: the /member/<name> page opens the card as it mounts;
   // onClosed fires once the exit animation is done (the page then leaves).
   const [open, setOpen] = useState(initiallyOpen);   // mounted (kept during the exit animation)
@@ -331,11 +337,18 @@ export default function MemberCard({ member, size = 30, initiallyOpen = false, o
   const pushedRef = useRef(false);
   const slug = member.id ? givenSlug(member.cult_name) : "";
   const show = () => {
-    if (slug && !initiallyOpen && typeof window !== "undefined" && !window.location.pathname.startsWith("/member/")) {
-      window.history.pushState({ lcvCard: slug }, "", `/member/${slug}`);
+    if (slug && !initiallyOpen && typeof window !== "undefined" && !/^\/(member|heavens)\//.test(window.location.pathname)) {
+      window.history.pushState({ lcvCard: slug }, "", cardAddress(member.cult_name, initialFace));
       pushedRef.current = true;
     }
     setOpen(true);
+  };
+  // Turning the card turns the address with it: /member/<name> for the card,
+  // /heavens/<name> for the sky. In place (replaceState), so back still
+  // closes the card in one step rather than un-turning it first.
+  const onFace = (flipped: boolean) => {
+    if (!slug || !(pushedRef.current || initiallyOpen)) return;
+    window.history.replaceState(window.history.state, "", cardAddress(member.cult_name, flipped ? "heavens" : "card"));
   };
   const [shown, setShown] = useState(false); // drives the fade + zoom
   const [chalices, setChalices] = useState<number | null>(null); // null while reckoning
@@ -386,7 +399,7 @@ export default function MemberCard({ member, size = 30, initiallyOpen = false, o
         style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", width: "auto", flex: "none", lineHeight: 0 }}>
         <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={size} />
       </button>
-      {mounted && open && createPortal(<CardModal member={member} chalices={chalices} shown={shown} onClose={close} />, document.body)}
+      {mounted && open && createPortal(<CardModal member={member} chalices={chalices} shown={shown} onClose={close} initialFlipped={initialFace === "heavens"} onFace={onFace} />, document.body)}
     </>
   );
 }

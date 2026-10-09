@@ -16,7 +16,7 @@ import AvatarCropper from "@/components/AvatarCropper";
 import { chartReady, AstralShell } from "@/components/NatalChart";
 import HeavensFace from "@/components/Heavens";
 import type { CardMember } from "@/components/MemberCard";
-import MemberCard from "@/components/MemberCard";
+import MemberCard, { cardAddress } from "@/components/MemberCard";
 import Loading from "@/components/Loading";
 import { uploadAvatar } from "@/lib/photos";
 import { assertWrite } from "@/lib/writeLock";
@@ -1160,12 +1160,32 @@ function YourSky({ self, email }: { self: CardMember; email?: string | null }) {
     const t = setTimeout(() => setShown(true), 10);
     return () => clearTimeout(t);
   }, [open]);
-  const close = () => { setShown(false); setTimeout(() => setOpen(false), 240); };
+  // The address follows the door, as it does for every card: open writes
+  // /heavens/<name>, close (or the back button) restores the profile.
+  const pushedRef = useRef(false);
+  const openSky = () => {
+    if (self.id) {
+      window.history.pushState({ lcvSky: true }, "", cardAddress(self.cult_name, "heavens"));
+      pushedRef.current = true;
+    }
+    setOpen(true);
+  };
+  const close = () => {
+    setShown(false); setTimeout(() => setOpen(false), 240);
+    if (pushedRef.current) { pushedRef.current = false; window.history.back(); }
+  };
+  useEffect(() => {
+    if (!open || !pushedRef.current) return;
+    const onPop = () => { pushedRef.current = false; close(); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   void email; // the envelope lives inside the Heavens now
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="eyebrow" style={{ marginBottom: 10, textAlign: "center", fontSize: 12 }}>Your sky</div>
-      <button className="btn gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => setOpen(true)}>
+      <button className="btn gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={openSky}>
         <i className="ti ti-moon-stars" />The Heavens
       </button>
       <p className="whisper" style={{ textAlign: "center", margin: "12px 0 0", fontSize: 13 }}>

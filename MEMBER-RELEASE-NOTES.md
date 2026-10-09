@@ -6,7 +6,7 @@ A running record for the members: every release, and the unseen work behind it. 
 
 A small door, and some tidying behind the curtain.
 
-- **Every card has an address.** Your card, and everyone's, can now be opened straight from a link: the Council's address followed by `/member/` and your given name, so `/member/dominik` opens the Magus's card and `/member/keiser` opens the Keiser's. Open any card the usual way and the address bar shows it too, so you can copy it from there; your phone's back button closes the card. If you follow a link before you have logged in, the gate lets you in and then takes you to that card, not to Convene. Behind the curtain: the old design mockups that lived beside the app have been cleared out, since every one of them has long since been built for real.
+- **Every card has an address.** Your card, and everyone's, can now be opened straight from a link: the Council's address followed by `/member/` and your given name, so `/member/dominik` opens the Magus's card and `/member/keiser` opens the Keiser's. Open any card the usual way and the address bar shows it too, so you can copy it from there; your phone's back button closes the card. The Heavens have an address of their own: `/heavens/dominik` opens the Magus's card already turned to the sky, and turning any card turns its address with it. If you follow a link before you have logged in, the gate lets you in and then takes you to that card, not to Convene. Behind the curtain: the old design mockups that lived beside the app have been cleared out, since every one of them has long since been built for real.
 
 ## 24 September 2026
 
