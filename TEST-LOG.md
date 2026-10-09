@@ -469,7 +469,7 @@ Changes I've made that **you have not yet confirmed in production.** I demo-test
 | 7 | Chinese zodiac (Shengxiao/Wu Xing) already exact via CNY table (earlier fix); Matthew should now read Monkey | Check Matthew's card after deploy | ✓ | [ ] |
 
 | 8 | Tooltips never bleed off-screen (card + profile): labels anchor left, values right, all self-clamp into the viewport | On a phone, open any ⓘ near either screen edge; the bubble stays fully visible | ✓ (375px + 320px) | [ ] |
-| 9 | Approved astral mockup live for member proofing at `/member-card-mockup.html` (sample data, clearly labelled) | Open the URL, circulate to members | ✓ | [ ] |
+| 9 | Approved astral mockup was live for member proofing (removed from the repo 9 Oct 2026 once built) | Open the URL, circulate to members | ✓ | [ ] |
 | 10 | Natal chart + Foretelling email templates ready (previews `7-natal-chart.html`, `8-foretelling.html`, incl. wheel image) — templates only, no send trigger yet | n/a until the astral build | ✓ | n/a |
 
 _Requires SQL on live DB before deploy (SQL below — **user confirmed run 2026-07-07**). Anointing carries birth place from petition → member._

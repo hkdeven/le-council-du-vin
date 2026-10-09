@@ -68,9 +68,6 @@ Ask a member, or use a second real account. In particular:
 - **`npx tsx scripts/verify-*.ts`**: ten suites, ~288 checks (annals, sleeping, ics,
   dossier, augury, kundli, gochara, vedic, natal-analysis, meeting-entry). Run all. Green
   is the floor, not the ceiling: they test pure logic, never RLS or the browser.
-- **`/flow-prototype.html`** (live on prod): the whole flow, convene → rite → reveal,
-  with the rest of the table on puppet strings. Exercises every gate solo. It mirrors the
-  new behaviour but is a SIMULATION: it proves the design, never the real database.
 - **The dev server:** `cd /Users/devenblackburn/Downloads/le-council && npx next dev -p 3005`.
   Demo mode (no login) never arms the sleeping seal or RLS, so live-only behaviour cannot
   be tested there.
