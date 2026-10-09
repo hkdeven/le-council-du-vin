@@ -1,4 +1,4 @@
-// A HUMAN URL FOR EVERY SOUL: /soul/dominik, /soul/keiser, /soul/larissa.
+// A HUMAN URL FOR EVERY SOUL: /member/dominik, /member/keiser, /member/larissa.
 //
 // The slug is the given name, the last word of the cult name, lowercased and
 // stripped of accents ("Magus Dominik" -> "dominik", "The Keiser" -> "keiser").

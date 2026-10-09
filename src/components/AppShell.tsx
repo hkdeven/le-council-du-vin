@@ -43,7 +43,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Enforce login on every protected route (live mode only — demo stays open).
   useEffect(() => {
     if (mode === "live" && !loading && !bare && !signedIn) {
-      // Remember the door they knocked on (a shared /soul/<name> link, say)
+      // Remember the door they knocked on (a shared /member/<name> link, say)
       // so the gate can carry them there once they are in, not to Convene.
       try { sessionStorage.setItem("lcv_return_to", pathname); } catch {}
       router.replace("/");

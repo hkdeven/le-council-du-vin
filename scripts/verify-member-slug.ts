@@ -1,4 +1,4 @@
-// The /soul/<name> address: every soul answers to their given name, a shared
+// The /member/<name> address: every soul answers to their given name, a shared
 // given name is told apart by the full cult name, nothing matches nothing.
 //
 //   npx tsx scripts/verify-member-slug.ts

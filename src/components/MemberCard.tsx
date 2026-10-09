@@ -13,6 +13,7 @@ import { Row } from "./BirthSigns";
 import Avatar from "./Avatar";
 import PortraitLightbox from "./PortraitLightbox";
 import Tip from "./Tip";
+import { givenSlug } from "@/lib/memberSlug";
 
 // A card can be shown for a full member OR a lighter subject (e.g. a tribunal
 // petitioner or a name-only summoned soul). Only cult_name is required.
@@ -319,9 +320,23 @@ function noseSpread(nose: { aroma: string; count: number }[]): { aroma: string; 
 // A member's avatar that opens their tarot-style stats card on click. Drop-in
 // replacement wherever a member circle-icon appears.
 export default function MemberCard({ member, size = 30, initiallyOpen = false, onClosed }: { member: CardMember; size?: number; initiallyOpen?: boolean; onClosed?: () => void }) {
-  // initiallyOpen: the /soul/<name> page opens the card as it mounts;
+  // initiallyOpen: the /member/<name> page opens the card as it mounts;
   // onClosed fires once the exit animation is done (the page then leaves).
   const [open, setOpen] = useState(initiallyOpen);   // mounted (kept during the exit animation)
+  // The address follows the card: opening one from any page writes
+  // /member/<name> into the bar (a native pushState, which the app router
+  // treats as shallow, so nothing reloads); closing it steps back to the
+  // address it came from, and the browser's own back button closes the card.
+  // Only real members have an address, and not when the page IS /member/<name>.
+  const pushedRef = useRef(false);
+  const slug = member.id ? givenSlug(member.cult_name) : "";
+  const show = () => {
+    if (slug && !initiallyOpen && typeof window !== "undefined" && !window.location.pathname.startsWith("/member/")) {
+      window.history.pushState({ lcvCard: slug }, "", `/member/${slug}`);
+      pushedRef.current = true;
+    }
+    setOpen(true);
+  };
   const [shown, setShown] = useState(false); // drives the fade + zoom
   const [chalices, setChalices] = useState<number | null>(null); // null while reckoning
   const [mounted, setMounted] = useState(false);
@@ -339,7 +354,18 @@ export default function MemberCard({ member, size = 30, initiallyOpen = false, o
   const close = () => {
     setShown(false);
     setTimeout(() => { setOpen(false); onClosed?.(); }, 260);
+    if (pushedRef.current) {
+      pushedRef.current = false;
+      window.history.back();
+    }
   };
+  useEffect(() => {
+    if (!open || !pushedRef.current) return;
+    const onPop = () => { pushedRef.current = false; close(); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     // Only name-only subjects (petitioners, summoned souls) sweep the annals
@@ -356,7 +382,7 @@ export default function MemberCard({ member, size = 30, initiallyOpen = false, o
       {/* flex:none — in a crowded flex row (a long unbreakable email beside
           it) the wrapper would otherwise shrink and squash the portrait into
           an ellipse. The circle never gives up its width. */}
-      <button onClick={() => setOpen(true)} aria-label={`View ${member.cult_name}'s card`} title={member.cult_name}
+      <button onClick={show} aria-label={`View ${member.cult_name}'s card`} title={member.cult_name}
         style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", width: "auto", flex: "none", lineHeight: 0 }}>
         <Avatar src={member.avatar_url} initials={member.short_name || initialsOf(member.cult_name)} size={size} />
       </button>

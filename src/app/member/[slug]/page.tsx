@@ -1,7 +1,7 @@
 "use client";
 
-// /soul/<name>: a member's card at a human address (/soul/dominik,
-// /soul/keiser). The card opens the moment the roster is read; closing it
+// /member/<name>: a member's card at a human address (/member/dominik,
+// /member/keiser). The card opens the moment the roster is read; closing it
 // returns to wherever the visitor came from, or to Convene when they came
 // from outside. A shared given name offers a choice; an unknown name says so.
 
@@ -71,7 +71,7 @@ export default function SoulPage() {
           <ul style={{ listStyle: "none", padding: 0, margin: "18px 0 0" }}>
             {rosterOrder(found).map((m) => (
               <li key={m.id} style={{ margin: "8px 0" }}>
-                <Link href={`/soul/${slugFor(m, roster)}`} style={{ color: "var(--gold)" }}>{m.cult_name}</Link>
+                <Link href={`/member/${slugFor(m, roster)}`} style={{ color: "var(--gold)" }}>{m.cult_name}</Link>
               </li>
             ))}
           </ul>
