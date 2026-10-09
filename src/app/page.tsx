@@ -16,7 +16,17 @@ export default function Gate() {
   // making them click "Enter the council" again. Demo mode keeps the gate as a
   // landing page (no forced forward).
   useEffect(() => {
-    if (mode === "live" && status === "member") router.replace("/convene");
+    if (mode === "live" && status === "member") {
+      // A link they followed before logging in (AppShell wrote it) wins over
+      // Convene; only our own paths are honoured, never an outside address.
+      let to = "/convene";
+      try {
+        const saved = sessionStorage.getItem("lcv_return_to");
+        sessionStorage.removeItem("lcv_return_to");
+        if (saved && /^\/[a-z]/.test(saved) && !saved.startsWith("//")) to = saved;
+      } catch {}
+      router.replace(to);
+    }
   }, [mode, status, router]);
 
   return (

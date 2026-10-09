@@ -13,6 +13,7 @@ import { Row } from "./BirthSigns";
 import Avatar from "./Avatar";
 import PortraitLightbox from "./PortraitLightbox";
 import Tip from "./Tip";
+import { givenSlug } from "@/lib/memberSlug";
 
 // A card can be shown for a full member OR a lighter subject (e.g. a tribunal
 // petitioner or a name-only summoned soul). Only cult_name is required.
@@ -69,6 +70,16 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
   // Their portrait, enlarged in a small lightbox above the card (Escape closes
   // the photo first, then the card).
   const [photoOpen, setPhotoOpen] = useState(false);
+
+  // A human address for the card (/soul/dominik), copied to the clipboard;
+  // the Keiser can paste it into the WhatsApp group and it opens the card.
+  const cardUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/soul/${givenSlug(member.cult_name)}`;
+  const [copied, setCopied] = useState(false);
+  const copyLink = async () => {
+    try { await navigator.clipboard?.writeText(cardUrl); } catch {}
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && (photoOpen ? setPhotoOpen(false) : onClose());
@@ -151,6 +162,13 @@ function CardModal({ member, chalices, shown, onClose }: { member: CardMember; c
               </span>
             )}
           </div>
+        )}
+
+        {member.id && (
+          <button onClick={copyLink} aria-label="Copy a link to this card" title={cardUrl}
+            style={{ marginTop: 10, width: "auto", background: "none", border: "none", padding: "4px 8px", cursor: "pointer", color: "var(--dim)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <i className={`ti ${copied ? "ti-check" : "ti-link"}`} style={{ fontSize: 13 }} />{copied ? "link copied" : `/soul/${givenSlug(member.cult_name)}`}
+          </button>
         )}
 
         <div style={{ borderTop: "2px solid var(--gold)", margin: "18px -20px 26px" }} />
@@ -318,8 +336,10 @@ function noseSpread(nose: { aroma: string; count: number }[]): { aroma: string; 
 
 // A member's avatar that opens their tarot-style stats card on click. Drop-in
 // replacement wherever a member circle-icon appears.
-export default function MemberCard({ member, size = 30 }: { member: CardMember; size?: number }) {
-  const [open, setOpen] = useState(false);   // mounted (kept during the exit animation)
+export default function MemberCard({ member, size = 30, initiallyOpen = false, onClosed }: { member: CardMember; size?: number; initiallyOpen?: boolean; onClosed?: () => void }) {
+  // initiallyOpen: the /soul/<name> page opens the card as it mounts;
+  // onClosed fires once the exit animation is done (the page then leaves).
+  const [open, setOpen] = useState(initiallyOpen);   // mounted (kept during the exit animation)
   const [shown, setShown] = useState(false); // drives the fade + zoom
   const [chalices, setChalices] = useState<number | null>(null); // null while reckoning
   const [mounted, setMounted] = useState(false);
@@ -336,7 +356,7 @@ export default function MemberCard({ member, size = 30 }: { member: CardMember; 
   }, [open]);
   const close = () => {
     setShown(false);
-    setTimeout(() => setOpen(false), 260);
+    setTimeout(() => { setOpen(false); onClosed?.(); }, 260);
   };
 
   useEffect(() => {
