@@ -500,7 +500,7 @@ _Root cause: native iOS date/time inputs keep a minimum intrinsic width that `mi
 
 ## 2026-07-07 — branded transactional emails (Resend) — pushed 9febf78
 
-Templates + previews at `public/email-previews/*.html` (view live at `/email-previews/1-anoint.html` etc.). All branded, mobile-first (`src/lib/emailTemplates.ts`).
+Templates in `src/lib/emailTemplates.ts`; proofs are generated locally (`npx tsx scripts/gen-email-previews.ts`) and no longer committed. All branded, mobile-first (`src/lib/emailTemplates.ts`).
 
 | # | Email | Trigger | Demo | Live |
 |---|-------|---------|------|------|

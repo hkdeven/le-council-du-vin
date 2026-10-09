@@ -30,3 +30,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated email proofs (npx tsx scripts/gen-email-previews.ts); sample-wheel.png is an input, kept
+/public/email-previews/*.html
+/public/email-previews/*.ics
