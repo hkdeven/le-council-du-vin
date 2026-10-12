@@ -560,7 +560,7 @@ function MeetingBody({
                 disabled={sleeping && myAnswer !== "no"}
                 aria-pressed={myAnswer === "no"}
               >
-                <i className="ti ti-x" style={{ marginRight: 5 }} />I cannot attend
+                <i className="ti ti-x" style={{ marginRight: 5 }} />I shall not
               </button>
             </div>
             <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13, textAlign: "center" }}>
