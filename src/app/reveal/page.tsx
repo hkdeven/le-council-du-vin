@@ -195,7 +195,7 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
               <span className="scr" style={{ fontSize: 15 }}>{name(r)}</span>
               {r.owner && <span style={{ color: "var(--dim)" }}> · {r.owner}</span>}
               {split?.row.cloth === r.cloth && <i className="ti ti-bolt" style={{ color: "var(--gold2)", fontSize: 12, marginLeft: 5 }} />}
-              {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--wine)" }}> · cast out</span>}
+              {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--rose)" }}> · cast out</span>}
             </span>
             <span className="disp" style={{ fontSize: 12, color: "var(--gold2)" }}>{r.dq ? "—" : r.score.toFixed(1)}</span>
           </div>
@@ -607,7 +607,7 @@ export default function Reveal() {
             <OwnerSlot owner={w.owner} mine={w.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
               onClaim={() => claim(w.cloth)} onRelease={() => release(w.cloth)}
               style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold2)" }} />
-            {isDq && <span className="tag" style={{ marginLeft: 8, color: "var(--wine)", borderColor: "var(--wine)" }}>off theme · disqualified</span>}
+            {isDq && <span className="tag" style={{ marginLeft: 8, color: "var(--rose)", borderColor: "var(--wine)" }}>off theme · disqualified</span>}
           </div>
           <div style={{ fontSize: 14, color: "var(--parch)", marginTop: 2 }}>
             <Inline value={w.title} placeholder="name the wine…" canEdit={canAct} onChange={(v) => patch(w.cloth, { title: v })} />
@@ -664,7 +664,7 @@ export default function Reveal() {
                 <div className="disp" style={{ fontSize: champions.length > 1 ? 22 : 26, marginTop: 4 }}>{fmtScore(champ)}</div>
                 {isKeiser && canAct && (
                   <button onClick={() => patch(champ.cloth, { dq: true })} title="Disqualify · off theme" aria-label="Disqualify this wine"
-                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--rose)", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
                     <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
                   </button>
                 )}

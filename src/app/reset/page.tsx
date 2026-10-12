@@ -71,7 +71,7 @@ export default function ResetPassword() {
           <input type="password" value={again} onChange={(e) => setAgain(e.target.value)}
             placeholder="speak it once more" autoComplete="new-password"
             onKeyDown={(e) => e.key === "Enter" && save()} />
-          {err && <p style={{ color: "#c98", fontSize: 13, margin: 0 }}>{err}</p>}
+          {err && <p style={{ color: "var(--rose)", fontSize: 13, margin: 0 }}>{err}</p>}
           <button className="btn gold" disabled={busy || !password || !again} onClick={save}>
             {busy ? "Sealing…" : "Seal the word"}
           </button>

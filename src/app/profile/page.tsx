@@ -233,7 +233,7 @@ function RosterEditor() {
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: m.active === false ? "#8d8b85" : "var(--gold2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cult_name}</span>
                   {m.active === false && (
-                    <span className="eyebrow" style={{ display: "block", fontSize: 8.5, color: "var(--faint)", marginTop: 1 }}>
+                    <span className="eyebrow" style={{ display: "block", fontSize: 10, color: "var(--faint)", marginTop: 1 }}>
                       <i className="ti ti-zzz" style={{ fontSize: 10, marginRight: 3 }} />sleeping
                     </span>
                   )}
@@ -281,7 +281,7 @@ function RosterEditor() {
                         <i className="ti ti-camera" style={{ fontSize: 13, marginRight: 6 }} />{m.avatar_url ? "Change photo" : "Add photo"}
                       </button>
                       {m.avatar_url && (
-                        <button className="btn" style={{ width: "auto", padding: "6px 12px", color: "var(--wine)" }} onClick={() => edit(m.id, { avatar_url: null })}>Remove</button>
+                        <button className="btn" style={{ width: "auto", padding: "6px 12px", color: "var(--rose)" }} onClick={() => edit(m.id, { avatar_url: null })}>Remove</button>
                       )}
                     </div>
                   </div>
@@ -371,7 +371,7 @@ function RecipientChips({ list, onRemove, addValue, onAddChange, onAdd }: {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
         {list.length === 0 && <span className="whisper" style={{ fontSize: 13 }}>No recipients.</span>}
         {list.map((e) => (
-          <span key={e} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#080706", border: "1px solid var(--line2)", borderRadius: 14, padding: "3px 6px 3px 10px", fontSize: 13, color: "var(--parch)" }}>
+          <span key={e} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#000000", border: "1px solid var(--line2)", borderRadius: 14, padding: "3px 6px 3px 10px", fontSize: 13, color: "var(--parch)" }}>
             {e}
             <button onClick={() => onRemove(e)} aria-label={`Remove ${e}`} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, display: "flex" }}>
               <i className="ti ti-x" style={{ fontSize: 12 }} />
@@ -518,7 +518,7 @@ function HeraldsEditor() {
       </div>
 
       <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
-        <div className="scr" style={{ fontSize: 16, color: "var(--wine)" }}>Call before the Tribunal</div>
+        <div className="scr" style={{ fontSize: 16, color: "var(--rose)" }}>Call before the Tribunal</div>
         <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>Summon a member who has reached {DQ_THRESHOLD} disqualifications.</p>
         {summonedMembers.length === 0 ? (
           <p className="whisper" style={{ margin: 0, fontSize: 13 }}>No souls have reached the threshold.</p>
@@ -616,7 +616,7 @@ function GateLedger() {
       <>
       <div style={{ height: 10 }} />
       {failed ? (
-        <p className="whisper" style={{ margin: 0, fontSize: 13, color: "#c98" }}>
+        <p className="whisper" style={{ margin: 0, fontSize: 13, color: "var(--rose)" }}>
           The ledger would not open: {failed}. (Has the login_events table been created?)
         </p>
       ) : !events ? (
@@ -958,7 +958,7 @@ export default function Profile() {
           <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try adding the region, or the nearest larger town.</p>
         )}
         {placeError && (
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#c98" }}>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--rose)" }}>
             <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 4 }} />
             The lookup failed: {placeError}. Try again in a moment.
           </p>

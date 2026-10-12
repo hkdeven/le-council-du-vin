@@ -96,7 +96,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
               <i className="ti ti-pencil" style={{ fontSize: 14 }} />
             </button>
             <button onClick={erase} aria-label="Erase your offering" title="Erase"
-              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--wine)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
+              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--rose)", padding: "6px 9px", cursor: "pointer", display: "flex" }}>
               <i className="ti ti-trash" style={{ fontSize: 14 }} />
             </button>
           </div>
@@ -305,12 +305,12 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
   return (
     <div style={{ position: "relative" }}>
       <button onClick={() => setOpen((o) => !o)}
-        style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+        style={{ width: "100%", background: "#000000", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{members.find((m) => m.id === value)?.cult_name || "Choose a host"}</span>
         <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ color: "var(--dim)" }} />
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 40, background: "#0e0d0c", border: "1px solid var(--line2)", borderRadius: 8, maxHeight: 260, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 40, background: "#000000", border: "1px solid var(--line2)", borderRadius: 8, maxHeight: 260, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
           {members.map((m) => (
             <button key={m.id} onClick={() => { onChange(m.id); setOpen(false); }}
               style={{ width: "100%", textAlign: "left", background: m.id === value ? "rgba(160,150,120,0.12)" : "none", border: "none", color: m.id === value ? "var(--gold2)" : "var(--parch)", padding: "10px 12px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer" }}>
@@ -450,7 +450,7 @@ function MeetingBody({
           )}
           {onDelete && (
             <button onClick={onDelete} title="Cancel this gathering" aria-label="Cancel this gathering"
-              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--wine)", padding: "6px 9px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--rose)", padding: "6px 9px", cursor: "pointer", display: "flex", alignItems: "center" }}>
               <i className="ti ti-trash" style={{ fontSize: 14 }} />
             </button>
           )}
@@ -530,7 +530,7 @@ function MeetingBody({
         </div>
 
         <div style={{ marginTop: 12 }}>
-          <div className="eyebrow" style={{ marginBottom: 6, color: "var(--wine)" }}>By decree of the Keiser</div>
+          <div className="eyebrow" style={{ marginBottom: 6, color: "var(--rose)" }}>By decree of the Keiser</div>
           {editing ? (
             <textarea value={m.threat_text ?? DEFAULT_THREAT} onChange={(e) => onUpdate({ threat_text: e.target.value })} style={{ minHeight: 90 }} />
           ) : (
@@ -662,7 +662,7 @@ function FutureCard({ m, isKeiser, meId, members, onUpdate, onAttendees, onDelet
         </button>
         {onDelete && (
           <button onClick={onDelete} title="Cancel this gathering" aria-label="Cancel this gathering"
-            style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--wine)", padding: "6px 9px", cursor: "pointer", flex: "none" }}>
+            style={{ width: "auto", background: "none", border: "1px solid var(--line)", borderRadius: 8, color: "var(--rose)", padding: "6px 9px", cursor: "pointer", flex: "none" }}>
             <i className="ti ti-trash" style={{ fontSize: 14 }} />
           </button>
         )}
@@ -800,7 +800,7 @@ export default function Convene() {
                 keeps a fixed intrinsic width and spilled into the host field. */}
             <div className="birth-fields" style={{ gap: 8 }}>
               <div>
-                <label className="eyebrow" htmlFor="new-gathering-date" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>
+                <label className="eyebrow" htmlFor="new-gathering-date" style={{ display: "block", marginBottom: 4 }}>
                   The night
                 </label>
                 <input
@@ -814,10 +814,10 @@ export default function Convene() {
                 />
               </div>
               <div style={{ position: "relative" }}>
-                <span className="eyebrow" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>The host</span>
+                <span className="eyebrow" style={{ display: "block", marginBottom: 4 }}>The host</span>
                 <button
                   onClick={() => setHostOpen((o) => !o)}
-                  style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}
+                  style={{ width: "100%", background: "#000000", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}
                 >
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {members.find((m) => m.id === newHost)?.cult_name}
@@ -825,7 +825,7 @@ export default function Convene() {
                   <i className={`ti ti-chevron-${hostOpen ? "up" : "down"}`} style={{ color: "var(--dim)" }} />
                 </button>
                 {hostOpen && (
-                  <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 40, background: "#0e0d0c", border: "1px solid var(--line2)", borderRadius: 8, maxHeight: 260, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
+                  <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 40, background: "#000000", border: "1px solid var(--line2)", borderRadius: 8, maxHeight: 260, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
                     {members.map((m) => (
                       <button
                         key={m.id}

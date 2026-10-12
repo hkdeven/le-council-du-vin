@@ -207,7 +207,7 @@ function CardModal({ member, chalices, shown, onClose, initialFlipped = false, o
                 </span>
                 <span style={{ flex: "none", textAlign: "right" }}>
                   <span style={{ display: "block", fontFamily: "'Cinzel', serif", color: "var(--gold2)", fontSize: 17 }}>{pr.score.toFixed(1)}</span>
-                  <span className="eyebrow" style={{ display: "block", fontSize: 8, color: "var(--faint)", marginTop: 1 }}>{pr.rank === 1 ? "crowned" : pr.rank === 2 ? "second" : pr.rank === 3 ? "third" : `${pr.rank}th`}</span>
+                  <span className="eyebrow" style={{ display: "block", fontSize: 10, color: "var(--faint)", marginTop: 1 }}>{pr.rank === 1 ? "crowned" : pr.rank === 2 ? "second" : pr.rank === 3 ? "third" : `${pr.rank}th`}</span>
                 </span>
               </div>
             )) : (
@@ -299,7 +299,7 @@ function Medallion({ num, cap, of, warn }: { num: string; cap: string; of?: stri
         <span style={{ fontFamily: "'Cinzel', serif", fontSize: of ? 21 : 26, color: warn ? "#c17b80" : "var(--gold2)", lineHeight: 1 }}>{num}</span>
         {of && <span style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: "var(--dim)", marginTop: 1, letterSpacing: "0.1em" }}>{of}</span>}
       </div>
-      <div className="eyebrow" style={{ fontSize: 9, color: "var(--dim)", marginTop: 8, textAlign: "center", lineHeight: 1.3, whiteSpace: "pre-line" }}>{cap}</div>
+      <div className="eyebrow" style={{ fontSize: 10, color: "var(--dim)", marginTop: 8, textAlign: "center", lineHeight: 1.3, whiteSpace: "pre-line" }}>{cap}</div>
     </div>
   );
 }

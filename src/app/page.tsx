@@ -134,7 +134,7 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--faint)" }}>
         <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
-        <span className="eyebrow" style={{ fontSize: 8.5 }}>or by sigil</span>
+        <span className="eyebrow">or by sigil</span>
         <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
       </div>
 
@@ -156,7 +156,7 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
         />
       )}
 
-      {err && <p style={{ color: "#c98", fontSize: 13, margin: 0 }}>{err}</p>}
+      {err && <p style={{ color: "var(--rose)", fontSize: 13, margin: 0 }}>{err}</p>}
       {msg && <p className="scr" style={{ fontSize: 15, margin: 0 }}>{msg}</p>}
 
       {tab === "password" ? (

@@ -3,7 +3,27 @@
 @tailwind utilities;
 
 :root {
+  /* Pure black everywhere (the nav bar keeps its own tinted background in
+     AppShell). Gold is for large type and labels; reading text is white.
+     Every text colour here clears 4.5:1 on black. */
   --ink: #000000;
+  --ink2: #000000;
+  --panel: #000000;
+  --gold: #e2c98a;
+  --gold2: #e2c98a;
+  --parch: #ffffff;
+  --dim: #c7c7c7;
+  --faint: #a3a3a3;
+  --line: rgba(226, 201, 138, 0.22);
+  --line2: rgba(226, 201, 138, 0.4);
+  --wine: #7a3038; /* fills only (badges, the decline button) */
+  --rose: #ff6b78; /* wine-red TEXT: readable on black, unlike --wine */
+}
+
+/* The original palette, kept on the codex, tribunal and oracle by decree.
+   Their route layouts wrap the page in .classic-theme; everything inside reads
+   the old tokens, the old 9px labels and the old input fill. */
+.classic-theme {
   --ink2: #0e0d0c;
   --panel: #131211;
   --gold: #9c8a5f;
@@ -13,7 +33,27 @@
   --faint: #5a554c;
   --line: rgba(160, 150, 120, 0.2);
   --line2: rgba(180, 168, 120, 0.42);
-  --wine: #7a3038;
+  --rose: #c98;
+  color: var(--parch);
+}
+.classic-theme .eyebrow,
+.classic-theme label.field {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+}
+.classic-theme .tag {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+}
+.classic-theme input,
+.classic-theme select,
+.classic-theme textarea {
+  background: #080706;
+}
+.classic-theme .btn.gold:hover {
+  background: #d8caa0;
 }
 
 html,
@@ -47,8 +87,9 @@ body {
 }
 .eyebrow {
   font-family: "Cinzel", serif;
-  font-size: 9px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
 }
@@ -62,9 +103,11 @@ body {
 }
 .tag {
   display: inline-block;
+  white-space: nowrap;
   font-family: "Cinzel", serif;
-  font-size: 9px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gold);
   border: 1px solid var(--line);
@@ -100,19 +143,20 @@ body {
   border-color: var(--gold2);
 }
 .btn.gold:hover {
-  background: #d8caa0;
+  background: #f0dcaa;
 }
 .btn.danger {
   border-color: var(--wine);
-  color: #c98;
+  color: var(--rose);
 }
 
 /* Fields ------------------------------------------------------------ */
 label.field {
   display: block;
   font-family: "Cinzel", serif;
-  font-size: 9px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
   margin: 14px 0 6px;
@@ -122,7 +166,7 @@ select,
 textarea {
   width: 100%;
   box-sizing: border-box;
-  background: #080706;
+  background: #000000;
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--parch);

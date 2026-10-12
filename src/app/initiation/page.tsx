@@ -244,7 +244,7 @@ export default function Initiation() {
           <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13 }}>The atlas does not know it. Try adding the region, or the nearest larger town.</p>
         )}
         {placeError && (
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#c98" }}>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--rose)" }}>
             <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 4 }} />
             The lookup failed: {placeError}. Try again in a moment.
           </p>
