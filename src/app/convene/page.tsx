@@ -327,7 +327,11 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
 function RsvpGroup({ label, icon, ids, members, empty, dim }: {
   label: string; icon: string; ids: string[]; members: Member[]; empty?: string; dim?: boolean;
 }) {
-  const souls = ids.map((id) => members.find((x) => x.id === id)).filter(Boolean) as Member[];
+  // Inactive (sleeping) seats are hidden from the roll entirely, even if they
+  // answered before their seat was put to sleep. Their answer stays stored.
+  const souls = ids
+    .map((id) => members.find((x) => x.id === id))
+    .filter((mem): mem is Member => !!mem && mem.active !== false);
   if (!souls.length && !empty) return null;
   return (
     <div style={{ marginTop: 14 }}>
@@ -363,11 +367,10 @@ function MeetingBody({
   const attendees = m.attendees || [];
   const declined = m.declined || [];
   const myAnswer: RsvpAnswer = meId ? rsvpOf(m, meId) : null;
-  // Everyone a summons is meant for: waking seats only. A sleeping soul is
-  // never awaited, though one who answered before sleeping still shows above.
-  const awaiting = rosterOrder(members).filter(
-    (mem) => mem.active !== false && !attendees.includes(mem.id) && !declined.includes(mem.id)
-  );
+  // Only active seats take part in the RSVP at all: inactive members never
+  // appear in the roll, the awaiting list, or the Keiser's on-behalf panel.
+  const activeRoster = rosterOrder(members).filter((mem) => mem.active !== false);
+  const awaiting = activeRoster.filter((mem) => !attendees.includes(mem.id) && !declined.includes(mem.id));
   const date = fmtDate(m.gather_date);
   const time = m.gather_time || "19:00";
   // The rite opens 30 minutes after the scheduled start — not before. The hook
@@ -582,23 +585,20 @@ function MeetingBody({
             </button>
             {showGuests && (
               <div style={{ marginTop: 8 }}>
-                {rosterOrder(members).map((mem) => {
+                {activeRoster.map((mem) => {
                   const a = rsvpOf(m, mem.id);
-                  const asleep = mem.active === false;
                   const pick = (val: "yes" | "no") => (
                     <button
                       onClick={() => answer(mem.id, val)}
-                      disabled={asleep && a !== val}
                       aria-label={`${mem.cult_name}: ${val === "yes" ? "attending" : "not attending"}`}
                       aria-pressed={a === val}
-                      title={asleep ? "Their seat sleeps; a sleeping soul is never summoned" : undefined}
                       className={`rsvp-pick${a === val ? (val === "yes" ? " on-yes" : " on-no") : ""}`}
                     >
                       <i className={`ti ${val === "yes" ? "ti-check" : "ti-x"}`} />
                     </button>
                   );
                   return (
-                    <div key={mem.id} className="rk" style={{ padding: "8px 0", opacity: asleep ? 0.45 : 1 }}>
+                    <div key={mem.id} className="rk" style={{ padding: "8px 0" }}>
                       <MemberCard member={mem} size={26} />
                       <span style={{ flex: 1 }}>{mem.cult_name}</span>
                       <span className="whisper" style={{ fontSize: 13, marginRight: 4 }}>
