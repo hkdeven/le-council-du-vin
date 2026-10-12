@@ -480,12 +480,13 @@ function MeetingBody({
                 <option key={x.id} value={x.id}>{x.cult_name}</option>
               ))}
             </select>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              <div style={{ flex: "1 1 140px" }}>
+            {/* birth-fields: the iOS-safe date/time pairing (stacks on a phone). */}
+            <div className="birth-fields" style={{ marginTop: 10 }}>
+              <div>
                 <label className="field" style={{ marginTop: 0 }}>Date</label>
                 <input type="date" value={m.gather_date} onChange={(e) => onUpdate({ gather_date: e.target.value })} onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()} style={{ cursor: "pointer" }} />
               </div>
-              <div style={{ flex: "1 1 120px" }}>
+              <div>
                 <label className="field" style={{ marginTop: 0 }}>Time</label>
                 <input type="time" value={time} onChange={(e) => onUpdate({ gather_time: e.target.value })} onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()} style={{ cursor: "pointer" }} />
               </div>
@@ -790,8 +791,10 @@ export default function Convene() {
           <div className="card">
             <div className="eyebrow" style={{ marginBottom: 8, fontSize: 14 }}>Summon a new gathering · Keiser</div>
             <input value={newTheme} onChange={(e) => setNewTheme(e.target.value)} placeholder="The theme…" style={{ marginBottom: 8 }} />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
-              <div style={{ flex: "1 1 150px" }}>
+            {/* birth-fields: the iOS-safe pairing. A native date input on iPhone
+                keeps a fixed intrinsic width and spilled into the host field. */}
+            <div className="birth-fields" style={{ gap: 8 }}>
+              <div>
                 <label className="eyebrow" htmlFor="new-gathering-date" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>
                   The night
                 </label>
@@ -802,10 +805,10 @@ export default function Convene() {
                   onChange={(e) => setNewDate(e.target.value)}
                   onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
                   aria-label="Date of the gathering"
-                  style={{ width: "100%", cursor: "pointer", colorScheme: "dark" }}
+                  style={{ cursor: "pointer" }}
                 />
               </div>
-              <div style={{ position: "relative", flex: "1 1 150px" }}>
+              <div style={{ position: "relative" }}>
                 <span className="eyebrow" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>The host</span>
                 <button
                   onClick={() => setHostOpen((o) => !o)}
