@@ -370,7 +370,12 @@ function MeetingBody({
   // Only active seats take part in the RSVP at all: inactive members never
   // appear in the roll, the awaiting list, or the Keiser's on-behalf panel.
   const activeRoster = rosterOrder(members).filter((mem) => mem.active !== false);
-  const awaiting = activeRoster.filter((mem) => !attendees.includes(mem.id) && !declined.includes(mem.id));
+  // Only full members (and the Keiser) are chased for an answer. An initiate
+  // who has not answered stays off the roll; once they answer yes or no they
+  // appear under Attending or Cannot attend like anyone else.
+  const awaiting = activeRoster.filter(
+    (mem) => mem.role !== "initiate" && !attendees.includes(mem.id) && !declined.includes(mem.id)
+  );
   const date = fmtDate(m.gather_date);
   const time = m.gather_time || "19:00";
   // The rite opens 30 minutes after the scheduled start — not before. The hook
