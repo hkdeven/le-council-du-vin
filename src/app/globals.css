@@ -144,6 +144,42 @@ select option {
   background: #0e0d0c;
 }
 
+/* RSVP: the "cannot attend" answer, and the Keiser's per-member pickers. */
+.btn.declined {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: var(--parch);
+}
+.rsvp-pick {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--faint);
+  font-size: 16px;
+  cursor: pointer;
+}
+.rsvp-pick.on-yes {
+  background: var(--gold2);
+  border-color: var(--gold2);
+  color: #0a0a0a;
+}
+.rsvp-pick.on-no {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: var(--parch);
+}
+.rsvp-pick:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* A required field left empty after the petitioner tried to submit. Loud on
    purpose: a silent form cost us a petitioner, so the gap must be unmissable. */
 label.field.missing {

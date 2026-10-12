@@ -66,7 +66,8 @@ export interface Gathering {
   rules_text?: string | null;
   threat_text?: string | null;
   venue_instructions?: string | null;
-  attendees?: string[]; // member ids who have RSVP'd
+  attendees?: string[]; // member ids who have RSVP'd yes
+  declined?: string[]; // member ids who have RSVP'd no (not attending)
 }
 
 export interface Wine {

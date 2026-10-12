@@ -6,7 +6,7 @@ import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers, rosterOrder } from "@/lib/members";
 import { swr, writeSwr } from "@/lib/swr";
 import { sendEmail } from "@/lib/sendEmail";
-import { fetchGatherings, createGathering, updateGathering, deleteGathering, toggleAttendee, pickUpcoming } from "@/lib/gatherings";
+import { fetchGatherings, createGathering, updateGathering, deleteGathering, setRsvp, rsvpOf, pickUpcoming, type RsvpAnswer, type RsvpLists } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import { supabase } from "@/lib/supabase";
 import { toRoman } from "@/lib/util";
@@ -323,17 +323,51 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
   );
 }
 
+// One band of the RSVP roll: a label with its count, then the souls in it.
+function RsvpGroup({ label, icon, ids, members, empty, dim }: {
+  label: string; icon: string; ids: string[]; members: Member[]; empty?: string; dim?: boolean;
+}) {
+  const souls = ids.map((id) => members.find((x) => x.id === id)).filter(Boolean) as Member[];
+  if (!souls.length && !empty) return null;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div className="eyebrow" style={{ marginBottom: 6 }}>
+        <i className={`ti ${icon}`} style={{ marginRight: 4 }} />{label} · {souls.length}
+      </div>
+      {souls.length === 0 ? (
+        <span className="whisper" style={{ fontSize: 14 }}>{empty}</span>
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", opacity: dim ? 0.6 : 1 }}>
+          {souls.map((mem) => (
+            <span key={mem.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px 3px 3px", border: "1px solid var(--line)", borderRadius: 999 }}>
+              <MemberCard member={mem} size={24} />
+              <span style={{ fontSize: 14 }}>{mem.cult_name}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MeetingBody({
   m, isCurrent, isKeiser, meId, members, onUpdate, onAttendees, onDelete, count, setCount, allMeetings,
 }: {
   m: Gathering; isCurrent: boolean; isKeiser: boolean; meId: string | null; members: Member[];
-  onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void; allMeetings?: Gathering[];
+  onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: RsvpLists) => void; allMeetings?: Gathering[];
   onDelete?: () => void; count?: number; setCount?: (n: number) => void;
 }) {
   const { sleeping, email: myEmail, mode: authMode, member: me } = useAuth();
   const [showGuests, setShowGuests] = useState(false);
   const [editing, setEditing] = useState(false);
   const attendees = m.attendees || [];
+  const declined = m.declined || [];
+  const myAnswer: RsvpAnswer = meId ? rsvpOf(m, meId) : null;
+  // Everyone a summons is meant for: waking seats only. A sleeping soul is
+  // never awaited, though one who answered before sleeping still shows above.
+  const awaiting = rosterOrder(members).filter(
+    (mem) => mem.active !== false && !attendees.includes(mem.id) && !declined.includes(mem.id)
+  );
   const date = fmtDate(m.gather_date);
   const time = m.gather_time || "19:00";
   // The rite opens 30 minutes after the scheduled start — not before. The hook
@@ -365,13 +399,17 @@ function MeetingBody({
     }).catch(() => {}); // the RSVP itself already stands; a lost letter must not undo it
   };
 
-  const toggleRsvp = (id: string) =>
-    toggleAttendee(m.id, id)
-      .then((next) => {
-        onAttendees(next);
-        if (id === meId) summon(next.includes(id));
+  // Tapping the answer already given clears it back to "no answer".
+  const answer = (id: string, a: RsvpAnswer) => {
+    const was = rsvpOf(m, id);
+    const next = was === a ? null : a;
+    return setRsvp(m.id, id, next)
+      .then((lists) => {
+        onAttendees(lists);
+        if (id === meId) summon(next === "yes" && was !== "yes");
       })
       .catch((e) => alert(`Could not update the RSVP: ${e.message}`));
+  };
 
   const share = () => {
     // WhatsApp markdown: *bold*
@@ -504,47 +542,73 @@ function MeetingBody({
 
         {/* RSVP — the last section of the card */}
         <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Who answers the call · {attendees.length}</div>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Who answers the call</div>
         {meId && (
-          <button
-            className={`btn${attendees.includes(meId) ? " gold" : ""}`}
-            onClick={() => toggleRsvp(meId)}
-            disabled={sleeping && !attendees.includes(meId)}
-          >
-            {attendees.includes(meId) ? "You are attending · withdraw" : "I shall attend"}
-          </button>
+          <>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className={`btn${myAnswer === "yes" ? " gold" : ""}`}
+                onClick={() => answer(meId, "yes")}
+                disabled={sleeping && myAnswer !== "yes"}
+                aria-pressed={myAnswer === "yes"}
+              >
+                <i className="ti ti-check" style={{ marginRight: 5 }} />I shall attend
+              </button>
+              <button
+                className={`btn${myAnswer === "no" ? " declined" : ""}`}
+                onClick={() => answer(meId, "no")}
+                disabled={sleeping && myAnswer !== "no"}
+                aria-pressed={myAnswer === "no"}
+              >
+                <i className="ti ti-x" style={{ marginRight: 5 }} />I cannot attend
+              </button>
+            </div>
+            <p className="whisper" style={{ margin: "6px 0 0", fontSize: 13, textAlign: "center" }}>
+              {myAnswer === "yes" && "You have answered: attending. Tap again to withdraw your answer."}
+              {myAnswer === "no" && "You have answered: not attending. Tap again to withdraw your answer."}
+              {myAnswer === null && "You have not yet answered the call."}
+            </p>
+          </>
         )}
-        <div style={{ display: "flex", gap: 8, margin: "12px 0 4px", flexWrap: "wrap", alignItems: "center" }}>
-          {attendees.length === 0 && <span className="whisper" style={{ fontSize: 14 }}>No souls have answered yet.</span>}
-          {attendees.map((id) => {
-            const mem = members.find((x) => x.id === id);
-            if (!mem) return null;
-            return <MemberCard key={id} member={mem} size={30} />;
-          })}
-        </div>
+
+        <RsvpGroup label="Attending" icon="ti-check" ids={attendees} members={members} empty="No souls have answered yes yet." />
+        <RsvpGroup label="Cannot attend" icon="ti-x" ids={declined} members={members} dim />
+        <RsvpGroup label="Awaiting reply" icon="ti-hourglass" ids={awaiting.map((x) => x.id)} members={members} dim />
+
         {isKeiser && (
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 10 }}>
             <button onClick={() => setShowGuests((s) => !s)} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>
               <i className="ti ti-users" style={{ marginRight: 5 }} />RSVP on their behalf {showGuests ? "▾" : "▸"}
             </button>
             {showGuests && (
               <div style={{ marginTop: 8 }}>
-                {rosterOrder(members).map((mem) => (
-                  <div key={mem.id} className="rk" style={{ padding: "8px 0", opacity: mem.active === false ? 0.45 : 1 }}>
-                    <button onClick={() => toggleRsvp(mem.id)} aria-label="Toggle attendance"
-                      disabled={mem.active === false && !attendees.includes(mem.id)}
-                      title={mem.active === false
-                        ? (attendees.includes(mem.id)
-                            ? "Their seat was put to sleep after they answered; withdraw them"
-                            : "Their seat sleeps; a sleeping soul is never summoned")
-                        : undefined}
-                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: attendees.includes(mem.id) ? "var(--gold2)" : "var(--faint)", fontSize: 18, display: "flex" }}>
-                      <i className={attendees.includes(mem.id) ? "ti ti-square-check" : "ti ti-square"} />
+                {rosterOrder(members).map((mem) => {
+                  const a = rsvpOf(m, mem.id);
+                  const asleep = mem.active === false;
+                  const pick = (val: "yes" | "no") => (
+                    <button
+                      onClick={() => answer(mem.id, val)}
+                      disabled={asleep && a !== val}
+                      aria-label={`${mem.cult_name}: ${val === "yes" ? "attending" : "not attending"}`}
+                      aria-pressed={a === val}
+                      title={asleep ? "Their seat sleeps; a sleeping soul is never summoned" : undefined}
+                      className={`rsvp-pick${a === val ? (val === "yes" ? " on-yes" : " on-no") : ""}`}
+                    >
+                      <i className={`ti ${val === "yes" ? "ti-check" : "ti-x"}`} />
                     </button>
-                    <MemberCard member={mem} size={26} />
-                    <span style={{ flex: 1 }}>{mem.cult_name}</span>
-                  </div>
-                ))}
+                  );
+                  return (
+                    <div key={mem.id} className="rk" style={{ padding: "8px 0", opacity: asleep ? 0.45 : 1 }}>
+                      <MemberCard member={mem} size={26} />
+                      <span style={{ flex: 1 }}>{mem.cult_name}</span>
+                      <span className="whisper" style={{ fontSize: 13, marginRight: 4 }}>
+                        {a === "yes" ? "attending" : a === "no" ? "not attending" : "no answer"}
+                      </span>
+                      {pick("yes")}
+                      {pick("no")}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -578,7 +642,7 @@ function MeetingBody({
   );
 }
 
-function FutureCard({ m, isKeiser, meId, members, onUpdate, onAttendees, onDelete }: { m: Gathering; isKeiser: boolean; meId: string | null; members: Member[]; onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: string[]) => void; onDelete?: () => void }) {
+function FutureCard({ m, isKeiser, meId, members, onUpdate, onAttendees, onDelete }: { m: Gathering; isKeiser: boolean; meId: string | null; members: Member[]; onUpdate: (patch: Partial<Gathering>) => void; onAttendees: (next: RsvpLists) => void; onDelete?: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -662,10 +726,10 @@ export default function Convene() {
     updateGathering(id, patch).catch((e) => alert(`Could not save the meeting: ${e.message}`));
   };
 
-  // RSVP already persisted via toggleAttendee (refetch-before-write); this only
+  // RSVP already persisted via setRsvp (refetch-before-write); this only
   // syncs the local view, so we don't re-write (and re-clobber) the array.
-  const setAttendeesLocal = (id: string, next: string[]) =>
-    setMeetingsAndSnapshot(meetings.map((m) => (m.id === id ? { ...m, attendees: next } : m)));
+  const setAttendeesLocal = (id: string, next: RsvpLists) =>
+    setMeetingsAndSnapshot(meetings.map((m) => (m.id === id ? { ...m, ...next } : m)));
 
   const deleteMeeting = (id: string) => {
     setMeetingsAndSnapshot(meetings.filter((m) => m.id !== id));
