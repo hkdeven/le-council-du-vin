@@ -22,7 +22,10 @@ const NAV: { href: string; label: string; icon: string; min: Role }[] = [
   { href: "/codex", label: "Codex", icon: "ti-chart-radar", min: "initiate" },
 ];
 
-const PUBLIC = ["/", "/initiation", "/reset"];
+// Bare pages: no chrome, no login. /offering is the three-field page the
+// summons opens, and the whole point of it is that no one has to sign in; the
+// token in the address does the naming, and can write nothing else.
+const PUBLIC = ["/", "/initiation", "/reset", "/offering"];
 const DEMO_NAMES: Record<Role, string> = {
   initiate: "Cassian Vale",
   member: "Priestess Larissa",

@@ -9,25 +9,33 @@ import { applyClaims, claimedCloth, unnamedClaimants } from "@/lib/revealClaims"
 import { supabase } from "@/lib/supabase";
 import { fetchAllBallots, statsFromBallots, fetchRevealStats, type RevealStats } from "@/lib/ballots";
 import { fetchAnnal, commitAnnal, AnnalRow } from "@/lib/annals";
-import { fetchCurrentGathering, updateGathering, revealWindowClosed } from "@/lib/gatherings";
+import { fetchRevealGathering, updateGathering, revealWindowClosed } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { sendEmail } from "@/lib/sendEmail";
 import { useWineCount } from "@/lib/useWineCount";
 import BottleReveal from "@/components/BottleReveal";
+import { Cloth, WineName } from "@/components/Cloth";
+import { bindRows, placeNight, rankIn, championsIn, annalScores, type TallyRow } from "@/lib/tally";
 import type { Gathering } from "@/lib/types";
 
 interface RevealRow {
   cloth: number;
-  title: string; // the wine itself — unknown until the cloth is lifted
-  owner: string; // who brought it — claimed after the cloths come off
+  title: string; // the wine itself, unknown until the cloth is lifted
+  owner: string; // who brought it, claimed after the cloths come off
   score: number; // average of every sealed ballot
   votes: number;
   dq: boolean; // disqualified by the Keiser for breaking theme
+  spoiled?: boolean; // the bottle came up bad: recorded, never judged
+  bind?: number | null; // the same wine as every row sharing this key
   varietals?: string[]; // carried from the claimed offering
   price?: number | null; // rand, when the owner logged it
 }
+
+// Every verdict cast on one cloth, as the table reads it back: who judged it,
+// what they gave it, and what they wrote. The reader comes first, always.
+interface Verdict { memberId: string; name: string; avatar: string | null; score: number; note: string; mine: boolean; cloth: number }
 
 // Inline click-to-edit text for the wine's name.
 function Inline({ value, placeholder, onChange, canEdit, style }: { value: string; placeholder: string; onChange: (v: string) => void; canEdit: boolean; style?: React.CSSProperties }) {
@@ -82,51 +90,124 @@ function OwnerSlot({ owner, mine, canClaim, canAct, onClaim, onRelease, style }:
   return <span className="whisper" style={{ fontSize: 14 }}>unclaimed</span>;
 }
 
+// A soul's face, as the Council keeps it. Only the victor wears one on the
+// reveal; the rest of the table is named, not pictured.
+function Face({ src, size = 86 }: { src?: string | null; size?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size, height: size, borderRadius: "50%", flex: "none", overflow: "hidden",
+        border: `1px solid ${size > 50 ? "var(--gold)" : "var(--line2)"}`,
+        background: src ? `#0d0b0a center / cover no-repeat url(${JSON.stringify(src)})` : "radial-gradient(circle at 50% 35%, #272118, #0d0b0a)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: size > 50 ? "0 0 0 4px rgba(156,138,95,0.12)" : undefined,
+      }}
+    >
+      {!src && <i className="ti ti-user" style={{ fontSize: Math.round(size * 0.46), color: "#6b6046" }} />}
+    </span>
+  );
+}
+
+// Every verdict cast on one cloth, opened from the row it belongs to. The
+// reader's own verdict is pinned to the top: the first thing anyone looks for
+// is what they themselves said.
+function Verdicts({ list, showCloth }: { list: Verdict[]; showCloth: boolean }) {
+  if (!list.length) {
+    return <p className="whisper" style={{ fontSize: 14, margin: "4px 2px 8px" }}>No verdicts were recorded on this bottle.</p>;
+  }
+  return (
+    <div style={{ width: "100%", margin: "10px 0 2px", border: "1px solid var(--line)", borderRadius: 9, padding: "2px 13px 6px", background: "rgba(0,0,0,0.25)", textAlign: "left" }}>
+      {list.map((v) => (
+        <div key={v.memberId} style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+          <Face src={v.avatar} size={34} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, color: "var(--gold2)" }}>
+              {v.name}
+              {v.mine && (
+                <span style={{ border: "1px solid var(--gold)", borderRadius: 3, padding: "0 5px", fontFamily: "'Cinzel', serif", fontStyle: "normal", fontSize: 8.5, letterSpacing: "0.12em", color: "var(--gold2)", marginLeft: 6, verticalAlign: 1 }}>YOU</span>
+              )}
+              {/* On a bound wine every soul judged each cloth, so the same
+                  name appears once per glass. Without the number it reads as
+                  the record repeating itself. */}
+              {showCloth && <span style={{ marginLeft: 7, verticalAlign: "-4px", display: "inline-flex" }}><Cloth n={v.cloth} size={17} /></span>}
+            </div>
+            {v.note
+              ? <div style={{ fontSize: 14, color: "var(--parch)", lineHeight: 1.5, marginTop: 1 }}>&ldquo;{v.note}&rdquo;</div>
+              : <div className="whisper" style={{ fontSize: 13.5, color: "var(--faint)", marginTop: 1 }}>no words left</div>}
+          </div>
+          <span className="disp" style={{ fontSize: 13, color: "var(--gold2)", flex: "none" }}>{v.score.toFixed(1)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Once the night is sealed in the Annals, the reveal page becomes the
-// Reckoning: the crowning, the table as it ranked, the split cloth, the
-// whispers, and the ledger — with the whole thing sendable to your own inbox.
-function ReckoningView({ g, rows, stats, email, onPhotos }: {
+// Reckoning: the crowning, the rankings, the split cloth and the ledger, with
+// the whole thing sendable to your own inbox. Every bottle opens to show what
+// the whole table gave it and wrote about it.
+function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadVerdicts, onPhotos }: {
   g: Gathering;
   rows: RevealRow[];
   stats: RevealStats;
   email: string | null;
+  verdictsFor: (cloth: number[]) => Verdict[];
+  avatarFor: (ownerName: string) => string | null;
+  canReadVerdicts: boolean;
   onPhotos: (next: string[]) => void;
 }) {
   const [mailState, setMailState] = useState<"idle" | "sending" | "sent">("idle");
-  const qualified = [...rows].filter((r) => !r.dq && r.votes > 0).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
-  const dqRows = rows.filter((r) => r.dq);
-  const rankOf = (r: RevealRow) => 1 + qualified.filter((x) => x.score > r.score).length;
-  const top = qualified[0]?.score ?? 0;
-  const champions = top > 0 ? qualified.filter((r) => r.score === top) : [];
-  const name = (r: RevealRow) => r.title || `Bottle ${toRoman(r.cloth)}`;
+  const [open, setOpen] = useState<number | null>(null);
+
+  // Bound cloths are one wine with one standing; spoiled ones are recorded and
+  // never placed. tally.ts holds the arithmetic, and scripts/verify-tally.ts
+  // holds it to account.
+  const tallyRows: TallyRow[] = rows.map((r) => ({
+    cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes,
+    dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null,
+  }));
+  const placed = placeNight(tallyRows);
+  const bound = bindRows(tallyRows);
+  const champions = championsIn(bound);
+  // By cloth, never by identity: placeNight binds the rows a second time, so
+  // its entries are different objects from the champions' and `includes`
+  // silently matched nothing, which listed the crowned wine twice.
+  const crownedCloths = new Set(champions.map((c) => c.cloth));
+  const rest = placed.filter((x) => !crownedCloths.has(x.row.cloth));
+
+  // The wine's price and grapes live on the physical rows, not the group.
+  const rowOf = (cloth: number) => rows.find((r) => r.cloth === cloth);
+  // On a row the circled number trails the name. In a SENTENCE it cannot: a
+  // trailing numeral reads as part of the wine ("Meerlust Rubicon 2018 1").
+  // Named wines are called by their name, and only the unnamed need a number.
+  const nameText = (cloths: number[], title: string) => title || `Bottle ${cloths.join(" and ")}`;
+  // The emailed ranking is a list, not prose, so there the number stays.
+  const listText = (cloths: number[], title: string) => `${title || "Bottle"} ${cloths.join(" and ")}`;
 
   // The split cloth: widest gap on any wine, three votes or more, gap >= 5.
   const cloths = new Set(rows.map((r) => r.cloth));
-  let split: { row: RevealRow; min: number; max: number } | null = null;
+  let split: { cloth: number; title: string; min: number; max: number } | null = null;
   for (const cloth of cloths) {
     const t = stats.totals[cloth];
     if (!t || t.votes < 3) continue;
     const row = rows.find((r) => r.cloth === cloth);
-    if (row && t.max - t.min >= 5 && (!split || t.max - t.min > split.max - split.min)) split = { row, min: t.min, max: t.max };
+    // A bottle that came up bad divided nobody: it was never judged on merit.
+    if (row && !row.spoiled && t.max - t.min >= 5 && (!split || t.max - t.min > split.max - split.min)) {
+      split = { cloth, title: row.title, min: t.min, max: t.max };
+    }
   }
-  const splitText = split ? `${name(split.row)} divided the table: one soul gave it a ${split.min}, another a ${split.max}.` : null;
+  const splitText = split ? `${nameText([split.cloth], split.title)} divided the table: one soul gave it a ${split.min}, another a ${split.max}.` : null;
 
-  // The whispers: short, punchy notes from the night, anonymous, three at most.
-  const quotes: { text: string; cloth: string }[] = [];
-  for (const { cloth, note } of stats.notes) {
-    if (!cloths.has(cloth)) continue;
-    const t = note.trim();
-    if (t.length >= 15 && t.length <= 140) quotes.push({ text: t, cloth: toRoman(cloth) });
-  }
-  quotes.sort((a, b) => a.text.length - b.text.length);
-  const chosen = quotes.slice(0, 3);
-
-  // The ledger: best score per hundred rand, when prices were confided.
-  const priced = qualified.filter((r) => (r.price ?? 0) > 0);
+  // The ledger: best score per hundred rand, when prices were confided. A
+  // spoiled bottle is no bargain and no disappointment; it is simply out.
+  const priced = bound.filter((b) => !b.dq && !b.spoiled && b.votes > 0)
+    .map((b) => ({ b, price: b.rows.reduce((n, r) => n + (rowOf(r.cloth)?.price || 0), 0) }))
+    .filter((x) => x.price > 0);
   let value: string | null = null;
   if (priced.length >= 2) {
-    const best = [...priced].sort((a, b) => b.score / b.price! - a.score / a.price!)[0];
-    value = `Best value of the night: ${name(best)}, borne by ${best.owner || "an unclaimed hand"}, at R${best.price} · ${(best.score / best.price! * 100).toFixed(1)} points per hundred rand.`;
+    const best = [...priced].sort((x, y) => y.b.score / y.price - x.b.score / x.price)[0];
+    value = `Best value of the night: ${nameText(best.b.cloths, best.b.title)}, borne by ${best.b.owner || "an unclaimed hand"}, at R${best.price} · ${(best.b.score / best.price * 100).toFixed(1)} points per hundred rand.`;
   }
 
   const mailIt = async () => {
@@ -136,13 +217,16 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
       numberRoman: toRoman(g.number || 0),
       theme: g.theme_title || "",
       dateLabel: g.gather_date ? new Date(g.gather_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "",
-      crowned: champions.map((c) => ({ title: name(c), owner: c.owner, score: c.score })),
-      ranked: [
-        ...qualified.filter((r) => !champions.includes(r)).map((r) => ({ rank: toRoman(rankOf(r)), title: name(r), owner: r.owner, score: r.score, dq: false })),
-        ...dqRows.map((r) => ({ rank: "✕", title: name(r), owner: r.owner, score: null, dq: true })),
-      ],
+      crowned: champions.map((c) => ({ title: listText(c.cloths, c.title), owner: c.owner, score: c.score })),
+      ranked: rest.map(({ row, rank }) => ({
+        rank: rank != null ? toRoman(rank) : row.spoiled ? "·" : "✕",
+        title: listText(row.cloths, row.title),
+        owner: row.owner,
+        score: rank != null ? row.score : null,
+        dq: row.dq,
+        spoiled: row.spoiled,
+      })),
       split: splitText || undefined,
-      quotes: chosen,
       value: value || undefined,
     });
     if (res.ok) setMailState("sent");
@@ -150,11 +234,61 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
   };
 
   // Gold-ruled section band, echoing the email's design (the Keiser's pick).
-  const Band = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ borderTop: "1px solid var(--gold)", borderBottom: "1px solid var(--gold)", padding: "8px 6px", margin: "20px 0 14px", textAlign: "center" }}>
+  const Band = ({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) => (
+    <div style={{ borderTop: "1px solid var(--gold)", borderBottom: "1px solid var(--gold)", padding: "8px 6px", margin: "20px 0 14px", display: "flex", alignItems: "baseline", gap: 10, justifyContent: aside ? "space-between" : "center" }}>
       <span className="eyebrow" style={{ fontSize: 11, letterSpacing: "0.2em" }}>{children}</span>
+      {aside}
     </div>
   );
+
+  // One line of the rankings. Spoiled and cast-out bottles keep their place in
+  // the record, below the wines that stood, and hold no score.
+  const Row = ({ row, rank }: { row: (typeof placed)[number]["row"]; rank: number | null }) => {
+    const tone = row.dq ? "wine" : row.spoiled ? "spoiled" : "gold";
+    const colour = row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--parch)";
+    const verdicts = verdictsFor(row.cloths);
+    const openable = canReadVerdicts && verdicts.length > 0;
+    const isOpen = open === row.cloth;
+    return (
+      <div style={{ borderBottom: "1px solid var(--line)", opacity: row.dq || row.spoiled ? 0.88 : 1 }}>
+        <div
+          onClick={() => openable && setOpen(isOpen ? null : row.cloth)}
+          role={openable ? "button" : undefined}
+          tabIndex={openable ? 0 : undefined}
+          aria-expanded={openable ? isOpen : undefined}
+          onKeyDown={(e) => { if (openable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOpen(isOpen ? null : row.cloth); } }}
+          style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 2px", color: colour, cursor: openable ? "pointer" : "default" }}
+        >
+          <span className="disp" style={{ width: 24, flex: "none", textAlign: "center", fontSize: rank != null ? 14 : 11, color: row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
+            {rank != null ? toRoman(rank) : row.dq ? "✕" : "—"}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 15 }}>
+              <span style={{ textDecoration: row.dq ? "line-through" : "none" }}>{row.title || "Bottle"}</span>
+              {row.cloths.map((c) => <Cloth key={c} n={c} tone={tone} />)}
+              {row.dq && <span className="tag" style={{ color: "var(--wine)", borderColor: "#6d3a3e" }}>off theme</span>}
+              {row.spoiled && <span className="tag" style={{ color: "var(--spoiled)", borderColor: "#8a6c3a" }}>spoiled</span>}
+            </span>
+            {row.owner && (
+              <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14.5, color: row.dq ? "#c99" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
+                {row.owner}
+                {row.cloths.length > 1 && <span className="whisper" style={{ fontSize: 13, color: "var(--faint)" }}> · one wine, {row.cloths.length} cloths</span>}
+              </span>
+            )}
+            {split?.cloth === row.cloth && <i className="ti ti-bolt" style={{ color: "var(--gold2)", fontSize: 12 }} />}
+            {row.spoiled && <span className="whisper" style={{ display: "block", fontSize: 13 }}>Kept in the record, counted against no one.</span>}
+          </span>
+          <span className="disp" style={{ fontSize: 14, flex: "none", color: row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
+            {rank != null ? row.score.toFixed(1) : "—"}
+          </span>
+          <span style={{ width: 22, flex: "none", textAlign: "right", color: "var(--gold)", fontSize: 15 }}>
+            {openable && <i className={`ti ti-chevron-${isOpen ? "up" : "down"}`} />}
+          </span>
+        </div>
+        {isOpen && <Verdicts list={verdicts} showCloth={row.cloths.length > 1} />}
+      </div>
+    );
+  };
 
   return (
     <section style={{ textAlign: "center", maxWidth: 460, margin: "0 auto" }}>
@@ -167,15 +301,20 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
       {champions.length === 0 ? (
         <p className="whisper" style={{ margin: 0, fontSize: 15 }}>No champion this moon.</p>
       ) : champions.map((c) => (
-        <p key={c.cloth} style={{ margin: "0 0 6px", fontSize: 16, color: "var(--parch)" }}>
-          🏆 <span className="scr" style={{ fontSize: 18, color: "var(--gold2)" }}>{name(c)}</span>
-          {c.owner && <span className="whisper" style={{ fontSize: 14 }}> · borne by {c.owner}</span>}
-          <span className="disp" style={{ fontSize: 14, marginLeft: 8 }}>{c.score.toFixed(1)}</span>
-        </p>
+        <div key={c.cloth} style={{ display: "flex", alignItems: "center", gap: 15, textAlign: "left", margin: "0 0 12px" }}>
+          {/* Only the victor wears a face. */}
+          <Face src={c.owners.length === 1 ? avatarFor(c.owners[0]) : null} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <WineName title={c.title} cloth={null} style={{ fontFamily: "'Cinzel', serif", fontSize: 17, color: "var(--gold2)" }} />
+            <span style={{ display: "inline-flex", gap: 5, marginLeft: 7 }}>{c.cloths.map((n) => <Cloth key={n} n={n} />)}</span>
+            {c.owner && <div className="scr" style={{ fontStyle: "italic", fontSize: 15, color: "var(--gold2)", marginTop: 3 }}>{c.owner}</div>}
+            <div className="disp" style={{ fontSize: 26, color: "var(--gold2)", marginTop: 2 }}>{c.score.toFixed(1)}</div>
+          </div>
+        </div>
       ))}
 
       {g.prophecy && champions.length > 0 && (() => {
-        const right = champions.some((c) => c.owner === g.prophecy!.name);
+        const right = champions.some((c) => c.owners.includes(g.prophecy!.name));
         return (
           <p className="scr" style={{ fontStyle: "italic", fontSize: 14.5, color: right ? "var(--gold2)" : "var(--dim)", margin: "12px 0 0" }}>
             <i className="ti ti-crystal-ball" style={{ fontSize: 13, marginRight: 5 }} />
@@ -186,39 +325,21 @@ function ReckoningView({ g, rows, stats, email, onPhotos }: {
         );
       })()}
 
-      <Band>As the table ranked them</Band>
+      {/* The rankings carry no gold rules above and below: the hairline runs
+          through the heading instead, and the instruction rides on it. */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "26px 0 4px" }}>
+        <span className="eyebrow" style={{ fontSize: 11, letterSpacing: "0.2em" }}>Rankings</span>
+        <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
+        {canReadVerdicts && <span className="whisper" style={{ fontSize: 13 }}>tap a wine for every verdict</span>}
+      </div>
       <div style={{ textAlign: "left" }}>
-        {[...qualified, ...dqRows].map((r) => (
-          <div key={r.cloth} style={{ display: "flex", gap: 8, fontSize: 14, padding: "5px 0", alignItems: "center", color: r.dq ? "var(--wine)" : "var(--parch)", borderBottom: "1px solid var(--line)" }}>
-            <span className="disp" style={{ width: 24, fontSize: 11, color: r.dq ? "var(--wine)" : "var(--gold2)" }}>{r.dq ? "✕" : toRoman(rankOf(r))}</span>
-            <span style={{ flex: 1 }}>
-              <span className="scr" style={{ fontSize: 15 }}>{name(r)}</span>
-              {r.owner && <span style={{ color: "var(--dim)" }}> · {r.owner}</span>}
-              {split?.row.cloth === r.cloth && <i className="ti ti-bolt" style={{ color: "var(--gold2)", fontSize: 12, marginLeft: 5 }} />}
-              {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--wine)" }}> · cast out</span>}
-            </span>
-            <span className="disp" style={{ fontSize: 12, color: "var(--gold2)" }}>{r.dq ? "—" : r.score.toFixed(1)}</span>
-          </div>
-        ))}
+        {rest.map(({ row, rank }) => <Row key={row.cloth} row={row} rank={rank} />)}
       </div>
 
       {splitText && (
         <>
           <Band>The split cloth</Band>
           <p style={{ margin: 0, fontSize: 15, color: "var(--parch)" }}>⚡ {splitText}</p>
-        </>
-      )}
-
-      {chosen.length > 0 && (
-        <>
-          <Band>The table&rsquo;s whispers</Band>
-          <div style={{ textAlign: "left" }}>
-            {chosen.map((q, i) => (
-              <p key={i} className="scr" style={{ margin: "0 0 10px", fontSize: 16, fontStyle: "italic", color: "var(--parch)" }}>
-                &ldquo;{q.text}&rdquo; <span className="whisper" style={{ fontSize: 13 }}>· on cloth {q.cloth}</span>
-              </p>
-            ))}
-          </div>
         </>
       )}
 
@@ -261,9 +382,13 @@ export default function Reveal() {
   const [committed, setCommitted] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [shown, setShown] = useState(0);
+  // Binding the cloths: the Keiser ticks the ones that are the same wine, and
+  // they become a single entry with one score and one standing.
+  const [bindMode, setBindMode] = useState(false);
+  const [binding, setBinding] = useState<number[]>([]);
 
   useEffect(() => {
-    fetchCurrentGathering().then((cg) => {
+    fetchRevealGathering().then((cg) => {
       setG(cg);
       setReady(true);
     });
@@ -283,17 +408,20 @@ export default function Reveal() {
   // The same read carries the cult names, so the locked panel can NAME the
   // souls still being waited on rather than only counting them.
   const [rosterNames, setRosterNames] = useState<Record<string, string>>({});
+  // And the faces, for the one soul who wears theirs on this page: the victor.
+  const [rosterFaces, setRosterFaces] = useState<Record<string, string | null>>({});
   useEffect(() => {
     if (mode !== "live" || !supabase) return;
     let alive = true;
-    const read = () => supabase!.from("members").select("id,active,cult_name")
-      .then(({ data, error }: { data: { id: string; active: boolean | null; cult_name: string | null }[] | null; error: { message: string } | null }) => {
+    const read = () => supabase!.from("members").select("id,active,cult_name,avatar_url")
+      .then(({ data, error }: { data: { id: string; active: boolean | null; cult_name: string | null; avatar_url: string | null }[] | null; error: { message: string } | null }) => {
         if (!alive) return;
         // The error was swallowed here once, which quietly restored the very
         // deadlock this exists to prevent. Retry, and say so if it persists.
         if (error || !data) { console.error("The roll would not open:", error?.message); return; }
         setAwakeIds(new Set(data.filter((m) => m.active !== false).map((m) => m.id)));
         setRosterNames(Object.fromEntries(data.map((m) => [m.id, m.cult_name || ""])));
+        setRosterFaces(Object.fromEntries(data.map((m) => [m.id, m.avatar_url])));
       });
     read();
     const t = setInterval(() => { if (!awakeIds) read(); }, 15000);
@@ -304,6 +432,7 @@ export default function Reveal() {
   useEffect(() => {
     if (mode === "live") return;
     setRosterNames(Object.fromEntries(loadMembers().map((m) => [m.id, m.cult_name || ""])));
+    setRosterFaces(Object.fromEntries(loadMembers().map((m) => [m.id, m.avatar_url || null])));
   }, [mode]);
   const awaited = awakeIds ? attendees.filter((id) => awakeIds.has(id)) : attendees;
   const sleepingAmong = attendees.length - awaited.length;
@@ -317,6 +446,52 @@ export default function Reveal() {
   }, [ready, windowClosed, router]);
 
   const [wineCount] = useWineCount(g);
+
+  // The verdicts behind each bottle, for the panel that opens on a tap.
+  // Initiates may not read individual ballots (#6), so for them the rows do
+  // not open at all rather than opening on nothing.
+  const canReadVerdicts = role !== "initiate";
+  const [ballots, setBallots] = useState<{ memberId: string; scores: Record<number, number>; notes?: Record<number, string> }[]>([]);
+  useEffect(() => {
+    if (!g || !committed || !canReadVerdicts) return;
+    let alive = true;
+    fetchAllBallots(g.id)
+      .then((bs) => { if (alive) setBallots(bs); })
+      .catch((e) => console.error("The verdicts would not open:", (e as Error).message));
+    return () => { alive = false; };
+  }, [g, committed, canReadVerdicts]);
+
+  // Every verdict cast on a wine, highest first, with the reader's own pinned
+  // to the top. A bound wine gathers the verdicts of all its cloths; a soul
+  // who judged two cloths of the same wine is listed once per cloth, since
+  // they really did judge two glasses.
+  const verdictsFor = (cloths: number[]): Verdict[] => {
+    if (!canReadVerdicts) return [];
+    const out: Verdict[] = [];
+    for (const b of ballots) {
+      for (const cloth of cloths) {
+        const score = b.scores?.[cloth];
+        if (typeof score !== "number" || score <= 0) continue;
+        out.push({
+          memberId: `${b.memberId}-${cloth}`,
+          name: rosterNames[b.memberId] || "A soul yet unnamed",
+          avatar: rosterFaces[b.memberId] ?? null,
+          score,
+          note: (b.notes || {})[cloth] || "",
+          mine: b.memberId === meId,
+          cloth,
+        });
+      }
+    }
+    return out.sort((x, y) =>
+      Number(y.mine) - Number(x.mine) ||
+      (cloths.length > 1 ? x.name.localeCompare(y.name) || x.cloth - y.cloth : 0) ||
+      y.score - x.score || x.name.localeCompare(y.name));
+  };
+  const avatarFor = (ownerName: string): string | null => {
+    const id = Object.keys(rosterNames).find((k) => rosterNames[k] === ownerName);
+    return id ? rosterFaces[id] ?? null : null;
+  };
 
   // Initiates may not read individual ballots (#6): they load the aggregate
   // summary; full members derive the same stats from the ballots themselves.
@@ -341,12 +516,12 @@ export default function Reveal() {
       setStats(st);
       setOfferings(offs);
       if (annal) {
-        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, varietals: r.varietals, price: r.price })));
+        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null, varietals: r.varietals, price: r.price })));
         setCommitted(true);
       } else {
         setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
           cloth, title: "", owner: "",
-          score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false,
+          score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false, spoiled: false, bind: null,
         })));
       }
     })();
@@ -396,7 +571,7 @@ export default function Reveal() {
         const st = await loadStats(g.id);
         setStats(st);
         setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
-          cloth, title: "", owner: "", score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false,
+          cloth, title: "", owner: "", score: st.totals[cloth]?.avg || 0, votes: st.totals[cloth]?.votes || 0, dq: false, spoiled: false, bind: null,
         })));
       }
       // A member's page that was open when the Keiser committed must learn
@@ -405,7 +580,7 @@ export default function Reveal() {
       // the annals. Once the night is in the annals, the annals are drawn.
       const annal = await fetchAnnal(g.id);
       if (annal) {
-        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, varietals: r.varietals, price: r.price })));
+        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null, varietals: r.varietals, price: r.price })));
         setCommitted(true);
         return;
       }
@@ -421,12 +596,22 @@ export default function Reveal() {
   const view = committed ? rows : applyClaims(rows, offerings, rosterNames);
 
   // Ranking is computed, never stored. Ties share a rank (competition style:
-  // two 2nds → next is 4th), and a tie for the top score crowns co-champions.
-  const qualified = [...view].filter((r) => !r.dq).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
-  const dqRows = view.filter((r) => r.dq);
-  const rankOf = (row: RevealRow) => 1 + qualified.filter((x) => x.score > row.score).length;
-  const topScore = qualified[0]?.score ?? 0;
-  const champions = topScore > 0 ? qualified.filter((r) => r.score === topScore) : [];
+  // two 2nds, then a 4th), a tie for the top score crowns co-champions, bound
+  // cloths are one wine with one standing, and a spoiled bottle takes none.
+  // The arithmetic lives in src/lib/tally.ts, proved by scripts/verify-tally.ts.
+  const asTally = (r: RevealRow): TallyRow => ({
+    cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes,
+    dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null,
+  });
+  const boundView = bindRows(view.map(asTally));
+  // The Keiser's cards are still the physical cloths, one per bottle carried,
+  // so each row is placed by the standing of the group it belongs to.
+  const groupOf = (row: RevealRow) => boundView.find((b) => b.cloths.includes(row.cloth));
+  const rankOf = (row: RevealRow) => { const g2 = groupOf(row); return g2 ? rankIn(boundView, g2) ?? 0 : 0; };
+  const championGroups = championsIn(boundView);
+  const champions = view.filter((r) => championGroups.some((b) => b.cloths.includes(r.cloth)));
+  const dqRows = view.filter((r) => r.dq || r.spoiled);
+  const qualified = [...view].filter((r) => !r.dq && !r.spoiled).sort((a, b) => b.score - a.score || a.cloth - b.cloth);
   const rest = [...qualified.filter((r) => !champions.includes(r)), ...dqRows];
   const canAct = !committed || isKeiser; // once in the Annals, only the Keiser may touch it
 
@@ -443,21 +628,29 @@ export default function Reveal() {
   };
 
   const writeAnnal = async (data: RevealRow[]) => {
-    const q = data.filter((r) => !r.dq);
-    // Shared ranking, so co-champions both record rank 1 (each earns a chalice).
-    const rank = (r: RevealRow) => 1 + q.filter((x) => x.score > r.score).length;
+    // The record stays one line per bottle actually carried, because chalices
+    // and victories are counted per soul. Bound cloths each take the group's
+    // score and standing, which is exactly what makes their bearers
+    // co-champions; a spoiled cloth takes neither.
+    const placed = annalScores(data.map(asTally));
     await commitAnnal({
       gatheringId: g!.id,
       number: g!.number,
       theme: g!.theme_title,
       date: g!.gather_date,
       committed_at: new Date().toISOString(),
-      rows: data.map((r): AnnalRow => ({
-        cloth: r.cloth, owner: r.owner, title: r.title, score: r.score, votes: r.votes,
-        dq: r.dq, rank: r.dq ? null : rank(r),
-        varietals: r.varietals?.length ? r.varietals : undefined,
-        price: r.price ?? undefined,
-      })),
+      rows: data.map((r): AnnalRow => {
+        const p = placed.get(r.cloth);
+        return {
+          cloth: r.cloth, owner: r.owner, title: r.title,
+          score: p?.score ?? r.score, votes: p?.votes ?? r.votes,
+          dq: r.dq, rank: r.dq ? null : p?.rank ?? null,
+          spoiled: r.spoiled ? true : undefined,
+          bind: r.bind ?? undefined,
+          varietals: r.varietals?.length ? r.varietals : undefined,
+          price: r.price ?? undefined,
+        };
+      }),
     });
   };
 
@@ -496,6 +689,23 @@ export default function Reveal() {
 
   const patch = (cloth: number, p: Partial<RevealRow>) =>
     persist(rows.map((r) => (r.cloth === cloth ? { ...r, ...p } : r)));
+
+  // Bind the ticked cloths into one wine. The key is the lowest cloth in the
+  // set, so the binding is stable however it is read back, and any cloth
+  // already bound to one of them is drawn in too rather than left orphaned.
+  const bindTicked = () => {
+    if (binding.length < 2) return;
+    const existing = new Set(binding);
+    for (const r of rows) if (r.bind != null && existing.has(r.bind)) existing.add(r.cloth);
+    const all = [...existing].sort((a, b) => a - b);
+    const key = all[0];
+    persist(rows.map((r) => (all.includes(r.cloth) ? { ...r, bind: key } : r)));
+    setBinding([]);
+    setBindMode(false);
+  };
+  // Loosen a binding: every cloth in that group stands alone again.
+  const unbind = (key: number) =>
+    persist(rows.map((r) => ((r.bind ?? r.cloth) === key ? { ...r, bind: null } : r)));
 
   // A claim is a number on your own offering row, written to the vault the
   // moment you tap, and read back by every soul at the table. It was once a
@@ -543,6 +753,7 @@ export default function Reveal() {
   if (committed && g) {
     return (
       <ReckoningView g={g} rows={rows} stats={stats} email={mode === "live" ? email : null}
+        verdictsFor={verdictsFor} avatarFor={avatarFor} canReadVerdicts={canReadVerdicts}
         onPhotos={(next) => { updateGathering(g.id, { reveal_photos: next }).then(() => setG({ ...g, reveal_photos: next })).catch((e) => alert(`Could not save the photos: ${e.message}`)); }} />
     );
   }
@@ -595,34 +806,60 @@ export default function Reveal() {
 
   const renderRow = (w: RevealRow, rankIdx: number | null) => {
     const isDq = w.dq;
-    const color = isDq ? "var(--wine)" : "var(--gold2)";
+    const isSpoiled = !!w.spoiled;
+    const color = isDq ? "var(--wine)" : isSpoiled ? "var(--spoiled)" : "var(--gold2)";
+    const tone = isDq ? "wine" : isSpoiled ? "spoiled" : "gold";
+    const group = groupOf(w);
+    const twinned = (group?.cloths.length || 1) > 1;
     return (
-      <div key={w.cloth} className="rk rise" style={{ opacity: isDq ? 0.85 : 1 }}>
-        <span className="disp" style={{ width: 26, fontSize: isDq ? 11 : 14, color }}>
-          {isDq ? "✕" : toRoman(rankIdx || 0)}
+      <div key={w.cloth} className="rk rise" style={{ opacity: isDq || isSpoiled ? 0.88 : 1 }}>
+        <span className="disp" style={{ width: 26, fontSize: isDq || isSpoiled ? 11 : 14, color }}>
+          {isDq ? "✕" : isSpoiled ? "—" : toRoman(rankIdx || 0)}
         </span>
         <div style={{ flex: 1 }}>
           <div>
-            <span style={{ textDecoration: isDq ? "line-through" : "none" }}>Bottle {toRoman(w.cloth)}</span> ·{" "}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "-4px" }}>
+              <span style={{ textDecoration: isDq ? "line-through" : "none" }}>Bottle</span>
+              <Cloth n={w.cloth} tone={tone} />
+            </span> ·{" "}
             <OwnerSlot owner={w.owner} mine={w.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
               onClaim={() => claim(w.cloth)} onRelease={() => release(w.cloth)}
               style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold2)" }} />
             {isDq && <span className="tag" style={{ marginLeft: 8, color: "var(--wine)", borderColor: "var(--wine)" }}>off theme · disqualified</span>}
+            {isSpoiled && <span className="tag" style={{ marginLeft: 8, color: "var(--spoiled)", borderColor: "#8a6c3a" }}>spoiled</span>}
+            {twinned && (
+              <span className="tag" style={{ marginLeft: 8, color: "var(--gold2)" }}>
+                bound to {group!.cloths.filter((c) => c !== w.cloth).join(" and ")}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 14, color: "var(--parch)", marginTop: 2 }}>
             <Inline value={w.title} placeholder="name the wine…" canEdit={canAct} onChange={(v) => patch(w.cloth, { title: v })} />
           </div>
-          <div className="bar">
-            <i style={{ width: `${(w.score / 10) * 100}%`, background: isDq ? "var(--wine)" : "var(--gold)" }} />
-          </div>
+          {bindMode && isKeiser && canAct && (
+            <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 13, color: "var(--gold2)", cursor: "pointer" }}>
+              <input type="checkbox" checked={binding.includes(w.cloth)} style={{ width: "auto" }}
+                onChange={(e) => setBinding((b) => (e.target.checked ? [...b, w.cloth] : b.filter((c) => c !== w.cloth)))} />
+              the same wine
+            </label>
+          )}
         </div>
         <div style={{ textAlign: "right" }}>
-          <span className="disp" style={{ color }}>{fmtScore(w)}</span>
-          {isKeiser && canAct && (
-            <button onClick={() => patch(w.cloth, { dq: !w.dq })} title={isDq ? "Restore to the ranking" : "Disqualify · off theme"} aria-label={isDq ? "Restore this wine" : "Disqualify this wine"}
-              style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isDq ? "var(--gold2)" : "var(--wine)", padding: 0, marginTop: 2, marginLeft: "auto", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
-              <i className={`ti ti-${isDq ? "arrow-back-up" : "ban"}`} style={{ fontSize: 11, marginRight: 3 }} />{isDq ? "restore" : "disqualify"}
-            </button>
+          <span className="disp" style={{ color }}>{isSpoiled ? "—" : fmtScore(w)}</span>
+          {isKeiser && canAct && !bindMode && (
+            <>
+              <button onClick={() => patch(w.cloth, { dq: !w.dq, ...(w.dq ? {} : { spoiled: false }) })} title={isDq ? "Restore to the ranking" : "Disqualify · off theme"} aria-label={isDq ? "Restore this wine" : "Disqualify this wine"}
+                style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isDq ? "var(--gold2)" : "var(--wine)", padding: 0, marginTop: 2, marginLeft: "auto", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                <i className={`ti ti-${isDq ? "arrow-back-up" : "ban"}`} style={{ fontSize: 11, marginRight: 3 }} />{isDq ? "restore" : "disqualify"}
+              </button>
+              {/* Spoiled is its own mark, never a disqualification: casting out
+                  counts against a soul and five of them summon them to the
+                  tribunal, and a bottle coming up bad is nobody's fault. */}
+              <button onClick={() => patch(w.cloth, { spoiled: !w.spoiled, ...(w.spoiled ? {} : { dq: false }) })} title={isSpoiled ? "The bottle was sound after all" : "The bottle came up bad: recorded, never judged"} aria-label={isSpoiled ? "Mark this bottle sound" : "Mark this bottle spoiled"}
+                style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isSpoiled ? "var(--gold2)" : "var(--spoiled)", padding: 0, marginTop: 1, marginLeft: "auto", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                <i className={`ti ti-${isSpoiled ? "arrow-back-up" : "alert-triangle"}`} style={{ fontSize: 11, marginRight: 3 }} />{isSpoiled ? "sound" : "spoiled"}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -647,12 +884,14 @@ export default function Reveal() {
           />
 
           <div className="flip-face flip-front" style={{ background: "var(--ink2)", border: "1px solid var(--line2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16, overflowY: "auto" }}>
-            <span className="tag">{champions.length > 1 ? `Champions of the moon · tied` : "Champion of the moon"}</span>
+            <span className="tag">{champions.length > 1 ? `Champions · tied` : "Champion"}</span>
             {champions.length === 0 ? (
               <div className="whisper" style={{ marginTop: 10, fontSize: 15 }}>No champion this moon.</div>
             ) : champions.map((champ, idx) => (
               <div key={champ.cloth} style={{ marginTop: idx === 0 ? 8 : 10, ...(idx > 0 ? { borderTop: "1px solid var(--line)", paddingTop: 10, width: "100%" } : {}) }}>
-                <div className="disp" style={{ fontSize: champions.length > 1 ? 17 : 19, margin: "0 0 2px" }}>Bottle {toRoman(champ.cloth)}</div>
+                <div className="disp" style={{ fontSize: champions.length > 1 ? 17 : 19, margin: "0 0 2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                  Bottle <Cloth n={champ.cloth} size={champions.length > 1 ? 22 : 25} />
+                </div>
                 <div style={{ color: "var(--parch)", fontSize: 14 }}>
                   <OwnerSlot owner={champ.owner} mine={champ.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
                     onClaim={() => claim(champ.cloth)} onRelease={() => release(champ.cloth)}
@@ -663,10 +902,16 @@ export default function Reveal() {
                 </div>
                 <div className="disp" style={{ fontSize: champions.length > 1 ? 22 : 26, marginTop: 4 }}>{fmtScore(champ)}</div>
                 {isKeiser && canAct && (
-                  <button onClick={() => patch(champ.cloth, { dq: true })} title="Disqualify · off theme" aria-label="Disqualify this wine"
-                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
-                    <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
-                  </button>
+                  <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 4 }}>
+                    <button onClick={() => patch(champ.cloth, { dq: true, spoiled: false })} title="Disqualify · off theme" aria-label="Disqualify this wine"
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                      <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
+                    </button>
+                    <button onClick={() => patch(champ.cloth, { spoiled: true, dq: false })} title="The bottle came up bad: recorded, never judged" aria-label="Mark this bottle spoiled"
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--spoiled)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                      <i className="ti ti-alert-triangle" style={{ fontSize: 11, marginRight: 3 }} />spoiled
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -674,7 +919,51 @@ export default function Reveal() {
         </div>
       </div>
 
-      {flipped && rest.slice(0, shown).map((w) => renderRow(w, w.dq ? null : rankOf(w)))}
+      {flipped && rest.slice(0, shown).map((w) => renderRow(w, w.dq || w.spoiled ? null : rankOf(w)))}
+
+      {/* THE KEISER'S HAND: binding the cloths that are one and the same wine.
+          Each poured into a cloth of its own, so the table scored one wine
+          twice and it took two places; bound, they become a single entry with
+          the mean of every verdict and one standing. */}
+      {flipped && isKeiser && canAct && shown >= rest.length && (
+        <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px" }}>
+          {!bindMode ? (
+            <>
+              <button className="btn" style={{ width: "auto", padding: "8px 16px", fontSize: 13 }} onClick={() => { setBindMode(true); setBinding([]); }}>
+                <i className="ti ti-link" style={{ marginRight: 6 }} />Bind the cloths
+              </button>
+              <p className="whisper" style={{ fontSize: 13, margin: "8px 0 0" }}>
+                Two souls brought the same wine? Bind their cloths and the table judges it once.
+              </p>
+              {boundView.filter((b) => b.cloths.length > 1).map((b) => (
+                <div key={b.cloth} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 14 }}>
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    {b.title || "One wine"} <span className="whisper" style={{ fontSize: 13 }}>· cloths {b.cloths.join(", ")}</span>
+                  </span>
+                  <button onClick={() => unbind(b.cloth)} aria-label="Loosen this binding"
+                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+                    <i className="ti ti-unlink" style={{ fontSize: 11, marginRight: 3 }} />loosen
+                  </button>
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              <p className="whisper" style={{ fontSize: 14, margin: "0 0 4px" }}>
+                Tick every cloth that is the same wine, then seal it.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button className="btn gold" style={{ flex: 1, fontSize: 13 }} disabled={binding.length < 2} onClick={bindTicked}>
+                  {binding.length < 2 ? "Tick two or more" : `Bind these ${binding.length}`}
+                </button>
+                <button className="btn" style={{ width: "auto", padding: "8px 16px", fontSize: 13 }} onClick={() => { setBindMode(false); setBinding([]); }}>
+                  Undo
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {flipped && shown >= rest.length && (
         <>

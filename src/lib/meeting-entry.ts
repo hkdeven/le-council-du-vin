@@ -15,6 +15,9 @@ export interface DraftRowInput {
   owner: string;
   score: string;
   dq: boolean;
+  // The bottle came up bad: kept in the record, never judged, and counted
+  // against nobody. It is not a disqualification; see src/lib/tally.ts.
+  spoiled?: boolean;
   votes: number;
   varietals: string[];
   price: string;
@@ -32,7 +35,7 @@ const str = (v: unknown): string => (v == null ? "" : String(v)).trim();
 // A row with nothing on it (no name, no owner, no score, no mark) is a
 // leftover blank, not a wine; it is dropped, never an error.
 export const isBlankRow = (r: DraftRowInput): boolean =>
-  !str(r.title) && !str(r.owner) && !str(r.score) && !r.dq && !(r.varietals?.length) && !str(r.price);
+  !str(r.title) && !str(r.owner) && !str(r.score) && !r.dq && !r.spoiled && !(r.varietals?.length) && !str(r.price);
 
 export const keptRows = (rows: DraftRowInput[]): DraftRowInput[] => rows.filter((r) => !isBlankRow(r));
 
@@ -88,14 +91,14 @@ export function validateMeetingDraft(d: MeetingDraftInput): string[] {
 }
 
 // The seal itself: blanks dropped, ranks recomputed from the scores
-// (competition style — ties share, DQs unranked) exactly as the reveal would
+// (competition style, ties share, DQs unranked) exactly as the reveal would
 // have judged it. An empty or whitespace-only score means "never judged":
 // votes drop to 0 so the codex shows "—" and averages skip the row — it is
 // NEVER a real 0.0. A DQ'd wine keeps any score it was given (the record
 // remembers) but takes no rank and can never be crowned.
 export function reckonRows(rows: DraftRowInput[]): AnnalRow[] {
   const kept = keptRows(rows);
-  const scored = kept.filter((r) => !r.dq && str(r.score) !== "").map((r) => Number(str(r.score)));
+  const scored = kept.filter((r) => !r.dq && !r.spoiled && str(r.score) !== "").map((r) => Number(str(r.score)));
   return kept.map((r) => {
     const score = str(r.score);
     const cloth = str(r.cloth);
@@ -108,7 +111,8 @@ export function reckonRows(rows: DraftRowInput[]): AnnalRow[] {
       score: score === "" ? 0 : Number(score),
       votes: score === "" ? 0 : r.votes || 1,
       dq: r.dq,
-      rank: r.dq || score === "" ? null : 1 + scored.filter((s) => s > Number(score)).length,
+      spoiled: r.spoiled ? true : undefined,
+      rank: r.dq || r.spoiled || score === "" ? null : 1 + scored.filter((s) => s > Number(score)).length,
       varietals: r.varietals?.length ? r.varietals : undefined,
       price: price !== "" && Number.isFinite(Number(price)) ? Number(price) : undefined,
     };

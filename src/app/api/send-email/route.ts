@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { summonsIcs } from "@/lib/ics";
+import { offeringLinkFor, serviceClient } from "@/lib/offeringLink";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, atlasEmail, type AtlasEmailParams, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, atlasEmail, type AtlasEmailParams, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, nameYourBottleEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -10,25 +11,25 @@ import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail
 
 export const dynamic = "force-dynamic";
 
-async function callerIdentity(req: Request): Promise<{ email: string | null; name: string | null; isMember: boolean; keiser: boolean; keiserEmail: string | null; awake: boolean }> {
+async function callerIdentity(req: Request): Promise<{ id: string | null; email: string | null; name: string | null; isMember: boolean; keiser: boolean; keiserEmail: string | null; awake: boolean }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
-  const none = { email: null, name: null, isMember: false, keiser: false, keiserEmail: null, awake: true };
+  const none = { id: null, email: null, name: null, isMember: false, keiser: false, keiserEmail: null, awake: true };
   if (!url || !anon || !token) return none;
   try {
     const sb = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const { data: u } = await sb.auth.getUser();
     const email = u?.user?.email || null;
     if (!email) return none;
-    const { data: m } = await sb.from("members").select("role,cult_name,active").eq("email", email).maybeSingle();
+    const { data: m } = await sb.from("members").select("id,role,cult_name,active").eq("email", email).maybeSingle();
     // Feature requests go to the Keiser; his address is looked up with the
     // caller's own token (the roster-read policy covers every member).
     const { data: k } = await sb.from("members").select("email").eq("role", "keiser").maybeSingle();
     // Standing, not just rank: a sleeping member may still post their own sky
     // to themselves (a reading right), but may send nothing on the Council's
     // behalf and may petition nothing. A stranger with no row is not sleeping.
-    return { email, name: m?.cult_name || null, isMember: !!m, keiser: m?.role === "keiser", keiserEmail: (k?.email as string) || null, awake: m?.active !== false };
+    return { id: (m?.id as string) || null, email, name: m?.cult_name || null, isMember: !!m, keiser: m?.role === "keiser", keiserEmail: (k?.email as string) || null, awake: m?.active !== false };
   } catch {
     return none;
   }
@@ -82,6 +83,55 @@ export async function POST(req: Request) {
     // for it. Self-sends above are untouched.
     return NextResponse.json({ ok: false, error: "Your seat sleeps; the Heralds do not ride for a sleeping hand." }, { status: 403 });
   }
+  // THE NUDGE. One letter per soul who has answered the call but not yet
+  // named their bottle, each carrying that soul's own link, which is why it
+  // cannot ride the shared-body path below. The Council has no scheduler, so
+  // this is the Keiser's hand rather than a clock: he sends it when he likes,
+  // which in practice is the evening before.
+  if (type === "name-bottle") {
+    if (!caller.keiser) return NextResponse.json({ ok: false, error: "Only the Keiser may send this." }, { status: 403 });
+    if (!caller.awake) return NextResponse.json({ ok: false, error: "Your seat sleeps; the Heralds do not ride for a sleeping hand." }, { status: 403 });
+    const gatheringId = params?.gatheringId;
+    if (!gatheringId) return NextResponse.json({ ok: false, error: "No gathering named." }, { status: 400 });
+    const db = serviceClient();
+    if (!db) return NextResponse.json({ ok: false, skipped: "not configured" });
+
+    const [{ data: g }, { data: offs }] = await Promise.all([
+      db.from("gatherings").select("number,theme_title,gather_date,attendees").eq("id", gatheringId).maybeSingle(),
+      db.from("offerings").select("member_id,title").eq("gathering_id", gatheringId),
+    ]);
+    if (!g) return NextResponse.json({ ok: false, error: "No such gathering." }, { status: 404 });
+    const named = new Set((offs || []).filter((o) => (o.title || "").trim()).map((o) => o.member_id as string));
+    const answered = ((g.attendees as string[]) || []).filter((id) => !named.has(id));
+    if (!answered.length) return NextResponse.json({ ok: true, sent: 0, note: "Every bottle already has a name." });
+
+    // A sleeping seat writes nothing, so it is not asked to.
+    const { data: people } = await db.from("members").select("id,email,cult_name,active").in("id", answered);
+    const awake = (people || []).filter((m) => m.active !== false && m.email);
+
+    const sent = await Promise.all(awake.map(async (m) => {
+      const link = await offeringLinkFor(gatheringId, m.id as string).catch(() => null);
+      if (!link) return false;
+      const letter = nameYourBottleEmail({
+        name: (m.cult_name as string) || null,
+        numberRoman: toRomanNumber((g.number as number) || 0),
+        theme: (g.theme_title as string) || "",
+        offeringUrl: link,
+        tomorrow: isTomorrow(g.gather_date as string),
+      });
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from, to: [m.email], subject: letter.subject, html: letter.html }),
+        });
+        return res.ok;
+      } catch { return false; }
+    }));
+    const ok = sent.filter(Boolean).length;
+    return NextResponse.json({ ok: ok > 0 || awake.length === 0, sent: ok, of: awake.length });
+  }
+
   if (!recipients.length) return NextResponse.json({ ok: false, error: "No recipients." }, { status: 400 });
 
   let email: Email;
@@ -98,7 +148,20 @@ export async function POST(req: Request) {
     case "feature": email = featureRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     case "wake": email = wakeRequestEmail(caller.name || "", caller.email || "", (params?.text || "").trim()); break;
     case "reckoning": email = reckoningEmail(params || {}); break;
-    case "summons": email = summonsEmail((params || {}) as SummonsEmailParams); break;
+    case "summons": {
+      // The summons carries the soul's own one-tap link for naming their
+      // bottle. It is minted HERE, on the server: the token is a bearer
+      // credential and the client must never choose it, nor be able to ask
+      // for somebody else's. A failure to mint costs the block, not the
+      // letter: the night itself still has to reach them.
+      const sp = { ...(params || {}) } as SummonsEmailParams;
+      if (params?.gatheringId && caller.id) {
+        const link = await offeringLinkFor(params.gatheringId, caller.id).catch(() => null);
+        if (link) sp.offeringUrl = link;
+      }
+      email = summonsEmail(sp);
+      break;
+    }
     default: return NextResponse.json({ ok: false, error: "Unknown email type." }, { status: 400 });
   }
 
@@ -148,4 +211,21 @@ export async function POST(req: Request) {
   }));
   const sent = results.filter(Boolean).length;
   return NextResponse.json({ ok: sent === recipients.length, sent, failed: recipients.length - sent });
+}
+
+function toRomanNumber(n: number): string {
+  const map: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let out = "";
+  for (const [v, sym] of map) while (n >= v) { out += sym; n -= v; }
+  return out || "I";
+}
+
+// "Tomorrow evening" only when it truly is, so the letter never lies about
+// the night. Anything else reads "soon".
+function isTomorrow(date: string | null): boolean {
+  if (!date) return false;
+  const d = new Date(`${date}T00:00:00Z`).getTime();
+  const today = new Date();
+  const t = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return d - t === 86400000;
 }

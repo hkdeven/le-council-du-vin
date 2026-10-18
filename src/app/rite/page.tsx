@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toRoman } from "@/lib/util";
+import { Cloth } from "@/components/Cloth";
 import { useAuth } from "@/components/AuthProvider";
 import Loading from "@/components/Loading";
 import { useWineCount } from "@/lib/useWineCount";
@@ -20,12 +21,37 @@ export default function Rite() {
 
   const [g, setG] = useState<Gathering | null>(null);
   const [ready, setReady] = useState(false);
+  // THE COUNT MUST REACH A PAGE ALREADY OPEN. The gathering was read once, on
+  // mount, and never again: when the Keiser cut the count mid-night for two
+  // souls who never arrived, every member whose page was already open kept
+  // the old number, and their seal stayed locked because it was waiting on
+  // verdicts for cloths that no longer existed. Only a reload freed them.
+  // So the gathering is re-read while the rite is live, and a change in the
+  // count is announced rather than silently rearranging the ballot.
+  const [countNote, setCountNote] = useState<string | null>(null);
   useEffect(() => {
-    fetchCurrentGathering().then((cg) => {
-      setG(cg);
-      setReady(true);
-    });
+    let alive = true;
+    const read = (first: boolean) => fetchCurrentGathering().then((cg) => {
+      if (!alive) return;
+      setG((prev) => {
+        if (!first && prev && cg && prev.id === cg.id && (prev.wine_count ?? 0) !== (cg.wine_count ?? 0)) {
+          const n = cg.wine_count ?? 0;
+          setCountNote(`The Keiser has set the night at ${n} wine${n === 1 ? "" : "s"}.`);
+        }
+        return cg;
+      });
+      if (first) setReady(true);
+    }).catch(() => { if (first && alive) setReady(true); });
+    read(true);
+    const t = setInterval(() => read(false), 6000);
+    return () => { alive = false; clearInterval(t); };
   }, []);
+  // The notice fades on its own: it is news, not a standing instruction.
+  useEffect(() => {
+    if (!countNote) return;
+    const t = setTimeout(() => setCountNote(null), 12000);
+    return () => clearTimeout(t);
+  }, [countNote]);
   // Never a placeholder id: a draft saved against "none" is silently discarded
   // (in live it is not even a uuid), so the orb fills and the verdict is lost.
   // The render guards below keep the card off the screen until `g` is real.
@@ -92,6 +118,22 @@ export default function Rite() {
     setTotal(n);
     if (current > n) setCurrent(n);
   };
+
+  // However the count changed, by this hand or the Keiser's: never leave the
+  // page focused on a cloth that is no longer poured, and never leave a
+  // verdict behind on one. An orphaned score counts toward nothing the table
+  // can see, but it would still ride into the ballot on the next save.
+  useEffect(() => {
+    setCurrent((c) => (c > total ? Math.max(1, total) : c));
+    setScores((prev) => {
+      const extra = Object.keys(prev).filter((k) => Number(k) > total);
+      if (!extra.length) return prev;
+      const next = { ...prev };
+      for (const k of extra) delete next[Number(k)];
+      scoresRef.current = next;
+      return next;
+    });
+  }, [total]);
 
   // Warm the browser cache for every cloth badge up front so moving between
   // wines is instant (they're otherwise fetched only when first shown).
@@ -200,8 +242,8 @@ export default function Rite() {
         <div style={{ maxWidth: 330, margin: "18px auto 0", textAlign: "left" }}>
           {wines.map((w) => (
             <div key={w} className="rk" style={{ padding: "9px 8px" }}>
-              <span style={{ width: 74, fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.08em", color: "var(--dim)" }}>
-                Wine {toRoman(w)}
+              <span style={{ width: 74, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.08em", color: "var(--dim)" }}>
+                Wine <Cloth n={w} size={19} />
               </span>
               <span style={{ flex: 1 }} />
               <span className="disp" style={{ fontSize: 15, color: "var(--gold2)" }}>{scores[w] ?? "—"}</span>
@@ -238,6 +280,12 @@ export default function Rite() {
         )}
       </div>
 
+      {countNote && (
+        <p style={{ margin: "10px 0 0", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 12px", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, color: "var(--gold2)", textAlign: "center" }}>
+          <i className="ti ti-bell" style={{ fontSize: 12, marginRight: 6 }} />{countNote}
+        </p>
+      )}
+
       {/* negative margin lets the card use most of the mobile width (breaks out of the page padding) */}
       <div style={{ margin: "14px -14px 0" }}>
       <div
@@ -264,7 +312,7 @@ export default function Rite() {
             style={{ display: "block", margin: "0 auto 12px" }}
           />
         ) : (
-          <div className="cloth" style={{ margin: "2px auto 16px" }}>{toRoman(current)}</div>
+          <div className="cloth" style={{ margin: "2px auto 16px" }}>{current}</div>
         )}
 
         <div style={{ textAlign: "center" }}>
@@ -291,10 +339,10 @@ export default function Rite() {
 
       <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
         <button className="btn" style={{ flex: 1 }} disabled={current <= 1} onClick={() => setCurrent((c) => Math.max(1, c - 1))}>
-          <i className="ti ti-arrow-left" /> Wine {current > 1 ? toRoman(current - 1) : "—"}
+          <i className="ti ti-arrow-left" /> Wine {current > 1 ? current - 1 : "—"}
         </button>
         <button className="btn" style={{ flex: 1 }} disabled={current >= total} onClick={() => setCurrent((c) => Math.min(total, c + 1))}>
-          Wine {current < total ? toRoman(current + 1) : "—"} <i className="ti ti-arrow-right" />
+          Wine {current < total ? current + 1 : "—"} <i className="ti ti-arrow-right" />
         </button>
       </div>
 
@@ -315,9 +363,9 @@ export default function Rite() {
               <button
                 onClick={() => setCurrent(w)}
                 aria-label={`Focus wine ${w}`}
-                style={{ width: 54, background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.08em", color: isCurrent ? "var(--gold2)" : "var(--dim)" }}
+                style={{ width: 54, display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.08em", color: isCurrent ? "var(--gold2)" : "var(--dim)" }}
               >
-                Wine {toRoman(w)}
+                Wine <Cloth n={w} size={19} />
               </button>
               <div className="orbs sm" style={{ flex: 1 }} role="slider" aria-label={`Score for wine ${w}`} aria-valuenow={s} aria-valuemin={1} aria-valuemax={10}>
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((i) => (

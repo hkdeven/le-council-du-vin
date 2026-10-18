@@ -97,6 +97,24 @@ export async function fetchCurrentGathering(): Promise<Gathering | null> {
   return pickCurrent(await fetchGatherings());
 }
 
+// THE REVEAL'S OWN PICK. pickCurrent answers "which night are we working
+// towards", which is right for the rite and wrong here: the moment a new
+// gathering was convened, the reveal followed the new one and last week's
+// Reckoning became unreachable, days inside the week it is promised for.
+// So the reveal prefers the most recent night that has actually happened and
+// whose window is still open, and only falls back to the current gathering
+// when no such night remains. Tonight's gathering satisfies both, so nothing
+// changes on the night itself.
+export function pickReveal(all: Gathering[], nowMs = Date.now()): Gathering | null {
+  const today = new Date(nowMs).toISOString().slice(0, 10);
+  const held = all.filter((g) => (g.gather_date || "") <= today && !revealWindowClosed(g, nowMs));
+  return held.length ? held[held.length - 1] : pickCurrent(all);
+}
+
+export async function fetchRevealGathering(): Promise<Gathering | null> {
+  return pickReveal(await fetchGatherings());
+}
+
 // The convening page's stricter pick: only a night still ahead (or tonight)
 // that has not been revealed. Unlike pickCurrent there is NO fallback to the
 // most recent past night — concluded gatherings live in the codex, never on

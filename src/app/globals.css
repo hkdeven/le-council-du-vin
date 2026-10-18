@@ -14,6 +14,9 @@
   --line: rgba(160, 150, 120, 0.2);
   --line2: rgba(180, 168, 120, 0.42);
   --wine: #7a3038;
+  /* A spoiled bottle: amber, so it can never be mistaken for the wine-red of
+     a wine cast out. One is misfortune, the other is a ruling. */
+  --spoiled: #b08a4a;
 }
 
 html,

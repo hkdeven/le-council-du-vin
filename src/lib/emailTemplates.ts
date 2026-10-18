@@ -204,6 +204,9 @@ export interface SummonsEmailParams {
   host?: string;
   venue?: string | null;
   name?: string; // the soul who answered
+  // Their own one-tap link to the three-field page. Minted on the server, in
+  // the send route, never by the client: see src/lib/offeringLink.ts.
+  offeringUrl?: string;
 }
 
 export function summonsEmail(sp: SummonsEmailParams): Email {
@@ -233,10 +236,38 @@ export function summonsEmail(sp: SummonsEmailParams): Email {
           <p style="margin:8px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#7c766a;">Once kept, your own calendar will alert you the evening before.</p>
         </td></tr>
       </table>` +
+      // Naming the bottle in advance. Live fields cannot live in an email:
+      // Gmail, Outlook and Apple Mail all strip <form> out of a body, so the
+      // three questions sit one tap away on a page of their own.
+      (sp.offeringUrl ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 4px;">
+        <tr><td style="border:1px solid #4a4132;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0 0 8px;font-family:${HEAD_FONT};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#9c8a5f;">Name your bottle</p>
+          <p style="margin:0;font-family:${BODY_FONT};font-size:15px;color:#cabfa2;line-height:1.6;">Tell us what you are bringing now and there is nothing to type on the night. Three questions, half a minute, and no password to remember.</p>
+          ${button(sp.offeringUrl, "Name your bottle")}
+          <p style="margin:8px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#7c766a;text-align:center;">Sealed from every eye, the Keiser's included, until the cloths lift.</p>
+        </td></tr>
+      </table>` : "") +
       `<p style="margin:0 0 14px;color:#cabfa2;font-family:${BODY_FONT};font-size:16px;line-height:1.62;text-align:center;">Bring a bottle true to the theme, cloaked and unmarked.</p>` +
       button(`${SITE}/convene`, "Meeting details"),
       `Your seat is kept for ${gathering}. The night is attached for your calendar.`,
       `<p style="margin:14px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#5a554c;">should the hour change, a fresh summons will amend the night in your calendar; it will not double it</p>`
+    ),
+  };
+}
+
+// The nudge, the evening before, and only to the souls whose bottle still
+// has no name. One button, the same three questions.
+export function nameYourBottleEmail(np: { name?: string | null; numberRoman?: string; theme?: string; offeringUrl: string; tomorrow?: boolean }): Email {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return {
+    subject: "One bottle still has no name",
+    html: layout(
+      moons() +
+      heading("One question remains") +
+      p(`${np.name ? `${esc(np.name)}, t` : "T"}he Council gathers ${np.tomorrow ? "tomorrow evening" : "soon"}${np.theme ? `, on ${esc(np.theme)}` : ""}, and yours is the last bottle the vine cannot see. Name it now and the night can begin the moment you arrive.`) +
+      button(np.offeringUrl, "Name your bottle") +
+      `<p style="margin:12px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#7c766a;">Half a minute. No password. You may change it until the cloths lift.</p>`,
+      `Your bottle for Gathering ${esc(np.numberRoman || "")} has not been named.`
     ),
   };
 }
@@ -339,9 +370,8 @@ export interface ReckoningEmailParams {
   theme?: string;
   dateLabel?: string;
   crowned?: { title: string; owner: string; score: number }[];
-  ranked?: { rank: string; title: string; owner: string; score: number | null; dq: boolean }[];
+  ranked?: { rank: string; title: string; owner: string; score: number | null; dq: boolean; spoiled?: boolean }[];
   split?: string;
-  quotes?: { text: string; cloth: string }[];
   value?: string;
 }
 export function reckoningEmail(rp: ReckoningEmailParams): Email {
@@ -355,13 +385,10 @@ export function reckoningEmail(rp: ReckoningEmailParams): Email {
   const ranked = (rp.ranked || [])
     .map((r) => `<tr>
       <td style="padding:6px 0;border-bottom:1px solid #241f18;color:#cabfa2;font-family:${BODY_FONT};font-size:15px;">
-        <span style="font-family:${HEAD_FONT};font-size:11px;color:#cbbd93;">${esc(r.rank)}</span>&nbsp;&nbsp;${esc(r.title)}${r.owner ? ` · ${esc(r.owner)}` : ""}${r.dq ? ` <span style="color:#7a3038;">· cast out</span>` : ""}
+        <span style="font-family:${HEAD_FONT};font-size:11px;color:#cbbd93;">${esc(r.rank)}</span>&nbsp;&nbsp;${esc(r.title)}${r.owner ? ` · ${esc(r.owner)}` : ""}${r.dq ? ` <span style="color:#7a3038;">· cast out</span>` : ""}${r.spoiled ? ` <span style="color:#b08a4a;">· spoiled</span>` : ""}
       </td>
-      <td align="right" style="padding:6px 0;border-bottom:1px solid #241f18;color:#cbbd93;font-family:${HEAD_FONT};font-size:13px;">${r.dq || r.score == null ? "—" : r.score.toFixed(1)}</td>
+      <td align="right" style="padding:6px 0;border-bottom:1px solid #241f18;color:#cbbd93;font-family:${HEAD_FONT};font-size:13px;">${r.dq || r.spoiled || r.score == null ? "—" : r.score.toFixed(1)}</td>
     </tr>`).join("");
-  const quotes = (rp.quotes || [])
-    .map((q) => `<p style="margin:0 0 10px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:#cbc5b7;line-height:1.5;">&ldquo;${esc(q.text)}&rdquo; <span style="color:#5a554c;font-size:13px;">· on cloth ${esc(q.cloth)}</span></p>`)
-    .join("");
   return {
     subject: `The Reckoning of Gathering ${rp.numberRoman || ""}`.trim(), // the subject still names the rite; only the page's title is bare
     html: layout(
@@ -369,9 +396,8 @@ export function reckoningEmail(rp: ReckoningEmailParams): Email {
       heading(`Gathering <span style="font-family:${HEAD_FONT};font-size:30px;letter-spacing:0.04em;">${esc(rp.numberRoman || "")}</span>`) +
       p(`<span style="text-align:center;display:block;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:#9c8a5f;">${esc(rp.theme || "")}${rp.dateLabel ? ` · ${esc(rp.dateLabel)}` : ""}</span>`) +
       (crowned ? sectionBand("The Crowning") + crowned : "") +
-      (ranked ? sectionBand("As the table ranked them") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ranked}</table>` : "") +
+      (ranked ? sectionBand("Rankings") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ranked}</table>` : "") +
       (rp.split ? sectionBand("The split cloth") + p(`⚡ ${esc(rp.split)}`) : "") +
-      (quotes ? sectionBand("The table's whispers") + quotes : "") +
       (rp.value ? sectionBand("The ledger") + p(esc(rp.value)) : "") +
       `<p style="margin:18px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#5a554c;">the vine calculates, it does not flatter</p>`,
       "The reckoning of the Council's latest gathering."

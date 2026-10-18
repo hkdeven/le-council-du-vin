@@ -40,7 +40,7 @@ export default function BottleReveal({ photos: initial, gatheringId, onPhotos }:
     <div style={{ marginTop: 22 }}>
       {!shown ? (
         <button className="btn" style={{ fontSize: 14 }} onClick={() => setShown(true)}>
-          <i className="ti ti-eye" style={{ marginRight: 6 }} /> Look upon the bottles
+          <i className="ti ti-camera" style={{ marginRight: 6 }} /> Add photo of bottles
         </button>
       ) : (
         <div>

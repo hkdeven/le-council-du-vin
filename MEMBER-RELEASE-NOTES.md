@@ -2,6 +2,24 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 18 October 2026
+
+The first gathering that went without a fault, and the table's own requests, built.
+
+- **The pour number can no longer be mistaken for the place.** Until now the number on a bottle and the place it took were both roman numerals in the same lettering, so a line read "II, Bottle III" and nobody could tell the order it was poured from the standing it earned. The pour number is now a plain number inside a circle, and it always trails the name. The place stays roman. The two can never be read as the same thing again.
+- **A claimed wine keeps its number.** Naming a bottle used to erase its number along with the word "Bottle", so the moment a wine was claimed the night lost all record of when it was poured. Now only the word gives way: "Bottle 5" becomes "Porseleinberg 2021 5", with the circled number still beside it.
+- **The victor wears a face.** The soul who brought the winning bottle now appears beside it on the Reckoning, and nobody else does.
+- **Every bottle opens to the whole table's verdicts.** Tap any wine on the Reckoning and it unfolds to show what each of us gave it and what each of us wrote, your own verdict pinned to the top. The score bars under each wine are gone, and the heading says so plainly: tap a wine for every verdict.
+- **The table's whispers are gone.** Three anonymous notes used to float at the foot of the night, detached from the wines they were about. Every note now lives on the bottle it was written for, where it means something.
+- **Two souls, one wine.** When the same bottle is brought twice, the Keiser can now bind the cloths together: they become a single entry carrying every pour number, the average of every verdict cast on any of them, and one shared standing, exactly as two wines tying for a place already share one. Each bearer still brought a bottle, so each is still credited with it, and if the wine takes the night all of them are crowned. The binding can be loosened again at any time.
+- **A spoiled bottle counts against nobody.** A bottle that comes up bad measures the bottle, not the soul who carried it. The Keiser can now mark one spoiled, on the night or later in the codex. It stays in the record for ever, keeps its pour number, and takes no standing, no score, and no weight in anyone's average, their coin, their purse or their palate. It is counted as a bottle brought, because it was. It is deliberately not the same as a wine cast out: being cast out counts against a soul, and enough of it summons them before the tribunal, which no spoiled cork should ever do.
+- **Name your bottle from the letter itself.** Your summons now carries a button. One tap opens a page with three questions, the grape, the name of the wine and what it cost, and no password to remember. Seal it and there is nothing to type on the night. You may change it until the cloths lift, and it stays hidden from every eye, the Keiser's included, exactly as it does in the app. Anyone who would rather use the app still can. The Keiser can also send a single nudge to whoever has not named a bottle yet.
+- **The number of wines now reaches the table.** When two souls did not arrive and the Keiser cut the count mid-night, every phone that already had the rite open kept waiting for verdicts on bottles that were never poured, and only a reload freed them. The rite now notices a change within seconds, says so in one line, and lets the seal through.
+- **The Reckoning stays where you left it.** A reveal is promised for a week, but it was being shown for the night the Council was working towards, so convening the next gathering made the last one's Reckoning unreachable long before its week was up. The reveal now holds on the night just held until its week truly runs out.
+- **Smaller words.** "Look upon the bottles" is now "Add photo of bottles". "As the table ranked them" is now "Rankings". The champion's mark reads "Champion".
+
+Behind the curtain: the arithmetic of a night, binding and spoiling included, was lifted out into one place of its own and put under 63 checks, among them three identical bottles one of which was corked, a bound pair where only one cloth was cast out, juries of different sizes (the average is of the verdicts, never of the averages), and a night where every bottle was spoiled. Another 23 checks guard the writing of the pour number and 16 guard which night the reveal shows and for how long, including the exact fault reported above. The Council's suites now stand at 341 checks, all green. The link in the summons is a key cut for one soul and one night: it can write that soul's offering and nothing else, it is refused once the cloths have lifted, it is refused for a sleeping seat, and it is kept in a table of the vault that no member's key can read at all.
+
 ## 9 October 2026
 
 A small door, and some tidying behind the curtain.

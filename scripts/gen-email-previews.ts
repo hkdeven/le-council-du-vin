@@ -154,13 +154,10 @@ write("10-reckoning.html", reckoningEmail({
     { rank: "III", title: "Sumaridge Pinot Noir 2021", owner: "Priestess Larissa", score: 7.4, dq: false },
     { rank: "IV", title: "Luddite Shiraz 2019", owner: "Adept Wernardt", score: 6.8, dq: false },
     { rank: "V", title: "Beaumont Hope Marguerite", owner: "Elder Martin", score: 6.1, dq: false },
+    { rank: "·", title: "A Stellenbosch Cabernet 5", owner: "Dominik", score: null, dq: false, spoiled: true },
     { rank: "✕", title: "A chilled Pinotage", owner: "Great Scott", score: null, dq: true },
   ],
   split: "Luddite Shiraz 2019 divided the table, 3 to 9",
-  quotes: [
-    { text: "Smoke, and something the fire left behind.", cloth: "I" },
-    { text: "It argues with the food and wins.", cloth: "III" },
-  ],
   value: "Best value of the night: Sumaridge Pinot Noir 2021, borne by Priestess Larissa, at R210 · 3.5 points per hundred rand.",
 }).html);
 

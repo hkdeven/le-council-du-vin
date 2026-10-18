@@ -13,8 +13,18 @@ export interface AnnalRow {
   title: string;
   score: number;
   votes: number;
-  rank: number | null; // null when disqualified
+  rank: number | null; // null when disqualified, spoiled, or unjudged
   dq: boolean;
+  // A bottle that came up bad. Kept in the record forever, counted against
+  // nobody: no standing, no score, no weight in any average, and never a step
+  // on the road to the tribunal, which is why it is not simply a dq.
+  spoiled?: boolean;
+  // Two souls, one wine. Every row sharing this key is the same bottle,
+  // bound by the Keiser; the key is the lowest cloth number in the set. The
+  // record stays one line per bottle actually carried, because chalices and
+  // victories are counted per soul, and each bound row carries the group's
+  // score and standing. See src/lib/tally.ts.
+  bind?: number | null;
   varietals?: string[]; // the grapes, Keiser-identified or carried from the offering
   price?: number | null; // rand, when known
 }
@@ -34,14 +44,16 @@ export interface AnnalEntry {
 // Keiser's convention: the LISTED ORDER carries the standing, so the first
 // qualified wine in the record takes the crown (the cloth is the pour
 // number, not the standing, and may be blank; phantom rows, with no owner
-// and no title, are recording debris and never contend). Every surface
+// and no title, are recording debris and never contend). A spoiled bottle
+// never contends either, however it scored: it measured the bottle, not the
+// wine. Every surface
 // that counts victories (codex crownings, chalices, the dossier, the
 // prophecy's grade) must go through this, so a disqualified first place
 // is never credited anywhere.
 export function championsOf(a: AnnalEntry): AnnalRow[] {
-  const crowned = a.rows.filter((r) => r.rank === 1 && !r.dq);
+  const crowned = a.rows.filter((r) => r.rank === 1 && !r.dq && !r.spoiled);
   if (crowned.length) return crowned;
-  const qualified = a.rows.filter((r) => !r.dq);
+  const qualified = a.rows.filter((r) => !r.dq && !r.spoiled);
   if (!qualified.length) return [];
   const scored = qualified.filter((r) => r.votes > 0);
   if (scored.length) {

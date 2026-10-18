@@ -82,7 +82,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
       if (!sameName(r.owner, member.cult_name)) continue;
       if (champs.includes(r)) bottlesCrowned++;
       // votes 0 = a night recorded without scores; not a pour to rank.
-      if (!r.dq && r.votes > 0) {
+      if (!r.dq && !r.spoiled && r.votes > 0) {
         pours.push({
           title: r.title || (r.cloth != null ? `Cloth ${r.cloth}` : "A bottle unrecorded"),
           score: r.score,
@@ -194,7 +194,7 @@ export function computeDossier(inp: DossierInputs): DossierStats {
   // Coin's return + the purse: from every priced, judged bottle in the annals.
   const pricedAll: { score: number; price: number; owner: string }[] = [];
   for (const a of annals) for (const r of a.rows) {
-    if (!r.dq && r.votes > 0 && (r.price ?? 0) > 0) pricedAll.push({ score: r.score, price: r.price!, owner: r.owner });
+    if (!r.dq && !r.spoiled && r.votes > 0 && (r.price ?? 0) > 0) pricedAll.push({ score: r.score, price: r.price!, owner: r.owner });
   }
   const minePriced = pricedAll.filter((x) => sameName(x.owner, member.cult_name));
   let coin: DossierStats["coin"] = null;

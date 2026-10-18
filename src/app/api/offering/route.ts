@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import { bearerOf, serviceClient } from "@/lib/offeringLink";
+import { detectVarietals } from "@/lib/varietals";
+
+// Naming the bottle from the summons: no login, no password, no magic link.
+// The token in the letter names one soul and one night; this route trades it
+// for that pair and writes nothing else. See src/lib/offeringLink.ts.
+
+export const dynamic = "force-dynamic";
+
+const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
+// A token that does not resolve is told nothing about why. "Expired",
+// "wrong night" and "no such token" must read identically from outside.
+const UNKNOWN = "This link is no longer good. Open the Council and log your wine there.";
+
+export async function GET(req: Request) {
+  const token = new URL(req.url).searchParams.get("t") || "";
+  const who = await bearerOf(token);
+  if (!who) return bad(UNKNOWN, 404);
+
+  const db = serviceClient();
+  const { data } = await db!
+    .from("offerings")
+    .select("title,price,varietals")
+    .eq("gathering_id", who.gatheringId)
+    .eq("member_id", who.memberId)
+    .maybeSingle();
+
+  return NextResponse.json({
+    ok: true,
+    name: who.memberName,
+    numberRoman: roman(who.gatheringNumber),
+    theme: who.theme,
+    date: who.date,
+    closed: who.closed,
+    offering: { title: data?.title || "", price: data?.price ?? null, varietals: (data?.varietals as string[]) || [] },
+  });
+}
+
+export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as { t?: string; grape?: string; title?: string; price?: string };
+  const who = await bearerOf(body.t || "");
+  if (!who) return bad(UNKNOWN, 404);
+  // Once the cloths have lifted the record is the record: a letter answered
+  // late must not rewrite a judged night.
+  if (who.closed) return bad("The cloths have already lifted on this night.", 409);
+
+  const title = (body.title || "").trim().slice(0, 200);
+  const grape = (body.grape || "").trim().slice(0, 200);
+  if (!title) return bad("Name the wine, and the rest may wait.");
+
+  // "R780", "780", "780.50", or nothing at all.
+  const raw = (body.price || "").replace(/[^\d.]/g, "");
+  const price = raw === "" ? null : Number(raw);
+  if (price != null && (!Number.isFinite(price) || price < 0 || price > 1_000_000)) return bad("That price cannot be right.");
+
+  // The grape is typed freely, so it is read the same way the codex reads a
+  // wine's name: known grapes are recognised, and anything unrecognised is
+  // kept as written rather than thrown away.
+  const known = [...new Set([...detectVarietals(grape), ...detectVarietals(title)])];
+  const varietals = known.length ? known : grape ? [grape] : [];
+
+  const db = serviceClient();
+  const { error } = await db!.from("offerings").upsert(
+    { gathering_id: who.gatheringId, member_id: who.memberId, title, price, varietals },
+    { onConflict: "gathering_id,member_id" }
+  );
+  if (error) return bad(`It would not seal: ${error.message}`, 500);
+
+  return NextResponse.json({ ok: true, offering: { title, price, varietals } });
+}
+
+function roman(n: number): string {
+  const map: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let out = "";
+  for (const [v, s] of map) while (n >= v) { out += s; n -= v; }
+  return out || "I";
+}

@@ -673,3 +673,26 @@ create policy "offerings delete" on offerings for delete
 -- left orphaned, and the erased night still standing in the codex.
 drop policy if exists "annals keiser delete" on annals;
 create policy "annals keiser delete" on annals for delete using (is_keiser());
+
+-- ── Naming the bottle by letter (2026-10-18) ──────────────────────────────
+-- A member may now log their offering from the summons itself: one button, a
+-- page of three fields, no login. The link carries a token, and the token is
+-- a bearer credential, so it may NEVER sit on `offerings`: every member can
+-- read every offering row (that is how the reveal counts claims), and one
+-- member holding another's token could write their wine.
+--
+-- It lives here instead, in a table with RLS on and NOT ONE POLICY, which in
+-- Postgres means no one reaches it through the anon or authenticated keys at
+-- all. Only the service role, used by /api/offering on the server, can mint
+-- a token or trade one back for a member and a night.
+create table if not exists offering_links (
+  token        text primary key,
+  gathering_id uuid not null references gatherings(id) on delete cascade,
+  member_id    uuid not null references members(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  unique (gathering_id, member_id)
+);
+alter table offering_links enable row level security;
+-- Deliberately no policies: the service role bypasses RLS, everyone else is
+-- refused. If a policy is ever added here, the link stops being a secret.
+create index if not exists offering_links_gathering on offering_links(gathering_id);

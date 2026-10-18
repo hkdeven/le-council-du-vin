@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the cloth number</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:440px;margin:0 auto;padding:26px 16px 70px;}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:6px 0 0;}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:6px 0 2px;line-height:1.55;}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:10.5px;color:var(--gold2);margin:28px 0 8px;text-align:center;}
+  .card{background:linear-gradient(180deg,#100e0c,#0a0908);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .card.bad{border-color:rgba(122,48,56,0.55)}
+  .card.pick{border-color:var(--gold)}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:11px;}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13px;}
+  .rk{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+  .rk:last-child{border-bottom:none}
+  .rank{width:26px;text-align:center;font-family:"Cinzel",serif;font-size:12px;color:var(--gold2)}
+  .score{font-family:"Cinzel",serif;font-size:13px;color:var(--gold2)}
+  .nm{flex:1;min-width:0;font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--parch);display:flex;align-items:center;gap:7px}
+  .owner{color:var(--dim);font-size:14px}
+
+  /* the cloth: a circled number that always trails the name */
+  .pip{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;
+       border:1px solid var(--line2);font-family:"Cinzel",serif;font-size:11px;color:var(--gold2);flex:none;
+       background:radial-gradient(circle,#161310,#0d0b0a)}
+  .pip.big{width:96px;height:96px;font-size:34px;border-color:var(--gold);margin:0 auto}
+  .flagline{border:1px solid rgba(122,48,56,0.5);background:rgba(122,48,56,0.1);border-radius:8px;padding:9px 12px;font-size:14px;color:#e2bdb9;margin-top:8px}
+  .okline{border:1px solid var(--line2);background:rgba(160,150,120,0.07);border-radius:8px;padding:9px 12px;font-size:14px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The cloth number</h1>
+  <p class="note">The plain number, circled, and always trailing the name. The place a bottle takes stays roman, so the two can never be read as the same thing again.</p>
+
+  <div class="plabel">As it stands today</div>
+  <div class="card bad">
+    <div class="eyebrow" style="margin-bottom:8px">As the table ranked them</div>
+    <div class="rk"><span class="rank">I</span><span class="nm">Porseleinberg 2021</span><span class="score">8.4</span></div>
+    <div class="rk"><span class="rank">II</span><span class="nm">Bottle III</span><span class="score">7.9</span></div>
+    <div class="rk"><span class="rank">III</span><span class="nm">Bottle I</span><span class="score">7.4</span></div>
+    <div class="flagline">Two faults. &ldquo;Two, bottle three&rdquo;: one typeface, two meanings. And the moment a wine is claimed its cloth vanishes, so the first row no longer tells you when it was poured.</div>
+  </div>
+
+  <div class="plabel">The new rule</div>
+  <div class="card pick">
+    <div class="eyebrow" style="margin-bottom:8px">Rankings</div>
+    <div class="rk"><span class="rank">I</span><span class="nm">Porseleinberg 2021 <span class="pip">5</span></span><span class="score">8.4</span></div>
+    <div class="rk"><span class="rank">II</span><span class="nm">Bottle <span class="pip">3</span></span><span class="score">7.9</span></div>
+    <div class="rk"><span class="rank">III</span><span class="nm">Meerlust Rubicon <span class="pip">1</span></span><span class="score">7.4</span></div>
+    <div class="okline">Only the word <em>Bottle</em> gives way to the wine&rsquo;s name. The circled number stays put, so the order of pouring survives the claim.</div>
+  </div>
+
+  <div class="plabel">The rule, in one line</div>
+  <div class="card">
+    <div class="rk"><span class="nm" style="color:var(--dim)">Unclaimed</span><span class="nm" style="justify-content:flex-end">Bottle <span class="pip">5</span></span></div>
+    <div class="rk"><span class="nm" style="color:var(--dim)">Claimed</span><span class="nm" style="justify-content:flex-end">Porseleinberg 2021 <span class="pip">5</span></span></div>
+    <div class="rk"><span class="nm" style="color:var(--dim)">With its bearer</span><span class="nm" style="justify-content:flex-end">Porseleinberg 2021 <span class="pip">5</span> <span class="owner">· Seer Matthew</span></span></div>
+    <div class="rk"><span class="nm" style="color:var(--dim)">Cast out</span><span class="nm" style="justify-content:flex-end;color:#c98">A chilled Pinotage <span class="pip">4</span></span></div>
+  </div>
+
+  <div class="plabel">In the rite, unchanged in spirit</div>
+  <div class="card" style="text-align:center">
+    <span class="pip big">5</span>
+    <p class="whisper" style="margin:12px 0 0">The cloth already sat in a circle here. Now the same circle follows it everywhere it is written.</p>
+  </div>
+
+  <div class="plabel">Where it changes</div>
+  <div class="card">
+    <p class="whisper" style="margin:0 0 8px">Six places write the cloth. All six take the same circled number, always trailing:</p>
+    <div class="rk"><span class="nm">The rite, the cloth card and the ballot list</span><span class="pip">5</span></div>
+    <div class="rk"><span class="nm">The reveal, the rankings</span><span class="pip">5</span></div>
+    <div class="rk"><span class="nm">The Reckoning email</span><span class="pip">5</span></div>
+    <div class="rk"><span class="nm">The codex, each past night</span><span class="pip">5</span></div>
+    <div class="rk"><span class="nm">The codex editor, naming the pour</span><span class="pip">5</span></div>
+    <div class="rk"><span class="nm">The split cloth, and the whispers</span><span class="pip">5</span></div>
+    <p class="whisper" style="margin:10px 0 0">The <strong style="color:var(--gold2)">rank</strong> stays roman. The gathering number (Gathering XIX) stays roman too: a different thing again, and it never appears beside a cloth.</p>
+  </div>
+
+  <p class="note" style="margin-top:18px">One caveat worth knowing: in the Reckoning <strong style="color:var(--gold2)">email</strong>, a circle drawn in CSS cannot be trusted across mail clients. There it would read <strong style="color:var(--gold2)">Bottle 5</strong> in plain numbers, which still cures the mix-up.</p>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:40px 0 0">
+  <h1 style="margin-top:34px">The same wine, twice</h1>
+  <p class="note">Three souls brought the identical bottle. Each cloth was judged apart, so the table scored one wine three times and it took three places.</p>
+
+  <div class="plabel">As it stands today</div>
+  <div class="card bad">
+    <div class="rk"><span class="rank">II</span><span class="nm">Kanonkop Paul Sauer 2019 <span class="pip">2</span></span><span class="score">7.8</span></div>
+    <div class="rk"><span class="rank">IV</span><span class="nm">Kanonkop Paul Sauer 2019 <span class="pip">6</span></span><span class="score">7.2</span></div>
+    <div class="rk"><span class="rank">VI</span><span class="nm">Kanonkop Paul Sauer 2019 <span class="pip">9</span></span><span class="score">6.9</span></div>
+    <div class="flagline">One wine, three standings. The order between them says nothing but which glass was poured better.</div>
+  </div>
+
+  <div class="plabel">The Keiser&rsquo;s hand</div>
+  <div class="card">
+    <p class="whisper" style="margin:0 0 10px">A control only the Keiser sees, on the reveal page beneath the rankings. He taps <em>Bind the cloths</em>, ticks the ones that are one wine, and seals it.</p>
+    <div style="border:1px solid var(--line2);border-radius:10px;padding:12px">
+      <div class="eyebrow" style="margin-bottom:9px">Bind the cloths</div>
+      <div class="rk"><span style="width:17px;height:17px;border:1px solid var(--gold);border-radius:3px;background:var(--gold);color:#0a0908;font-size:12px;text-align:center;line-height:15px;flex:none">&#10003;</span><span class="nm">Kanonkop Paul Sauer 2019 <span class="pip">2</span></span></div>
+      <div class="rk"><span style="width:17px;height:17px;border:1px solid var(--gold);border-radius:3px;background:var(--gold);color:#0a0908;font-size:12px;text-align:center;line-height:15px;flex:none">&#10003;</span><span class="nm">Kanonkop Paul Sauer 2019 <span class="pip">6</span></span></div>
+      <div class="rk"><span style="width:17px;height:17px;border:1px solid var(--line2);border-radius:3px;flex:none"></span><span class="nm" style="color:var(--dim)">Porseleinberg 2021 <span class="pip">5</span></span></div>
+      <div class="rk"><span style="width:17px;height:17px;border:1px solid var(--gold);border-radius:3px;background:var(--gold);color:#0a0908;font-size:12px;text-align:center;line-height:15px;flex:none">&#10003;</span><span class="nm">Kanonkop Paul Sauer 2019 <span class="pip">9</span></span></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <span style="flex:1;text-align:center;border:1px solid var(--gold);border-radius:8px;padding:8px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:0.1em;color:var(--gold2)">BIND THESE THREE</span>
+        <span style="text-align:center;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:0.1em;color:var(--dim)">UNDO</span>
+      </div>
+    </div>
+    <p class="whisper" style="margin:10px 0 0">The binding can be loosened again at any time, and the night redraws itself.</p>
+  </div>
+
+  <div class="plabel">What the table then sees</div>
+  <div class="card pick">
+    <div class="eyebrow" style="margin-bottom:8px">Rankings</div>
+    <div class="rk"><span class="rank">I</span><span class="nm">Porseleinberg 2021 <span class="pip">5</span></span><span class="score">8.4</span></div>
+    <div class="rk" style="align-items:flex-start">
+      <span class="rank" style="padding-top:2px">II</span>
+      <span class="nm" style="flex-direction:column;align-items:flex-start;gap:3px">
+        <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">Kanonkop Paul Sauer 2019 <span class="pip">2</span><span class="pip">6</span><span class="pip">9</span></span>
+        <span class="whisper" style="font-size:12.5px">One wine, three cloths &middot; Seer Matthew, Lady Levine, Great Scott</span>
+      </span>
+      <span class="score" style="padding-top:2px">7.3</span>
+    </div>
+    <div class="rk"><span class="rank">III</span><span class="nm">Meerlust Rubicon <span class="pip">1</span></span><span class="score">7.1</span></div>
+    <div class="okline">One row, one standing, the mean of all three cloths. Every pour number is kept, so each bearer can still find their own glass in the night.</div>
+  </div>
+
+  <div class="plabel">What it does not touch</div>
+  <div class="card">
+    <div class="rk"><span class="nm">Bottles brought, per soul</span><span class="whisper">still three</span></div>
+    <div class="rk"><span class="nm">Coin spent, and the purse</span><span class="whisper">still three</span></div>
+    <div class="rk"><span class="nm">Each soul&rsquo;s own score and note</span><span class="whisper">kept whole</span></div>
+    <div class="rk"><span class="nm">Victories, for the crown</span><span class="whisper">shared, as co-champions</span></div>
+    <p class="whisper" style="margin:10px 0 0">Three people did bring a bottle each. Only the judging is made one.</p>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:40px 0 0">
+  <h1 style="margin-top:34px">The spoiled bottle</h1>
+  <p class="note">A bottle that comes up bad measures the bottle, not the soul who carried it. It is recorded, and it is never judged.</p>
+
+  <div class="plabel">The Keiser&rsquo;s hand</div>
+  <div class="card">
+    <p class="whisper" style="margin:0 0 10px">A second small word beside <em>disqualify</em>, on every row of the reveal, seen only by the Keiser. One tap marks it, one tap takes it back.</p>
+    <div class="rk" style="align-items:flex-start">
+      <span class="rank" style="padding-top:3px">IV</span>
+      <span class="nm" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span style="display:flex;align-items:center;gap:7px">Meerlust Rubicon <span class="pip">4</span></span>
+        <span class="whisper" style="font-size:12.5px">Lady Levine</span>
+        <span style="display:block;width:150px;height:3px;background:rgba(160,150,120,0.14);border-radius:2px"><i style="display:block;width:68%;height:100%;background:var(--gold);border-radius:2px"></i></span>
+      </span>
+      <span style="text-align:right">
+        <span class="score" style="display:block">6.8</span>
+        <span class="whisper" style="display:block;font-size:12px;color:var(--wine);margin-top:2px">&#9888; disqualify</span>
+        <span class="whisper" style="display:block;font-size:12px;color:#b08a4a;margin-top:1px">&#9888; spoiled</span>
+      </span>
+    </div>
+    <p class="whisper" style="margin:12px 0 0">The same mark sits in the codex editor, beside the disqualified tick, so a past night can be corrected.</p>
+  </div>
+
+  <div class="plabel">How it then reads</div>
+  <div class="card pick">
+    <div class="eyebrow" style="margin-bottom:8px">Rankings</div>
+    <div class="rk"><span class="rank">I</span><span class="nm">Porseleinberg 2021 <span class="pip">5</span></span><span class="score">8.4</span></div>
+    <div class="rk"><span class="rank">II</span><span class="nm">Meerlust Rubicon <span class="pip">1</span></span><span class="score">7.1</span></div>
+    <div class="rk" style="opacity:0.85">
+      <span class="rank" style="color:#b08a4a">&#8212;</span>
+      <span class="nm" style="color:#b08a4a">Kanonkop Paul Sauer 2019 <span class="pip" style="border-color:#8a6c3a;color:#b08a4a">4</span>
+        <span style="border:1px solid #8a6c3a;border-radius:4px;padding:1px 6px;font-family:'Cinzel',serif;font-size:9.5px;letter-spacing:0.1em;color:#b08a4a">SPOILED</span>
+      </span>
+      <span class="score" style="color:#b08a4a">&#8212;</span>
+    </div>
+    <div class="okline">It keeps its place in the record and its cloth, below the ranked wines beside anything cast out. It carries no standing and no score.</div>
+  </div>
+
+  <div class="plabel">What it touches</div>
+  <div class="card">
+    <div class="rk"><span class="nm">The night&rsquo;s ranking and the crown</span><span class="whisper">taken out</span></div>
+    <div class="rk"><span class="nm">The bearer&rsquo;s average score</span><span class="whisper">taken out</span></div>
+    <div class="rk"><span class="nm">The purse, and coin per point</span><span class="whisper">taken out</span></div>
+    <div class="rk"><span class="nm">Their palate dossier and Nose</span><span class="whisper">taken out</span></div>
+    <div class="rk"><span class="nm">Bottles brought, and attendance</span><span class="whisper">still counted</span></div>
+    <div class="rk"><span class="nm">The codex, forever</span><span class="whisper">still written</span></div>
+    <div class="rk"><span class="nm">The road to the tribunal</span><span class="whisper">never</span></div>
+    <p class="whisper" style="margin:10px 0 0">That last line is why it cannot simply be marked <em>disqualified</em>: casting out counts against a soul, and enough of them summons them to the tribunal. A spoiled wine is nobody&rsquo;s fault.</p>
+  </div>
+</div>
+</body>
+</html>

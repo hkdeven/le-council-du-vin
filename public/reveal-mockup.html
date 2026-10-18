@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the new revelation</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42);--wine:#7a3038;--spoil:#b08a4a;--ink2:#100e0c}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",Georgia,serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:430px;margin:0 auto;padding:22px 14px 80px}
+  .disp{font-family:"Cinzel",serif;letter-spacing:0.04em}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim)}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:10.5px}
+  .tag{display:inline-block;border:1px solid var(--line2);border-radius:4px;padding:2px 8px;font-family:"Cinzel",serif;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold2)}
+  h1{font-size:18px;font-weight:500;margin:0;font-family:"Cinzel",serif;color:var(--parch)}
+  .sub{color:var(--dim);font-size:14px;margin-top:2px}
+  .scrline{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--gold);font-size:15px;text-align:center;margin:2px 0 0}
+  .band{border-top:1px solid var(--gold);border-bottom:1px solid var(--gold);padding:8px 6px;margin:20px 0 14px;display:flex;align-items:baseline;gap:10px;justify-content:center}
+  .band .eyebrow{font-size:11px;letter-spacing:0.2em}
+  .band.split{justify-content:space-between}
+
+  .champ{background:var(--ink2);border:1px solid var(--line2);border-radius:12px;padding:18px 16px;margin:14px 0 6px;text-align:center}
+  .face{width:86px;height:86px;border-radius:50%;border:1px solid var(--gold);background:radial-gradient(circle at 50% 35%,#272118,#0d0b0a);display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;box-shadow:0 0 0 4px rgba(156,138,95,0.12)}
+  .face i{font-size:40px;color:#6b6046}
+  .face.sm{width:34px;height:34px;box-shadow:none;border-color:var(--line2)}
+  .face.sm i{font-size:17px}
+
+  .pip{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;border:1px solid var(--line2);font-family:"Cinzel",serif;font-size:11px;color:var(--gold2);flex:none;background:radial-gradient(circle,#161310,#0d0b0a)}
+
+  .rk{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .rank{width:24px;text-align:center;font-family:"Cinzel",serif;font-size:14px;color:var(--gold2);flex:none;padding-top:1px}
+  .chev{flex:none;width:26px;text-align:right;color:var(--gold);font-size:15px;padding-top:2px}
+  .sc{font-family:"Cinzel",serif;font-size:14px;color:var(--gold2);flex:none;padding-top:1px}
+  .own{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--gold2);font-size:14.5px}
+
+  .drop{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:13px;color:var(--gold);margin-top:7px;display:inline-flex;align-items:center;gap:4px}
+  .panel{width:100%;margin:10px 0 2px;border:1px solid var(--line);border-radius:9px;padding:4px 13px 10px;background:rgba(0,0,0,0.25)}
+  .vr{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+  .vr:last-child{border-bottom:none}
+  .vr .nmm{flex:1;min-width:0}
+  .vr .who{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14px;color:var(--gold2)}
+  .vr .you{border:1px solid var(--gold);border-radius:3px;padding:0 5px;font-family:"Cinzel",serif;font-size:8.5px;letter-spacing:0.12em;color:var(--gold2);margin-left:6px;vertical-align:1px}
+  .vr .nt{font-size:14px;color:var(--parch);line-height:1.5;margin-top:1px}
+  .vr .vs{font-family:"Cinzel",serif;font-size:13px;color:var(--gold2);flex:none}
+
+  .btnrow{margin-top:22px}
+  .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:1px solid var(--line2);border-radius:9px;padding:12px;font-family:"Cinzel",serif;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold2);background:none}
+  .btn.gold{background:var(--gold2);color:#0a0908;border-color:var(--gold2)}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;line-height:1.55}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:10.5px;color:var(--gold2);margin:34px 0 10px;text-align:center}
+  .card{background:linear-gradient(180deg,#100e0c,#0a0908);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .pts{margin:0;padding:0;list-style:none}
+  .pts li{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14.5px;line-height:1.5}
+  .pts li:last-child{border-bottom:none}
+  .pts b{color:var(--gold2);font-weight:400;font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1 style="text-align:center;font-size:20px">The Reckoning</h1>
+  <p class="scrline">Gathering XIX &middot; Cape Bordeaux Blends &middot; sealed in the Annals</p>
+
+  <!-- the champion -->
+  <div class="band"><span class="eyebrow">The Crowning</span></div>
+  <div class="champ" style="margin-top:0">
+    <span class="tag">Champion</span>
+    <div style="display:flex;align-items:center;gap:15px;text-align:left;margin-top:14px">
+      <div class="face"><i class="ti ti-user"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="disp" style="font-size:17px;color:var(--gold2);display:flex;align-items:center;gap:8px;flex-wrap:wrap">Kanonkop Paul Sauer 2019 <span class="pip">7</span></div>
+        <div class="own" style="margin-top:3px">Larissa</div>
+        <div class="disp" style="font-size:26px;color:var(--gold2);margin-top:4px">8.4</div>
+      </div>
+    </div>
+  </div>
+  <p class="note" style="margin:8px 0 0">Only the victor wears a face.</p>
+
+  <!-- the rankings -->
+  <div style="display:flex;align-items:baseline;gap:10px;margin:26px 0 4px">
+    <span class="eyebrow" style="font-size:11px;letter-spacing:0.2em">Rankings</span>
+    <span style="flex:1;height:1px;background:var(--line)"></span>
+    <span class="whisper" style="font-size:13px">tap a wine for every verdict</span>
+  </div>
+
+  <div class="rk">
+    <span class="rank">II</span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px">Porseleinberg 2021 <span class="pip">3</span></div>
+      <div class="own">Wernardt</div>
+    </div>
+    <span class="sc">7.9</span><span class="chev"><i class="ti ti-chevron-down"></i></span>
+  </div>
+
+  <!-- one row, opened -->
+  <div class="rk">
+    <span class="rank">III</span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px">Meerlust Rubicon <span class="pip">1</span></div>
+      <div class="own">Seer Matthew</div>
+    </div>
+    <span class="sc">7.4</span><span class="chev"><i class="ti ti-chevron-up"></i></span>
+      <div class="panel">
+        <div class="vr">
+          <div class="face sm"><i class="ti ti-user"></i></div>
+          <div class="nmm">
+            <div class="who">Seer Matthew<span class="you">YOU</span></div>
+            <div class="nt">&ldquo;Cedar and dried fig. Softer than I wanted, but it kept growing on me.&rdquo;</div>
+          </div>
+          <span class="vs">8.0</span>
+        </div>
+        <div class="vr">
+          <div class="face sm"><i class="ti ti-user"></i></div>
+          <div class="nmm">
+            <div class="who">Larissa</div>
+            <div class="nt">&ldquo;Blackcurrant, pencil shavings, a long finish.&rdquo;</div>
+          </div>
+          <span class="vs">7.8</span>
+        </div>
+        <div class="vr">
+          <div class="face sm"><i class="ti ti-user"></i></div>
+          <div class="nmm">
+            <div class="who">Lady Levine</div>
+            <div class="nt">&ldquo;Too tight tonight. Give it three more years.&rdquo;</div>
+          </div>
+          <span class="vs">7.1</span>
+        </div>
+        <div class="vr">
+          <div class="face sm"><i class="ti ti-user"></i></div>
+          <div class="nmm">
+            <div class="who">Great Scott</div>
+            <div class="nt whisper" style="color:var(--faint)">no words left</div>
+          </div>
+          <span class="vs">6.9</span>
+        </div>
+      </div>
+  </div>
+
+  <!-- bound duplicates -->
+  <div class="rk">
+    <span class="rank">IV</span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px">Rust en Vrede Estate 2020 <span class="pip">2</span><span class="pip">6</span></div>
+      <div class="own">James and Dominik <span class="whisper" style="font-size:13px;color:var(--faint)">&middot; one wine, two cloths</span></div>
+    </div>
+    <span class="sc">6.9</span><span class="chev"><i class="ti ti-chevron-down"></i></span>
+  </div>
+
+  <!-- spoiled -->
+  <div class="rk" style="opacity:0.88">
+    <span class="rank" style="color:var(--spoil)">&#8212;</span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px;color:var(--spoil)">A Stellenbosch Cabernet <span class="pip" style="border-color:#8a6c3a;color:var(--spoil)">5</span> <span class="tag" style="border-color:#8a6c3a;color:var(--spoil)">Spoiled</span></div>
+      <div class="own" style="color:var(--spoil)">Martin</div>
+      <div class="whisper" style="font-size:13px;margin-top:5px">Kept in the record, counted against no one.</div>
+    </div>
+    <span class="sc" style="color:var(--spoil)">&#8212;</span><span class="chev"></span>
+  </div>
+
+  <!-- cast out -->
+  <div class="rk" style="opacity:0.85;border-bottom:none">
+    <span class="rank" style="color:var(--wine);font-size:11px">&#10005;</span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px;color:var(--wine)"><span style="text-decoration:line-through">A chilled Pinotage</span> <span class="pip" style="border-color:#6d3a3e;color:#c98">4</span> <span class="tag" style="border-color:#6d3a3e;color:#c98">Off theme</span></div>
+      <div class="own" style="color:#c98">Keiser</div>
+    </div>
+    <span class="sc" style="color:var(--wine)">&#8212;</span><span class="chev"></span>
+  </div>
+
+  <div class="btnrow">
+    <div class="btn"><i class="ti ti-camera"></i> Add photo of bottles</div>
+    <div class="btn" style="margin-top:9px"><i class="ti ti-mail"></i> Send this page to my inbox</div>
+  </div>
+
+  <p class="note" style="margin-top:16px"><i class="ti ti-book" style="margin-right:6px"></i>Committed to the Annals: only the Keiser may amend it.</p>
+
+  <!-- what changed -->
+  <div class="plabel">What has changed</div>
+  <div class="card">
+    <ul class="pts">
+      <li><span><b>The victor wears a face</b>The member who brought the winning bottle now appears beside it. Nobody else does.</span></li>
+      <li><span><b>Every verdict, openable</b>Tap any bottle to see what the whole table gave it and what each of us wrote. Your own verdict sits at the top.</span></li>
+      <li><span><b>The pour number survives</b>The circled number is the order it was poured, and it stays beside the wine even once the bottle is named. The place it took stays in roman numerals, so the two can never be confused.</span></li>
+      <li><span><b>One wine, brought twice</b>Identical bottles are bound into a single entry with one score, the average of them all, and a single place. Each pour number is kept.</span></li>
+      <li><span><b>A spoiled bottle</b>Marked on the night, recorded forever, and counted against no one: not the ranking, not the bearer&rsquo;s average, not the purse.</span></li>
+      <li><span><b>Gone</b>The table&rsquo;s whispers. Every note now lives on the bottle it was written about.</span></li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

@@ -63,5 +63,19 @@ check("unscored night, cloths unknown: first listed is crowned",
 check("unscored night, listed order beats the cloth number",
   owners(night([r("Harrison", { cloth: 5 }), r("The Keiser", { cloth: 1 })])) === "Harrison");
 
+// A spoiled bottle measured the bottle, not the wine: it can never be crowned,
+// not even when it outscored the table and not even when the record, written
+// before the mark existed, still shows it at rank 1.
+check("a spoiled rank 1 is not crowned",
+  owners(night([r("A", { rank: 1, score: 9.6, votes: 6, spoiled: true }), r("B", { rank: 2, score: 8, votes: 6 })])) === "B");
+check("a spoiled top score is passed over",
+  owners(night([r("A", { score: 9.6, votes: 6, spoiled: true }), r("B", { score: 8, votes: 6 })])) === "B");
+check("a spoiled bottle cannot win an unscored night by listing first",
+  owners(night([r("A", { spoiled: true }), r("B")])) === "B");
+check("a night of nothing but spoiled bottles crowns nobody",
+  championsOf(night([r("A", { spoiled: true }), r("B", { spoiled: true })])).length === 0);
+check("spoiled and disqualified are counted apart",
+  owners(night([r("A", { rank: 1, score: 9, votes: 5, dq: true }), r("B", { score: 8.5, votes: 5, spoiled: true }), r("C", { score: 7, votes: 5 })])) === "C");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

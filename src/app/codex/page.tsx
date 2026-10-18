@@ -17,6 +17,7 @@ import Avatar from "@/components/Avatar";
 import Loading from "@/components/Loading";
 import Tip from "@/components/Tip";
 import GrapePicker from "@/components/GrapePicker";
+import { Cloth } from "@/components/Cloth";
 import { detectVarietals, GRAPES } from "@/lib/varietals";
 import { swr, writeSwr } from "@/lib/swr";
 import type { Gathering, Member } from "@/lib/types";
@@ -82,7 +83,7 @@ function draftFrom(a: AnnalEntry, g?: Gathering): Draft {
     host_name: g?.host_name || "",
     host2_id: g?.host2_id || null,
     host2_name: g?.host2_name || "",
-    rows: a.rows.map((r) => ({ cloth: r.cloth != null ? String(r.cloth) : "", title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
+    rows: a.rows.map((r) => ({ cloth: r.cloth != null ? String(r.cloth) : "", title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, spoiled: !!r.spoiled, votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
   };
 }
 
@@ -101,7 +102,7 @@ function GatheringEditor({ draft: initial, members, offerings, onCancel, onSave,
   const setRow = (i: number, patch: Partial<DraftRow>) =>
     setD((x) => ({ ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   const addRow = () =>
-    setD((x) => ({ ...x, rows: [...x.rows, { cloth: "", title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }] }));
+    setD((x) => ({ ...x, rows: [...x.rows, { cloth: "", title: "", owner: "", score: "", dq: false, spoiled: false, votes: 1, varietals: [], price: "" }] }));
   const dropRow = (i: number) => setD((x) => ({ ...x, rows: x.rows.filter((_, j) => j !== i) }));
 
   // Hosts from imported history may be a bare name with no member id; keep
@@ -197,8 +198,15 @@ function GatheringEditor({ draft: initial, members, offerings, onCancel, onSave,
               style={{ width: 58, padding: "4px 8px", flex: "none" }} />
             <span style={{ flex: 1 }} />
             <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: r.dq ? "var(--wine)" : "var(--dim)", cursor: "pointer" }}>
-              <input type="checkbox" checked={r.dq} onChange={(e) => setRow(i, { dq: e.target.checked })} style={{ width: "auto" }} />
+              <input type="checkbox" checked={r.dq} onChange={(e) => setRow(i, { dq: e.target.checked, ...(e.target.checked ? { spoiled: false } : {}) })} style={{ width: "auto" }} />
               off theme · DQ
+            </label>
+            {/* Spoiled is its own mark: it never counts against the soul who
+                carried it, and never leads to the tribunal. */}
+            <label title="The bottle came up bad: kept in the record, never judged, counted against nobody"
+              style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: r.spoiled ? "var(--spoiled)" : "var(--dim)", cursor: "pointer" }}>
+              <input type="checkbox" checked={!!r.spoiled} onChange={(e) => setRow(i, { spoiled: e.target.checked, ...(e.target.checked ? { dq: false } : {}) })} style={{ width: "auto" }} />
+              spoiled
             </label>
             <button onClick={() => dropRow(i)} aria-label="Remove wine" style={{ width: "auto", background: "none", border: "none", color: "var(--wine)", cursor: "pointer", padding: 2 }}>
               <i className="ti ti-trash" style={{ fontSize: 14 }} />
@@ -282,21 +290,22 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
     if (authMode !== "live" || !myEmail) { alert("The demo has no post office: sign in on the live Council and the record will fly."); return; }
     setMailState("sending");
     const champs = championsOf(a);
-    const nameOf = (r: AnnalRow) => r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded");
+    const nameOf = (r: AnnalRow) => r.cloth != null ? `${r.title || "Bottle"} ${r.cloth}` : (r.title || "A bottle unrecorded");
     const res = await sendEmail("reckoning", [myEmail], {
       numberRoman: toRoman(a.number || 0),
       theme: a.theme || "",
       dateLabel: a.date ? fmtDate(a.date) : "",
       crowned: champs.map((c) => ({ title: nameOf(c), owner: c.owner, score: c.score })),
       ranked: [
-        ...a.rows.filter((r) => !r.dq && !champs.includes(r)).sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99))
+        ...a.rows.filter((r) => !r.dq && !r.spoiled && !champs.includes(r)).sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99))
           .map((r) => ({ rank: toRoman(r.rank || 0), title: nameOf(r), owner: r.owner, score: r.votes > 0 ? r.score : null, dq: false })),
+        ...a.rows.filter((r) => r.spoiled).map((r) => ({ rank: "·", title: nameOf(r), owner: r.owner, score: null, dq: false, spoiled: true })),
         ...a.rows.filter((r) => r.dq).map((r) => ({ rank: "✕", title: nameOf(r), owner: r.owner, score: null, dq: true })),
       ],
       split: split ? `${a.rows.find((r) => r.cloth === split.cloth)?.title || "A bottle"} divided the table, ${split.min} to ${split.max}` : undefined,
       value: (() => {
         // The ledger, reckoned the same way the reveal reckons it on the night.
-        const priced = a.rows.filter((r) => !r.dq && r.votes > 0 && r.price);
+        const priced = a.rows.filter((r) => !r.dq && !r.spoiled && r.votes > 0 && r.price);
         if (!priced.length) return undefined;
         const best = [...priced].sort((x, y) => y.score / y.price! - x.score / x.price!)[0];
         return `Best value of the night: ${nameOf(best)}, borne by ${best.owner || "an unclaimed hand"}, at R${best.price} · ${(best.score / best.price! * 100).toFixed(1)} points per hundred rand.`;
@@ -375,10 +384,13 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
             const scoresOpen = openScores === ri;
             return (
             <div key={ri}>
-            <div style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : "var(--parch)", alignItems: "center" }}>
-              <span className="disp" style={{ width: 24, fontSize: 11 }}>{r.dq ? "✕" : toRoman(r.rank || 0)}</span>
+            <div style={{ display: "flex", gap: 8, fontSize: 13, padding: "3px 0", color: r.dq ? "var(--wine)" : r.spoiled ? "var(--spoiled)" : "var(--parch)", alignItems: "center" }}>
+              <span className="disp" style={{ width: 24, fontSize: 11, color: r.spoiled ? "var(--spoiled)" : undefined }}>{r.dq ? "✕" : r.spoiled ? "—" : toRoman(r.rank || 0)}</span>
               <span style={{ flex: 1 }}>
-                <span className="scr" style={{ fontSize: 14 }}>{r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded")}</span>
+                <span className="scr" style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "-4px" }}>
+                  {r.title || (r.cloth != null ? "Bottle" : "A bottle unrecorded")}
+                  <Cloth n={r.cloth} size={19} tone={r.dq ? "wine" : r.spoiled ? "spoiled" : "gold"} />
+                </span>
                 {split?.cloth === r.cloth && <i className="ti ti-bolt" title="The split cloth" style={{ color: "var(--gold2)", fontSize: 12, marginLeft: 5 }} />}
                 {r.owner ? <span style={{ color: "var(--dim)" }}> · {r.owner}</span> : null}
                 {(r.varietals?.length || r.price != null) ? (
@@ -388,15 +400,16 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
                 ) : null}
                 {!r.owner && canClaim && (
                   <button
-                    onClick={() => { if (window.confirm(`Claim ${r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded")} as your own pour?`)) onClaim(a, ri).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
+                    onClick={() => { if (window.confirm(`Claim ${r.cloth != null ? `${r.title || "Bottle"} ${r.cloth}` : (r.title || "A bottle unrecorded")} as your own pour?`)) onClaim(a, ri).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
                     style={{ width: "auto", marginLeft: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "1px 10px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
                     <i className="ti ti-hand-grab" style={{ fontSize: 11, marginRight: 4 }} />claim it
                   </button>
                 )}
                 {!r.owner && !canClaim && <span className="whisper" style={{ fontSize: 12 }}> · unclaimed</span>}
                 {r.dq && <span className="whisper" style={{ fontSize: 12, color: "var(--wine)" }}> · disqualified</span>}
+                {r.spoiled && <span className="whisper" style={{ fontSize: 12, color: "var(--spoiled)" }}> · spoiled</span>}
               </span>
-              <span className="disp" style={{ fontSize: 12 }}>{r.votes > 0 ? r.score.toFixed(1) : "—"}</span>
+              <span className="disp" style={{ fontSize: 12, color: r.spoiled ? "var(--spoiled)" : undefined }}>{r.votes > 0 && !r.spoiled ? r.score.toFixed(1) : "—"}</span>
               {verdicts.length > 0 && (
                 <Caret open={scoresOpen} onClick={() => setOpenScores(scoresOpen ? null : ri)} label={`Every member's score for ${r.title || "this bottle"}`} />
               )}
@@ -659,7 +672,8 @@ export default function Codex() {
   // Everything below is derived from committed reckonings only.
   // A bottle counts as judged when it was scored or cast out; a night
   // recorded without scores poured bottles that were never judged.
-  const bottlesJudged = annals.reduce((n, a) => n + a.rows.filter((r) => r.votes > 0 || r.dq).length, 0);
+  // A spoiled bottle was carried but never judged, so it is not counted here.
+  const bottlesJudged = annals.reduce((n, a) => n + a.rows.filter((r) => !r.spoiled && (r.votes > 0 || r.dq)).length, 0);
   const victoryList = Object.entries(victoriesFrom(annals)).sort((a, b) => b[1] - a[1]);
   // The vine's foresight: the Prophecy's lifetime record, graded crowning by
   // crowning; silent until at least one prophecy has been judged.
@@ -678,7 +692,7 @@ export default function Codex() {
     if (!annals.length) return null;
     let pour: { title: string; score: number; date: string } | null = null;
     for (const a of annals) for (const r of a.rows) {
-      if (!r.dq && r.votes > 0 && (!pour || r.score > pour.score)) pour = { title: r.title || (r.cloth != null ? `Bottle ${toRoman(r.cloth)}` : "A bottle unrecorded"), score: r.score, date: a.date };
+      if (!r.dq && !r.spoiled && r.votes > 0 && (!pour || r.score > pour.score)) pour = { title: r.cloth != null ? `${r.title || "Bottle"} ${r.cloth}` : (r.title || "A bottle unrecorded"), score: r.score, date: a.date };
     }
     let schism: { title: string; min: number; max: number } | null = null;
     {
@@ -727,7 +741,7 @@ export default function Codex() {
       if (c.price) crownPrices.push(c.price);
     }
     const crownedGrape = [...grapeCrowns.entries()].sort((x, y) => y[1] - x[1])[0] || null;
-    const allPrices = annals.flatMap((a) => a.rows.filter((r) => !r.dq && r.price)).map((r) => r.price!);
+    const allPrices = annals.flatMap((a) => a.rows.filter((r) => !r.dq && !r.spoiled && r.price)).map((r) => r.price!);
     const victoryPrice = crownPrices.length
       ? { crown: crownPrices.reduce((x, y) => x + y, 0) / crownPrices.length, table: allPrices.reduce((x, y) => x + y, 0) / allPrices.length }
       : null;
@@ -742,7 +756,7 @@ export default function Codex() {
     const byCloth = new Map<number, number[]>();
     const scoredNights = new Set<string>();
     for (const a of annals) for (const r of a.rows) {
-      if (r.dq || r.votes === 0 || r.cloth == null) continue;
+      if (r.dq || r.spoiled || r.votes === 0 || r.cloth == null) continue;
       scoredNights.add(a.gatheringId);
       const l = byCloth.get(r.cloth) || []; l.push(r.score); byCloth.set(r.cloth, l);
     }
@@ -756,7 +770,7 @@ export default function Codex() {
 
   const themeAvgs = annals
     .map((a) => {
-      const scored = a.rows.filter((r) => !r.dq && r.votes > 0);
+      const scored = a.rows.filter((r) => !r.dq && !r.spoiled && r.votes > 0);
       return { theme: a.theme, avg: scored.length ? scored.reduce((s, r) => s + r.score, 0) / scored.length : null };
     })
     .filter((t): t is { theme: string; avg: number } => t.avg != null)
@@ -947,7 +961,7 @@ export default function Codex() {
               draft={{
                 number: Math.max(0, ...annals.map((a) => a.number), ...gatherings.map((g) => g.number || 0)) + 1,
                 theme: "", date: "", host_id: null, host_name: "", host2_id: null, host2_name: "",
-                rows: [{ cloth: "", title: "", owner: "", score: "", dq: false, votes: 1, varietals: [], price: "" }],
+                rows: [{ cloth: "", title: "", owner: "", score: "", dq: false, spoiled: false, votes: 1, varietals: [], price: "" }],
               }}
               members={members}
               onCancel={() => setAdding(false)}

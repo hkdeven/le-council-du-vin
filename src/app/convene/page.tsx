@@ -156,13 +156,15 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
 // speaks only once every RSVP'd soul has sealed an offering; the verdict is
 // stored on the gathering the first time it is spoken, and graded at the
 // reckoning. It weighs bringer history + the room's grape and price leanings.
-function Prophecy({ g, members, allMeetings, onSpoken }: {
+function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
   g: Gathering;
   members: Member[];
   allMeetings: Gathering[];
+  isKeiser: boolean;
   onSpoken: (patch: Partial<Gathering>) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [nudge, setNudge] = useState<"idle" | "sending" | "sent">("idle");
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [record, setRecord] = useState<{ right: number; total: number } | null>(null);
@@ -242,6 +244,27 @@ function Prophecy({ g, members, allMeetings, onSpoken }: {
       {/* A dark button explains nothing on a phone, and the phone is what the
           table holds: `title` only ever spoke to a mouse. The shared Tip opens
           on a tap and names exactly how many offerings the vine still waits on. */}
+      {/* The vine waits on bottles nobody has named. Rather than leave the
+          Keiser to chase them by hand, one tap writes to each unnamed soul
+          with their own one-tap link. The Council has no scheduler; this is
+          the hand that stands in for one. */}
+      {isKeiser && !g.prophecy && (unsealed ?? 0) > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <button
+            onClick={async () => {
+              if (nudge !== "idle") return;
+              setNudge("sending");
+              const res = await sendEmail("name-bottle", [], { gatheringId: g.id });
+              if (res.ok) setNudge("sent");
+              else { setNudge("idle"); alert(`The letters would not ride: ${res.error || res.skipped || "unknown"}`); }
+            }}
+            disabled={nudge !== "idle"}
+            style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "1px solid var(--line)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, padding: "8px 16px", cursor: nudge === "idle" ? "pointer" : "default", opacity: nudge === "sending" ? 0.5 : 1 }}>
+            <i className="ti ti-mail-forward" style={{ fontSize: 13 }} />
+            {nudge === "sent" ? "The letters have ridden" : nudge === "sending" ? "Writing…" : `Ask the ${unsealed} to name their bottle`}
+          </button>
+        </div>
+      )}
       {!mayConsult && !busy && (
         <Tip
           align="left"
@@ -550,7 +573,7 @@ function MeetingBody({
           </div>
         )}
         {isCurrent && allMeetings && (
-          <Prophecy g={m} members={members} allMeetings={allMeetings} onSpoken={onUpdate} />
+          <Prophecy g={m} members={members} allMeetings={allMeetings} isKeiser={isKeiser} onSpoken={onUpdate} />
         )}
         </div>
       </div>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · naming the bottle in advance</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=EB+Garamond:ital@0;1&family=Great+Vibes&display=swap" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cabfa2;--dim:#7c766a;--faint:#5a554c;--line:#241f18;--line2:#3a3327;--ink:#0a0908;--ink2:#12100e;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",Georgia,serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:560px;margin:0 auto;padding:26px 16px 80px}
+  h1.pt{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:6px 0 0;letter-spacing:0.02em}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:8px 0 2px;line-height:1.55}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:10.5px;color:var(--gold2);margin:34px 0 10px;text-align:center}
+  .subj{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim);font-size:13.5px;text-align:center;margin:0 0 10px}
+
+  /* the letter, drawn exactly as the real templates build it */
+  .mail{max-width:520px;margin:0 auto;background:var(--ink2);border:1px solid var(--line2);border-radius:14px;overflow:hidden}
+  .mail .logo{text-align:center;padding:30px 24px 6px;font-family:"Cinzel",serif;color:var(--gold2);font-size:15px;letter-spacing:0.22em}
+  .mail .body{padding:6px 30px 26px;font-size:16px;line-height:1.62;color:var(--parch)}
+  .script{font-family:"Great Vibes",cursive;color:var(--gold2);font-size:40px;line-height:1.15;text-align:center;margin:0 0 12px;font-weight:400}
+  .mail p{margin:0 0 14px}
+  .btn{display:block;width:max-content;max-width:100%;margin:20px auto 6px;background:var(--gold2);color:var(--ink);font-family:"Cinzel",serif;font-size:13px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;text-decoration:none;padding:13px 30px;border-radius:8px;text-align:center}
+  .foot{padding:16px 24px 26px;border-top:1px solid var(--line);text-align:center}
+  .foot .iv{color:#6f6653;font-size:12px;letter-spacing:1px;font-style:italic}
+  .foot a{color:var(--gold);font-size:12px;text-decoration:none}
+  .rowlab{color:#6f6653;font-family:"Cinzel",serif;font-size:10px;letter-spacing:0.2em;text-transform:uppercase}
+  .dtl{width:100%;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-collapse:collapse;margin:6px 0 4px}
+  .dtl td{padding:6px 0;font-size:16px}
+  .dtl td.v{color:var(--gold2);text-align:right}
+  .boxed{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0 4px}
+  .boxed .cap{font-family:"Cinzel",serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+  .boxed p{font-size:15px;line-height:1.6;margin:0 0 6px}
+  .whisper{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--dim)}
+
+  /* the page the button opens */
+  .phone{max-width:340px;margin:0 auto;border:1px solid var(--line2);border-radius:22px;background:#060505;padding:18px 16px 22px}
+  .bar{font-family:"Cormorant Garamond",serif;font-size:11.5px;color:var(--faint);text-align:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:14px}
+  .eyebrow{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);font-size:10.5px}
+  .fld{margin-top:14px}
+  .fld label{display:block;font-family:"Cinzel",serif;font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:#6f6653;margin-bottom:5px}
+  .fld .inp{border:1px solid var(--line2);border-radius:8px;background:#0d0c0a;padding:11px 12px;font-size:15.5px;color:var(--gold2);min-height:42px}
+  .fld .inp.ph{color:#4e4a42;font-family:"Cormorant Garamond",serif;font-style:italic}
+  .seal{display:block;width:100%;margin-top:18px;background:var(--gold2);color:var(--ink);font-family:"Cinzel",serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;padding:13px;border-radius:8px;text-align:center;border:none}
+  .seal.done{background:none;border:1px solid var(--line2);color:var(--gold2)}
+  .pts{margin:12px 0 0;padding:0;list-style:none}
+  .pts li{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14.5px;line-height:1.5}
+  .pts li:last-child{border-bottom:none}
+  .pts i{color:var(--gold);font-style:normal;flex:none}
+  .card{background:linear-gradient(180deg,#100e0c,#0a0908);border:1px solid rgba(160,150,120,0.2);border-radius:12px;padding:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pt">Naming the bottle in advance</h1>
+  <p class="note">One button in the letter they already receive. One page, three fields, no login.</p>
+
+  <div class="plabel">1 &middot; In the summons, the moment they answer</div>
+  <p class="subj">Subject: Gathering XIX &middot; Cape Bordeaux Blends</p>
+  <div class="mail">
+    <div class="logo">LE COUNCIL DU VIN</div>
+    <div class="body">
+      <h2 class="script">Your place is set</h2>
+      <p>We look forward to welcoming you to the next Council meeting.</p>
+      <table class="dtl">
+        <tr><td class="rowlab">Theme</td><td class="v">Cape Bordeaux Blends</td></tr>
+        <tr><td class="rowlab">When</td><td class="v">Friday 7 November &middot; from 19:00</td></tr>
+        <tr><td class="rowlab">Host</td><td class="v">Lady Levine</td></tr>
+      </table>
+
+      <div class="boxed" style="border-color:#4a4132">
+        <p class="cap">Name your bottle</p>
+        <p>Tell us what you are bringing now and there is nothing to type on the night. Three questions, half a minute, and no password to remember.</p>
+        <a class="btn" href="#page" style="margin:14px auto 4px">Name your bottle</a>
+        <p class="whisper" style="margin:8px 0 0;font-size:14px;text-align:center">Sealed from every eye, the Keiser&rsquo;s included, until the cloths lift.</p>
+      </div>
+
+      <div class="boxed">
+        <p class="cap">To add it to your calendar</p>
+        <p><strong style="color:var(--gold2)">On an iPhone or Mac:</strong> tap the invitation card above the attachment, then choose <em>Add to Calendar</em>.</p>
+        <p style="margin:0"><strong style="color:var(--gold2)">In Gmail:</strong> open the attachment at the foot of this letter, then choose <em>Add to calendar</em>.</p>
+      </div>
+
+      <p style="text-align:center;margin:16px 0 0">Bring a bottle true to the theme, cloaked and unmarked.</p>
+      <a class="btn" href="#">Meeting details</a>
+    </div>
+    <div class="foot">
+      <div class="iv">in vino veritas</div>
+      <div style="margin-top:6px"><a href="#">lecouncilduvin.co.za</a> <span style="color:#4a4436">&middot;</span> <a href="#">Instagram</a></div>
+    </div>
+  </div>
+
+  <div class="plabel">2 &middot; The nudge, the day before, only to those who have not</div>
+  <p class="subj">Subject: One bottle still has no name</p>
+  <div class="mail">
+    <div class="logo">LE COUNCIL DU VIN</div>
+    <div class="body">
+      <h2 class="script">One question remains</h2>
+      <p>The Council gathers tomorrow evening, and yours is the last bottle the vine cannot see. Name it now and the night can begin the moment you arrive.</p>
+      <a class="btn" href="#page">Name your bottle</a>
+      <p class="whisper" style="text-align:center;font-size:14px;margin:12px 0 0">Half a minute. No password. You may change it until the cloths lift.</p>
+    </div>
+    <div class="foot">
+      <div class="iv">in vino veritas</div>
+      <div style="margin-top:6px"><a href="#">lecouncilduvin.co.za</a> <span style="color:#4a4436">&middot;</span> <a href="#">Instagram</a></div>
+    </div>
+  </div>
+
+  <div class="plabel" id="page">3 &middot; What the button opens</div>
+  <div class="phone">
+    <div class="bar">lecouncilduvin.co.za/offering</div>
+    <div class="eyebrow">Gathering XIX &middot; Cape Bordeaux Blends</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold2);font-size:17px;margin-top:6px">Good evening, Seer Matthew.</div>
+    <p class="whisper" style="font-size:14px;margin:4px 0 0;line-height:1.5">Three questions, and the night is ready for you.</p>
+
+    <div class="fld"><label>The grape</label><div class="inp ph">Cabernet Sauvignon, Merlot&hellip;</div></div>
+    <div class="fld"><label>Name of the wine</label><div class="inp ph">Producer and vintage</div></div>
+    <div class="fld"><label>What it cost</label><div class="inp ph">R&hellip;</div></div>
+
+    <div class="seal">Seal my offering</div>
+    <p class="whisper" style="font-size:13.5px;margin:12px 0 0;line-height:1.5;text-align:center">No eye but yours, not even the Keiser&rsquo;s, until the cloths lift.</p>
+  </div>
+
+  <div class="plabel">4 &middot; And once it is sealed</div>
+  <div class="phone">
+    <div class="bar">lecouncilduvin.co.za/offering</div>
+    <div class="eyebrow">Gathering XIX &middot; Cape Bordeaux Blends</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold2);font-size:17px;margin-top:6px">It is sealed.</div>
+    <p class="whisper" style="font-size:14px;margin:4px 0 14px;line-height:1.5">Bring it cloaked and unmarked. Nothing more is asked of you until the night.</p>
+    <table class="dtl" style="border-color:var(--line)">
+      <tr><td class="rowlab">Grape</td><td class="v" style="font-size:15px">Cabernet Sauvignon</td></tr>
+      <tr><td class="rowlab">Wine</td><td class="v" style="font-size:15px">Kanonkop Paul Sauer 2019</td></tr>
+      <tr><td class="rowlab">Cost</td><td class="v" style="font-size:15px">R780</td></tr>
+    </table>
+    <div class="seal done">Change it</div>
+  </div>
+
+  <div class="plabel">What this is, underneath</div>
+  <div class="card">
+    <ul class="pts">
+      <li><i>&#9671;</i><span>Live fields cannot live in an email. Gmail, Outlook and Apple Mail all strip them out, so the three questions sit one tap away instead, on a page of their own.</span></li>
+      <li><i>&#9671;</i><span>The link in each letter is theirs alone. It names them to the app, so there is no login, no password and no magic link to go astray.</span></li>
+      <li><i>&#9671;</i><span>It can write one thing only: that soul&rsquo;s own offering, for that one night. It opens nothing else, and it dies when the night does.</span></li>
+      <li><i>&#9671;</i><span>It writes to the same place the app already writes, so the Prophecy counts it, and nothing on the night behaves differently.</span></li>
+      <li><i>&#9671;</i><span>Anyone who would rather use the app still can. This takes nothing away.</span></li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

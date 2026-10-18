@@ -231,7 +231,7 @@ export default function Oracle() {
       for (const g of r.varietals || []) {
         const e = seen.get(g) || { last: "", scores: [] };
         if (a.date > e.last) e.last = a.date;
-        if (!r.dq && r.votes > 0) e.scores.push(r.score);
+        if (!r.dq && !r.spoiled && r.votes > 0) e.scores.push(r.score);
         seen.set(g, e);
       }
     }
