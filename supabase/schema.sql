@@ -71,6 +71,8 @@ alter table gatherings add column if not exists threat_text text;
 alter table gatherings add column if not exists venue_instructions text;
 alter table gatherings add column if not exists reveal_photos text[];
 alter table gatherings add column if not exists attendees text[];
+-- Explicit "no" RSVPs, so "cannot attend" is distinct from "has not answered".
+alter table gatherings add column if not exists declined text[];
 -- Optional co-host: both hosts get hosting-wheel credit.
 alter table gatherings add column if not exists host2_id uuid;
 alter table gatherings add column if not exists host2_name text;

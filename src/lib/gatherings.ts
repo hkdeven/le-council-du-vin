@@ -40,7 +40,7 @@ function toRow(g: Partial<Gathering>) {
   const keys: (keyof Gathering)[] = [
     "number", "moon_label", "theme_title", "theme_description", "host_id", "host_name", "host2_id", "host2_name",
     "gather_date", "gather_time", "status", "wine_count", "reveal_photos", "rules_text",
-    "threat_text", "venue_instructions", "attendees", "prophecy",
+    "threat_text", "venue_instructions", "attendees", "declined", "prophecy",
   ];
   const row: Record<string, unknown> = {};
   for (const k of keys) if (g[k] !== undefined) row[k] = g[k];
@@ -67,6 +67,7 @@ function fromRow(r: Record<string, any>): Gathering {
     threat_text: r.threat_text ?? null,
     venue_instructions: r.venue_instructions ?? null,
     attendees: r.attendees ?? [],
+    declined: r.declined ?? [],
   };
 }
 
@@ -171,27 +172,56 @@ export async function updateGathering(id: string, patch: Partial<Gathering>): Pr
   localSave(localAll().map((m) => (m.id === id ? { ...m, ...patch } : m)));
 }
 
-// Toggle one member's RSVP. Reads the current attendees fresh right before
-// writing so two people RSVPing at once don't overwrite each other's entry.
-// Returns the new attendee list.
-export async function toggleAttendee(gatheringId: string, memberId: string): Promise<string[]> {
+// One member's answer to a gathering: "yes" (attending), "no" (cannot attend)
+// or null (no answer yet). A member sits in at most one of the two lists.
+export type RsvpAnswer = "yes" | "no" | null;
+export interface RsvpLists { attendees: string[]; declined: string[] }
+
+export function rsvpOf(g: Pick<Gathering, "attendees" | "declined">, memberId: string): RsvpAnswer {
+  if ((g.attendees || []).includes(memberId)) return "yes";
+  if ((g.declined || []).includes(memberId)) return "no";
+  return null;
+}
+
+function applyAnswer(cur: RsvpLists, memberId: string, answer: RsvpAnswer): RsvpLists {
+  const attendees = cur.attendees.filter((x) => x !== memberId);
+  const declined = cur.declined.filter((x) => x !== memberId);
+  if (answer === "yes") attendees.push(memberId);
+  if (answer === "no") declined.push(memberId);
+  return { attendees, declined };
+}
+
+// Set one member's RSVP. Reads both lists fresh right before writing so two
+// people answering at once don't overwrite each other's entry.
+export async function setRsvp(gatheringId: string, memberId: string, answer: RsvpAnswer): Promise<RsvpLists> {
   assertWrite();
   if (gatheringsLive()) {
-    const { data } = await supabase!.from("gatherings").select("attendees").eq("id", gatheringId).maybeSingle();
-    const current: string[] = (data?.attendees as string[]) || [];
-    const next = current.includes(memberId) ? current.filter((x) => x !== memberId) : [...current, memberId];
+    // select("*") rather than naming `declined`: until the column is added in
+    // Supabase, yes/withdraw must keep working exactly as before.
+    const { data, error: readError } = await supabase!.from("gatherings").select("*").eq("id", gatheringId).maybeSingle();
+    if (readError) throw new Error(readError.message);
+    const hasDeclined = !!data && "declined" in data;
+    if (answer === "no" && !hasDeclined) {
+      throw new Error("Declining needs the `declined` column on gatherings. Run the line in supabase/schema.sql first.");
+    }
+    const cur: RsvpLists = {
+      attendees: (data?.attendees as string[]) || [],
+      declined: (data?.declined as string[]) || [],
+    };
+    const next = applyAnswer(cur, memberId, answer);
+    const patch: Record<string, unknown> = { attendees: next.attendees };
+    if (hasDeclined) patch.declined = next.declined;
     // .select() so a write RLS silently refuses (0 rows) surfaces as an error
     // instead of a tick that vanishes on the next refresh.
-    const { data: updated, error } = await supabase!.from("gatherings").update({ attendees: next }).eq("id", gatheringId).select("id");
+    const { data: updated, error } = await supabase!.from("gatherings").update(patch).eq("id", gatheringId).select("id");
     if (error) throw new Error(error.message);
     if (!updated?.length) throw new Error("The record refused the change — likely a missing update permission on gatherings.");
     return next;
   }
   const list = localAll();
   const g = list.find((m) => m.id === gatheringId);
-  const current = g?.attendees || [];
-  const next = current.includes(memberId) ? current.filter((x) => x !== memberId) : [...current, memberId];
-  localSave(list.map((m) => (m.id === gatheringId ? { ...m, attendees: next } : m)));
+  const next = applyAnswer({ attendees: g?.attendees || [], declined: g?.declined || [] }, memberId, answer);
+  localSave(list.map((m) => (m.id === gatheringId ? { ...m, ...next } : m)));
   return next;
 }
 

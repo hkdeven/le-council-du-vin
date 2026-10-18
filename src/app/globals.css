@@ -133,6 +133,19 @@ textarea {
   font-family: "EB Garamond", serif;
   font-size: 15px;
 }
+/* iOS Safari shows no placeholder in an EMPTY date/time input, so once its
+   native appearance is stripped it collapses to a sliver (the summon form's
+   "The night" sat half the height of its neighbours). Hold every date/time
+   field to the height of a text input, empty or not. */
+input[type="date"],
+input[type="time"] {
+  min-height: 43px;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  min-height: 1.4em;
+  text-align: left;
+}
 input:focus,
 select:focus,
 textarea:focus {
@@ -145,6 +158,72 @@ textarea {
 }
 select option {
   background: #0e0d0c;
+}
+
+/* RSVP: the "cannot attend" answer, and the Keiser's per-member pickers. */
+.btn.declined {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: var(--parch);
+}
+.rsvp-pick {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--faint);
+  font-size: 16px;
+  cursor: pointer;
+}
+.rsvp-pick.on-yes {
+  background: var(--gold2);
+  border-color: var(--gold2);
+  color: #0a0a0a;
+}
+.rsvp-pick.on-no {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: var(--parch);
+}
+.rsvp-pick:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* A required field left empty after the petitioner tried to submit. Loud on
+   purpose: a silent form cost us a petitioner, so the gap must be unmissable. */
+label.field.missing {
+  color: #ff4d4d;
+  font-weight: 900;
+  font-size: 11px;
+}
+label.field.missing::after {
+  content: " · required";
+}
+input.missing,
+select.missing,
+textarea.missing,
+input.missing:focus,
+textarea.missing:focus {
+  border: 2px solid #ff4d4d;
+  background: rgba(255, 77, 77, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.18);
+}
+.form-error {
+  color: #ff4d4d;
+  font-weight: 700;
+  font-size: 14px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 77, 77, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 77, 77, 0.08);
 }
 
 /* Date + time of birth pair. Native date/time inputs on iOS Safari keep a

@@ -14,6 +14,11 @@ const Mark = ({ size }: { size: number }) => (
   <img src="/favicon-mark.png" alt="" aria-hidden="true" width={size} height={size} style={{ display: "block", margin: "0 auto" }} />
 );
 
+// The mark of a required field, shown on its label from the start.
+const Req = () => (
+  <span aria-hidden="true" style={{ color: "#ff4d4d", marginLeft: 3 }}>*</span>
+);
+
 export default function Initiation() {
   const { mode } = useAuth();
   const [cultName, setCultName] = useState("");
@@ -52,16 +57,40 @@ export default function Initiation() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set on the first submit attempt. From then on every empty required field
+  // is painted red, and clears itself the moment it is filled.
+  const [attempted, setAttempted] = useState(false);
+
+  // Required fields, in page order. The button used to stay disabled until all
+  // of these were filled, which read as "nothing happens" to a petitioner who
+  // had missed one. Now the button always answers and names the gap.
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const required: { id: string; label: string; missing: boolean }[] = [
+    { id: "f-name", label: "your name", missing: !cultName.trim() },
+    { id: "f-email", label: "a valid email", missing: !emailOk },
+    { id: "f-dob", label: "date of birth", missing: !dob },
+    { id: "f-tob", label: "time of birth", missing: !tob },
+    { id: "f-place", label: "place of birth", missing: !place.trim() },
+  ];
+  const missing = required.filter((f) => f.missing);
+  const miss = (id: string) => attempted && required.some((f) => f.id === id && f.missing);
+  const cls = (id: string) => (miss(id) ? "missing" : undefined);
+  const labelCls = (id: string) => (miss(id) ? "field missing" : "field");
 
   const submit = async () => {
-    // The sky is required at the gate now (Keiser's decree): no petition
-    // without date, time, and place of birth.
-    if (!dob || !tob || !place.trim()) {
-      setError("The Council reads the sky before the soul: date, time, and place of birth are required.");
+    setAttempted(true);
+    if (missing.length) {
+      const names = missing.map((f) => f.label);
+      const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
+      setError(`The Council cannot read your petition yet. Missing: ${list}.`);
+      const first = document.getElementById(missing[0].id);
+      first?.scrollIntoView({ behavior: "smooth", block: "center" });
+      first?.focus({ preventScroll: true });
       return;
     }
     setBusy(true);
     setError(null);
+    try {
     // Pin the birth town quietly (first atlas match); the chart uses its
     // coordinates + timezone. A miss just leaves the typed name.
     let lat = placeLat, lon = placeLon, zone = placeTz || tz;
@@ -87,7 +116,6 @@ export default function Initiation() {
       // Live: the petition must actually land in Supabase. Surface any failure
       // instead of faking success (a silent insert error hid earlier petitions).
       const { error: dbError } = await supabase.from("applications").insert(record);
-      setBusy(false);
       if (dbError) {
         setError(`Your petition could not be sealed: ${dbError.message}. Tell the Keiser.`);
         return;
@@ -95,7 +123,6 @@ export default function Initiation() {
     } else {
       // Demo: persist locally so the petition reaches this browser's tribunal.
       addApplication({ id: `app-${Date.now()}`, status: "pending", created_at: new Date().toISOString(), ...record });
-      setBusy(false);
     }
     // Notify the Keiser by email (no-ops until Resend is configured). Fire and
     // forget — never block the petitioner's confirmation on it.
@@ -105,6 +132,13 @@ export default function Initiation() {
       body: JSON.stringify({ cult_name: cultName.trim(), email }),
     }).catch(() => {});
     setSent(true);
+    } catch (e) {
+      // Anything that throws (the write lock, a dropped network) used to leave
+      // the button stuck on "Sealing…" forever. Say so instead.
+      setError(`Your petition could not be sealed: ${(e as Error).message || "something went wrong"}. Try again, or tell the Keiser.`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (sent) {
@@ -150,23 +184,25 @@ export default function Initiation() {
       </h1>
       <p className="whisper" style={{ textAlign: "center", fontSize: 15, marginBottom: 20 }}>
         Answer truthfully. The Council sees all.
+        <br />
+        <span style={{ fontSize: 13 }}>Fields marked <Req /> are required.</span>
       </p>
 
       <div className="card">
-        <label className="field">The name you offer</label>
-        <input value={cultName} onChange={(e) => setCultName(e.target.value)} placeholder="Priestess Larissa" />
+        <label className={labelCls("f-name")} htmlFor="f-name">The name you offer<Req /></label>
+        <input id="f-name" className={cls("f-name")} value={cultName} onChange={(e) => setCultName(e.target.value)} placeholder="Priestess Larissa" />
 
-        <label className="field">A sigil to reach you by</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@vessel.com" />
+        <label className={labelCls("f-email")} htmlFor="f-email">A sigil to reach you by (email)<Req /></label>
+        <input id="f-email" type="email" autoComplete="email" className={cls("f-email")} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@vessel.com" />
 
         <div className="birth-fields">
           <div>
-            <label className="field">Date of birth</label>
-            <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+            <label className={labelCls("f-dob")} htmlFor="f-dob">Date of birth<Req /></label>
+            <input id="f-dob" className={cls("f-dob")} type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
           </div>
           <div>
-            <label className="field">Time of birth</label>
-            <input type="time" value={tob} onChange={(e) => setTob(e.target.value)} />
+            <label className={labelCls("f-tob")} htmlFor="f-tob">Time of birth<Req /></label>
+            <input id="f-tob" className={cls("f-tob")} type="time" value={tob} onChange={(e) => setTob(e.target.value)} />
           </div>
         </div>
 
@@ -177,9 +213,11 @@ export default function Initiation() {
           ))}
         </select>
 
-        <label className="field">Place of birth</label>
+        <label className={labelCls("f-place")} htmlFor="f-place">Place of birth<Req /></label>
         <div style={{ display: "flex", gap: 8 }}>
           <input
+            id="f-place"
+            className={cls("f-place")}
             value={place}
             onChange={(e) => { setPlace(e.target.value); setPlaceLat(null); setPlaceLon(null); setPlaceHits(null); setPlaceError(null); }}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), seekPlace())}
@@ -231,12 +269,12 @@ export default function Initiation() {
         </div>
 
         {error && (
-          <p style={{ color: "#c98", fontSize: 13, margin: "14px 0 0" }}>{error}</p>
+          <p className="form-error" role="alert">{error}</p>
         )}
         <button
           className="btn gold"
           style={{ marginTop: error ? 10 : 18 }}
-          disabled={busy || !cultName || !email || !dob || !tob || !place.trim()}
+          disabled={busy}
           onClick={submit}
         >
           {busy ? "Sealing…" : "Offer yourself to the Council"}
