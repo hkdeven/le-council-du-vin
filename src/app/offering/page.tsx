@@ -21,25 +21,66 @@ interface Loaded {
 }
 
 // A photograph taken on a phone is several megabytes of detail nobody needs
-// to read a label. Shrink it in the browser first: the member waits seconds
-// less, and on a bad signal it is the difference between working and not.
-async function shrink(file: File, maxEdge = 1600): Promise<{ data: string; mediaType: string }> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) {
-    // No canvas path available: send what we were given rather than nothing.
-    const raw = await file.arrayBuffer();
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(raw)));
-    return { data: b64, mediaType: file.type || "image/jpeg" };
+// to read a label, and an iPhone hands over HEIC, which neither Anthropic nor
+// this route accepts. So the browser always re-encodes to JPEG and shrinks
+// the long edge, which solves both at once:
+//
+//   - 1568px is the edge above which the model downsizes anyway, so sending
+//     more is paid-for detail that is thrown away.
+//   - A 12-megapixel iPhone photo of 3 to 5 MB comes out around 250 KB, well
+//     under Netlify's 6 MB cap on a function's body (and base64 inflates by
+//     a third, so the raw file could not have been sent safely in any case).
+//   - HEIC decodes through either path below, because the phone itself has
+//     the codec; what leaves the browser is JPEG regardless.
+//
+// Two decode paths, because neither works everywhere: createImageBitmap is
+// the fast one, and an <img> is the one Safari has always had. If both fail
+// the member is told plainly rather than being sent a file the route will
+// refuse.
+const MAX_EDGE = 1568;
+
+async function decode(file: File): Promise<{ width: number; height: number; draw: CanvasImageSource; done: () => void }> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    return { width: bitmap.width, height: bitmap.height, draw: bitmap, done: () => bitmap.close?.() };
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.decoding = "sync";
+      await new Promise<void>((ok, no) => {
+        img.onload = () => ok();
+        img.onerror = () => no(new Error("undecodable"));
+        img.src = url;
+      });
+      return { width: img.naturalWidth, height: img.naturalHeight, draw: img, done: () => URL.revokeObjectURL(url) };
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
   }
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
-  const url = canvas.toDataURL("image/jpeg", 0.82);
-  return { data: url.slice(url.indexOf(",") + 1), mediaType: "image/jpeg" };
+}
+
+async function shrink(file: File): Promise<{ data: string; mediaType: string }> {
+  const { width, height, draw, done } = await decode(file);
+  try {
+    const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    canvas.getContext("2d")!.drawImage(draw, 0, 0, canvas.width, canvas.height);
+    let quality = 0.82;
+    let url = canvas.toDataURL("image/jpeg", quality);
+    // A label photographed against a busy table can still be large. Step the
+    // quality down rather than the size: text must stay readable.
+    while (url.length > 2_800_000 && quality > 0.5) {
+      quality -= 0.12;
+      url = canvas.toDataURL("image/jpeg", quality);
+    }
+    return { data: url.slice(url.indexOf(",") + 1), mediaType: "image/jpeg" };
+  } finally {
+    done();
+  }
 }
 
 function OfferingForm() {
@@ -76,7 +117,7 @@ function OfferingForm() {
       if (got.price != null) { setPrice(String(got.price)); setCaveat(priceCaveat(got.priceNote)); }
       setUnsure(!got.confident);
     } catch {
-      alert("The photograph could not be sent. Try again in a moment.");
+      alert("That photograph could not be opened. Try another, or type the wine in.");
     } finally {
       setReading("idle");
       if (fileRef.current) fileRef.current.value = "";
@@ -160,7 +201,8 @@ function OfferingForm() {
         {header}
         <div className="scr" style={{ fontStyle: "italic", color: "var(--gold2)", fontSize: 17, marginTop: 6 }}>It is sealed.</div>
         <p className="whisper" style={{ fontSize: 14, margin: "4px 0 14px", lineHeight: 1.5 }}>
-          Bring it cloaked and unmarked. Nothing more is asked of you until the night.
+          Bring it cloaked and unmarked. Nothing more is asked of you until the night. Your wine now counts towards the Prophecy,
+          and stays hidden from every member and from the Keiser until all the rankings have been revealed.
         </p>
         <table style={{ width: "100%", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", borderCollapse: "collapse" }}>
           <tbody>
@@ -186,20 +228,20 @@ function OfferingForm() {
       <div className="scr" style={{ fontStyle: "italic", color: "var(--gold2)", fontSize: 17, marginTop: 6 }}>
         Good evening{data?.name ? `, ${data.name}` : ""}.
       </div>
-      <p className="whisper" style={{ fontSize: 14, margin: "4px 0 0", lineHeight: 1.5 }}>
-        Three questions, and the night is ready for you.
-      </p>
 
       {data?.canReadLabel && (
         <>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+          {/* No `capture` attribute on purpose: with it, iOS opens the camera and
+              gives no way to choose a photograph already taken. Without it, both
+              phones offer the sheet: take one now, or pick one from the library. */}
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) readLabel(f); }} />
           <button className="btn" style={{ marginTop: 14 }} onClick={() => fileRef.current?.click()} disabled={reading === "reading"}>
             <i className={`ti ti-${reading === "reading" ? "loader-2" : "camera"}`} style={{ marginRight: 7 }} />
-            {reading === "reading" ? "Reading the label…" : "Photograph the label"}
+            {reading === "reading" ? "Reading the label…" : "Scan the label"}
           </button>
           <p className="whisper" style={{ fontSize: 13, textAlign: "center", margin: "7px 0 0", lineHeight: 1.5 }}>
-            Snap the bottle and the three answers fill themselves in. Check them before you seal.
+            Everything it finds stays yours to change.
           </p>
           {unsure && (
             <p style={{ fontSize: 13.5, lineHeight: 1.5, margin: "10px 0 0", border: "1px solid #8a6c3a", borderRadius: 8, padding: "8px 11px", color: "var(--spoiled)" }}>
@@ -210,12 +252,12 @@ function OfferingForm() {
       )}
 
       <div style={{ marginTop: 16 }}>
-        <label className="field" htmlFor="grape">The grape</label>
-        <input id="grape" value={grape} onChange={(e) => setGrape(e.target.value)} placeholder="Cabernet Sauvignon, Merlot…" autoComplete="off" />
-      </div>
-      <div style={{ marginTop: 12 }}>
         <label className="field" htmlFor="wine">Name of the wine</label>
         <input id="wine" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Producer and vintage" autoComplete="off" />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <label className="field" htmlFor="grape">The grape</label>
+        <input id="grape" value={grape} onChange={(e) => setGrape(e.target.value)} placeholder="Cabernet Sauvignon, Merlot…" autoComplete="off" />
       </div>
       <div style={{ marginTop: 12 }}>
         <label className="field" htmlFor="cost">What it cost</label>
@@ -231,6 +273,20 @@ function OfferingForm() {
       <p className="whisper" style={{ fontSize: 13, textAlign: "center", margin: "12px 0 0", lineHeight: 1.5 }}>
         No eye but yours, not even the Keiser&rsquo;s, until the cloths lift.
       </p>
+
+      <div style={{ marginTop: 26, border: "1px solid var(--line)", borderRadius: 10, padding: "12px 13px", textAlign: "left" }}>
+        <p className="eyebrow" style={{ fontSize: 9.5, margin: "0 0 6px" }}>Why it is asked before the night</p>
+        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: "var(--parch)" }}>
+          The vine cannot speak until every soul who has answered the call has named their bottle. When the last one is in, the{" "}
+          <strong style={{ color: "var(--gold2)", fontWeight: 400 }}>Prophecy</strong> reads the room, every wine in it and every hand that carried one,
+          and names who it believes will be crowned. It speaks once, before a single cloth is lifted, and the night either proves it right or humbles it.
+        </p>
+        <p style={{ margin: "9px 0 0", fontSize: 14.5, lineHeight: 1.55, color: "var(--parch)" }}>
+          Nothing you write here is seen by anyone: not the other members, not the Keiser. Your wine stays sealed until the cloths lift
+          and every ranking has been revealed.
+        </p>
+      </div>
+
     </Shell>
   );
 }

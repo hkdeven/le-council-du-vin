@@ -14,7 +14,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60; // a label read with a search behind it is not instant
 
 const MODEL = "claude-sonnet-5-5";
-const MAX_BYTES = 6 * 1024 * 1024; // the page downscales before sending; this is the ceiling
+// Netlify caps a function's request body at 6 MB, and base64 inflates by a
+// third, so the decoded image must stay under about 4.5 MB for the request
+// itself to arrive. 4 MB leaves room for the rest of the body. The page
+// normally sends a quarter of a megabyte; this is the ceiling, not the aim.
+const MAX_BYTES = 4 * 1024 * 1024;
 const OK_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
