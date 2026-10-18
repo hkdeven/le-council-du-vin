@@ -13,8 +13,25 @@ const bad = (error: string, status = 400) => NextResponse.json({ ok: false, erro
 // "wrong night" and "no such token" must read identically from outside.
 const UNKNOWN = "This link is no longer good. Open the Council and log your wine there.";
 
+// A standing fixture so the page can be looked at and driven without a real
+// summons in hand: the service role key lives only on the server in
+// production, so a developer's machine can otherwise never open this page.
+// Shut twice over: only outside a production build, and only when login
+// enforcement has been explicitly switched off, which production never does.
+const FIXTURE_TOKEN = "demo";
+const fixtureAllowed = () =>
+  process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false";
+
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("t") || "";
+  if (token === FIXTURE_TOKEN && fixtureAllowed()) {
+    return NextResponse.json({
+      ok: true, name: "Seer Matthew", numberRoman: "XIX", theme: "Cape Bordeaux Blends",
+      date: new Date().toISOString().slice(0, 10), closed: false,
+      canReadLabel: !!process.env.ANTHROPIC_API_KEY,
+      offering: { title: "", price: null, varietals: [] },
+    });
+  }
   const who = await bearerOf(token);
   if (!who) return bad(UNKNOWN, 404);
 
@@ -33,12 +50,20 @@ export async function GET(req: Request) {
     theme: who.theme,
     date: who.date,
     closed: who.closed,
+    // Whether the camera is worth offering at all: without the key, the page
+    // shows the three fields alone rather than a button that cannot work.
+    canReadLabel: !!process.env.ANTHROPIC_API_KEY,
     offering: { title: data?.title || "", price: data?.price ?? null, varietals: (data?.varietals as string[]) || [] },
   });
 }
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { t?: string; grape?: string; title?: string; price?: string };
+  if (body.t === FIXTURE_TOKEN && fixtureAllowed()) {
+    // The fixture seals nothing: it echoes back what it was given so the page
+    // can be walked end to end without touching anybody's night.
+    return NextResponse.json({ ok: true, offering: { title: (body.title || "").trim(), price: body.price ? Number(String(body.price).replace(/[^\d.]/g, "")) : null, varietals: (body.grape || "").split(",").map((g) => g.trim()).filter(Boolean) } });
+  }
   const who = await bearerOf(body.t || "");
   if (!who) return bad(UNKNOWN, 404);
   // Once the cloths have lifted the record is the record: a letter answered

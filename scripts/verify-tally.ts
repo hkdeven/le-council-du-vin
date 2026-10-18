@@ -80,14 +80,50 @@ const r = (cloth: number, score: number, votes: number, o: Partial<TallyRow> = {
 }
 
 {
-  // Each bearer is written into the record in their own right, carrying the
-  // group's score and standing: that is what makes them co-champions.
+  // Each bearer is written into the record in their own right. The STANDING
+  // is the group's, which is what makes them co-champions; the SCORE stays
+  // the cloth's own, so the record never re-averages an average.
   const rows = [r(1, 7.0, 5), r(2, 8.2, 5, { bind: 2 }), r(3, 8.0, 5, { bind: 2 })];
   const w = annalScores(rows);
-  check("both bound cloths record the same score", near(w.get(2)!.score, 8.1) && near(w.get(3)!.score, 8.1));
+  check("each bound cloth records the verdicts it actually got", near(w.get(2)!.score, 8.2) && near(w.get(3)!.score, 8.0));
+  check("and its own vote count, never the group's total", w.get(2)!.votes === 5 && w.get(3)!.votes === 5);
   check("both bound cloths record the same place", w.get(2)!.rank === 1 && w.get(3)!.rank === 1);
   check("the unbound cloth is unaffected", near(w.get(1)!.score, 7.0) && w.get(1)!.rank === 2);
   check("every bottle carried is still its own line", w.size === 3);
+}
+
+{
+  // AMENDMENT MUST BE IDEMPOTENT. The Keiser can mark and bind on the
+  // Reckoning after a night is committed, and every amendment rewrites every
+  // row. Writing the group's mean and the group's vote total onto each row
+  // would re-average an average and double the votes on each save.
+  const rows = [r(1, 7.0, 5), r(2, 8.2, 6, { bind: 2 }), r(3, 8.0, 4, { bind: 2 })];
+  let carried = rows;
+  for (let i = 0; i < 5; i++) {
+    const w = annalScores(carried);
+    carried = carried.map((x) => ({ ...x, score: w.get(x.cloth)!.score, votes: w.get(x.cloth)!.votes }));
+  }
+  const after = annalScores(carried);
+  check("five amendments do not move a score", near(after.get(2)!.score, 8.2) && near(after.get(3)!.score, 8.0));
+  check("five amendments do not inflate the votes", after.get(2)!.votes === 6 && after.get(3)!.votes === 4);
+  const boundAfter = bindRows(carried).find((b) => b.cloth === 2)!;
+  check("and the group's mean is unchanged", near(boundAfter.score, (8.2 * 6 + 8.0 * 4) / 10), String(boundAfter.score));
+  check("and its vote count is right once, not twice", boundAfter.votes === 10);
+
+  // Loosening the binding must give each cloth back exactly what it earned.
+  const loosened = carried.map((x) => ({ ...x, bind: null }));
+  const free = bindRows(loosened);
+  check("unbinding restores each cloth's own verdict", near(free.find((b) => b.cloth === 2)!.score, 8.2) && near(free.find((b) => b.cloth === 3)!.score, 8.0));
+}
+
+{
+  // A spoiled cloth inside a sound group: the group still places, the spoiled
+  // cloth does not, and its own score stays in the record.
+  const rows = [r(1, 9.0, 5), r(2, 7.0, 5, { bind: 2 }), r(3, 3.0, 5, { bind: 2, spoiled: true })];
+  const w = annalScores(rows);
+  check("the spoiled cloth keeps its score in the record", near(w.get(3)!.score, 3.0));
+  check("but takes no standing", w.get(3)!.rank === null);
+  check("while its sibling takes the group's", w.get(2)!.rank === 2);
 }
 
 {
@@ -168,8 +204,8 @@ const r = (cloth: number, score: number, votes: number, o: Partial<TallyRow> = {
   check("the group takes one standing", rankIn(bound, same) === 2);
 
   const w = annalScores(rows);
-  check("the sound bound cloths record the group's score", near(w.get(2)!.score, 7.7) && near(w.get(4)!.score, 7.7));
-  check("the spoiled cloth records no score of its own", w.get(3)!.score === 0 && w.get(3)!.votes === 0);
+  check("each sound bound cloth records its own verdict", near(w.get(2)!.score, 7.8) && near(w.get(4)!.score, 7.6));
+  check("the spoiled cloth's own score stays in the record", near(w.get(3)!.score, 3.1) && w.get(3)!.votes === 5);
   check("and the spoiled cloth takes no place", w.get(3)!.rank === null);
   check("while its sound siblings share a place", w.get(2)!.rank === 2 && w.get(4)!.rank === 2);
 }

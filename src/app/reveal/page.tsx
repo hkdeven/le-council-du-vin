@@ -147,7 +147,7 @@ function Verdicts({ list, showCloth }: { list: Verdict[]; showCloth: boolean }) 
 // Reckoning: the crowning, the rankings, the split cloth and the ledger, with
 // the whole thing sendable to your own inbox. Every bottle opens to show what
 // the whole table gave it and wrote about it.
-function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadVerdicts, onPhotos }: {
+function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadVerdicts, canAmend, onPatch, onBind, onUnbind, onPhotos }: {
   g: Gathering;
   rows: RevealRow[];
   stats: RevealStats;
@@ -155,10 +155,21 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
   verdictsFor: (cloth: number[]) => Verdict[];
   avatarFor: (ownerName: string) => string | null;
   canReadVerdicts: boolean;
+  // The Keiser's hand on a committed night. The annals are the record from
+  // the commit onward, so every one of these writes straight back to them.
+  canAmend: boolean;
+  onPatch: (cloth: number, patch: Partial<RevealRow>) => void;
+  onBind: (cloths: number[]) => void;
+  onUnbind: (key: number) => void;
   onPhotos: (next: string[]) => void;
 }) {
   const [mailState, setMailState] = useState<"idle" | "sending" | "sent">("idle");
   const [open, setOpen] = useState<number | null>(null);
+  const [bindMode, setBindMode] = useState(false);
+  const [binding, setBinding] = useState<number[]>([]);
+  // The unfolding. 0 = nothing yet, 1 = the crowning, 2.. = one standing at a
+  // time, and the closing sections once every standing is in.
+  const [shown, setShown] = useState(0);
 
   // Bound cloths are one wine with one standing; spoiled ones are recorded and
   // never placed. tally.ts holds the arithmetic, and scripts/verify-tally.ts
@@ -175,6 +186,16 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
   // silently matched nothing, which listed the crowned wine twice.
   const crownedCloths = new Set(champions.map((c) => c.cloth));
   const rest = placed.filter((x) => !crownedCloths.has(x.row.cloth));
+
+  // Step the unfolding forward until the whole night stands. A reader who
+  // has asked their device for less motion gets the page at once.
+  useEffect(() => {
+    const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (still) { setShown(rest.length + 2); return; }
+    if (shown > rest.length + 1) return;
+    const t = setTimeout(() => setShown((x) => x + 1), shown === 0 ? 250 : shown === 1 ? 700 : 420);
+    return () => clearTimeout(t);
+  }, [shown, rest.length]);
 
   // The wine's price and grapes live on the physical rows, not the group.
   const rowOf = (cloth: number) => rows.find((r) => r.cloth === cloth);
@@ -197,7 +218,10 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
       split = { cloth, title: row.title, min: t.min, max: t.max };
     }
   }
-  const splitText = split ? `${nameText([split.cloth], split.title)} divided the table: one soul gave it a ${split.min}, another a ${split.max}.` : null;
+  const splitWine = split ? nameText([split.cloth], split.title) : null;
+  const splitFinding = split ? `one soul gave it a ${split.min}, another a ${split.max}.` : null;
+  // The email keeps it as one sentence; only the page breaks the line.
+  const splitText = split ? `${splitWine} divided the table: ${splitFinding}` : null;
 
   // The ledger: best score per hundred rand, when prices were confided. A
   // spoiled bottle is no bargain and no disappointment; it is simply out.
@@ -268,6 +292,13 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
               {row.cloths.map((c) => <Cloth key={c} n={c} tone={tone} />)}
               {row.dq && <span className="tag" style={{ color: "var(--wine)", borderColor: "#6d3a3e" }}>off theme</span>}
               {row.spoiled && <span className="tag" style={{ color: "var(--spoiled)", borderColor: "#8a6c3a" }}>spoiled</span>}
+              {/* The bolt used to sit alone on a line of its own, meaning
+                  nothing to anyone who had not read the code. */}
+              {split?.cloth === row.cloth && (
+                <span className="tag" style={{ color: "var(--gold2)" }}>
+                  <i className="ti ti-bolt" style={{ fontSize: 10, marginRight: 4 }} />split the table
+                </span>
+              )}
             </span>
             {row.owner && (
               <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14.5, color: row.dq ? "#c99" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
@@ -275,7 +306,6 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
                 {row.cloths.length > 1 && <span className="whisper" style={{ fontSize: 13, color: "var(--faint)" }}> · one wine, {row.cloths.length} cloths</span>}
               </span>
             )}
-            {split?.cloth === row.cloth && <i className="ti ti-bolt" style={{ color: "var(--gold2)", fontSize: 12 }} />}
             {row.spoiled && <span className="whisper" style={{ display: "block", fontSize: 13 }}>Kept in the record, counted against no one.</span>}
           </span>
           <span className="disp" style={{ fontSize: 14, flex: "none", color: row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
@@ -285,6 +315,40 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
             {openable && <i className={`ti ti-chevron-${isOpen ? "up" : "down"}`} />}
           </span>
         </div>
+        {/* The Keiser amends the record here, on the page the table is
+            looking at, rather than having to go to the codex. */}
+        {canAmend && !bindMode && (
+          <div style={{ display: "flex", gap: 14, justifyContent: "flex-end", padding: "0 2px 9px" }}>
+            {row.rows.map((phys) => (
+              <span key={phys.cloth} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                {row.cloths.length > 1 && <Cloth n={phys.cloth} size={17} />}
+                <button onClick={() => onPatch(phys.cloth, { dq: !phys.dq, ...(phys.dq ? {} : { spoiled: false }) })}
+                  title={phys.dq ? "Restore it to the ranking" : "Cast it out: off theme"}
+                  style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: phys.dq ? "var(--gold2)" : "var(--wine)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                  <i className={`ti ti-${phys.dq ? "arrow-back-up" : "ban"}`} style={{ fontSize: 11, marginRight: 3 }} />{phys.dq ? "restore" : "disqualify"}
+                </button>
+                <button onClick={() => onPatch(phys.cloth, { spoiled: !phys.spoiled, ...(phys.spoiled ? {} : { dq: false }) })}
+                  title={phys.spoiled ? "The bottle was sound after all" : "The bottle came up bad: recorded, never judged"}
+                  style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: phys.spoiled ? "var(--gold2)" : "var(--spoiled)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                  <i className={`ti ti-${phys.spoiled ? "arrow-back-up" : "alert-triangle"}`} style={{ fontSize: 11, marginRight: 3 }} />{phys.spoiled ? "sound" : "spoiled"}
+                </button>
+              </span>
+            ))}
+            {row.cloths.length > 1 && (
+              <button onClick={() => onUnbind(row.cloth)} title="Loosen this binding"
+                style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                <i className="ti ti-unlink" style={{ fontSize: 11, marginRight: 3 }} />loosen
+              </button>
+            )}
+          </div>
+        )}
+        {canAmend && bindMode && (
+          <label style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 2px 9px", fontSize: 13.5, color: "var(--gold2)", cursor: "pointer" }}>
+            <input type="checkbox" checked={row.cloths.every((c) => binding.includes(c))} style={{ width: "auto" }}
+              onChange={(e) => setBinding((b) => (e.target.checked ? [...new Set([...b, ...row.cloths])] : b.filter((c) => !row.cloths.includes(c))))} />
+            the same wine
+          </label>
+        )}
         {isOpen && <Verdicts list={verdicts} showCloth={row.cloths.length > 1} />}
       </div>
     );
@@ -298,7 +362,7 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
       </p>
 
       <Band>The Crowning</Band>
-      {champions.length === 0 ? (
+      {shown >= 1 && (champions.length === 0 ? (
         <p className="whisper" style={{ margin: 0, fontSize: 15 }}>No champion this moon.</p>
       ) : champions.map((c) => (
         <div key={c.cloth} style={{ display: "flex", alignItems: "center", gap: 15, textAlign: "left", margin: "0 0 12px" }}>
@@ -309,11 +373,28 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
             <span style={{ display: "inline-flex", gap: 5, marginLeft: 7 }}>{c.cloths.map((n) => <Cloth key={n} n={n} />)}</span>
             {c.owner && <div className="scr" style={{ fontStyle: "italic", fontSize: 15, color: "var(--gold2)", marginTop: 3 }}>{c.owner}</div>}
             <div className="disp" style={{ fontSize: 26, color: "var(--gold2)", marginTop: 2 }}>{c.score.toFixed(1)}</div>
+            {canAmend && !bindMode && (
+              <div style={{ display: "flex", gap: 14, marginTop: 4 }}>
+                {c.rows.map((phys) => (
+                  <span key={phys.cloth} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    {c.cloths.length > 1 && <Cloth n={phys.cloth} size={17} />}
+                    <button onClick={() => onPatch(phys.cloth, { dq: true, spoiled: false })} title="Cast it out: off theme"
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                      <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
+                    </button>
+                    <button onClick={() => onPatch(phys.cloth, { spoiled: true, dq: false })} title="The bottle came up bad: recorded, never judged"
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--spoiled)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                      <i className="ti ti-alert-triangle" style={{ fontSize: 11, marginRight: 3 }} />spoiled
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      ))}
+      )))}
 
-      {g.prophecy && champions.length > 0 && (() => {
+      {shown >= 1 && g.prophecy && champions.length > 0 && (() => {
         const right = champions.some((c) => c.owners.includes(g.prophecy!.name));
         return (
           <p className="scr" style={{ fontStyle: "italic", fontSize: 14.5, color: right ? "var(--gold2)" : "var(--dim)", margin: "12px 0 0" }}>
@@ -333,22 +414,59 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
         {canReadVerdicts && <span className="whisper" style={{ fontSize: 13 }}>tap a wine for every verdict</span>}
       </div>
       <div style={{ textAlign: "left" }}>
-        {rest.map(({ row, rank }) => <Row key={row.cloth} row={row} rank={rank} />)}
+        {rest.slice(0, Math.max(0, shown - 1)).map(({ row, rank }) => (
+          <div key={row.cloth} className="rise"><Row row={row} rank={rank} /></div>
+        ))}
       </div>
 
-      {splitText && (
-        <>
-          <Band>The split cloth</Band>
-          <p style={{ margin: 0, fontSize: 15, color: "var(--parch)" }}>⚡ {splitText}</p>
-        </>
+      {canAmend && shown > rest.length && (
+        <div className="rise" style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+          {!bindMode ? (
+            <>
+              <button className="btn" style={{ width: "auto", padding: "8px 16px", fontSize: 13 }} onClick={() => { setBindMode(true); setBinding([]); }}>
+                <i className="ti ti-link" style={{ marginRight: 6 }} />Bind the cloths
+              </button>
+              <p className="whisper" style={{ fontSize: 13, margin: "8px 0 0" }}>
+                Two souls brought the same wine? Bind their cloths and the table judges it once.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="whisper" style={{ fontSize: 14, margin: "0 0 4px" }}>Tick every cloth that is the same wine, then seal it.</p>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button className="btn gold" style={{ flex: 1, fontSize: 13 }} disabled={binding.length < 2}
+                  onClick={() => { onBind(binding); setBinding([]); setBindMode(false); }}>
+                  {binding.length < 2 ? "Tick two or more" : `Bind these ${binding.length}`}
+                </button>
+                <button className="btn" style={{ width: "auto", padding: "8px 16px", fontSize: 13 }} onClick={() => { setBindMode(false); setBinding([]); }}>Undo</button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
-      {value && (
-        <>
+      {splitText && shown > rest.length && (
+        <div className="rise">
+          <Band>The split cloth</Band>
+          <p style={{ margin: 0, fontSize: 15, color: "var(--parch)" }}>
+            ⚡ {splitWine} divided the table:
+            <span style={{ display: "block" }}>{splitFinding}</span>
+          </p>
+        </div>
+      )}
+
+      {value && shown > rest.length && (
+        <div className="rise">
           <Band>The ledger</Band>
           <p style={{ margin: 0, fontSize: 15, color: "var(--parch)" }}>{value}</p>
-        </>
+        </div>
       )}
+
+      {shown > rest.length && (
+      <div className="rise">
+      <div className="moons" style={{ justifyContent: "center", margin: "26px 0 4px" }} aria-hidden="true">
+        <i className="ti ti-moon-stars" /><i className="ti ti-moon" /><i className="ti ti-circle-dashed" />
+      </div>
 
       <BottleReveal
         photos={g.reveal_photos || []}
@@ -356,13 +474,15 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
         onPhotos={onPhotos}
       />
 
-      <button className="btn" style={{ width: "auto", padding: "10px 22px", marginTop: 18 }}
+      <button className="btn" style={{ fontSize: 14, marginTop: 10 }}
         onClick={() => { if (!email) { alert("The demo has no post office: sign in on the live Council and the reckoning will fly."); return; } mailIt(); }}
         disabled={mailState === "sending"}>
-        <i className="ti ti-mail" style={{ fontSize: 14, marginRight: 6 }} />
+        <i className="ti ti-mail" style={{ marginRight: 6 }} />
         {mailState === "sent" ? "It flies to your inbox" : mailState === "sending" ? "Sending…" : "Email this to me"}
       </button>
       <p className="whisper" style={{ margin: "14px 0 0", fontSize: 12 }}>the vine calculates, it does not flatter</p>
+      </div>
+      )}
     </section>
   );
 }
@@ -693,9 +813,10 @@ export default function Reveal() {
   // Bind the ticked cloths into one wine. The key is the lowest cloth in the
   // set, so the binding is stable however it is read back, and any cloth
   // already bound to one of them is drawn in too rather than left orphaned.
-  const bindTicked = () => {
-    if (binding.length < 2) return;
-    const existing = new Set(binding);
+  const bindTicked = () => bindCloths(binding);
+  const bindCloths = (chosen: number[]) => {
+    if (chosen.length < 2) return;
+    const existing = new Set(chosen);
     for (const r of rows) if (r.bind != null && existing.has(r.bind)) existing.add(r.cloth);
     const all = [...existing].sort((a, b) => a - b);
     const key = all[0];
@@ -754,6 +875,8 @@ export default function Reveal() {
     return (
       <ReckoningView g={g} rows={rows} stats={stats} email={mode === "live" ? email : null}
         verdictsFor={verdictsFor} avatarFor={avatarFor} canReadVerdicts={canReadVerdicts}
+        canAmend={isKeiser && !sleeping}
+        onPatch={patch} onBind={bindCloths} onUnbind={unbind}
         onPhotos={(next) => { updateGathering(g.id, { reveal_photos: next }).then(() => setG({ ...g, reveal_photos: next })).catch((e) => alert(`Could not save the photos: ${e.message}`)); }} />
     );
   }

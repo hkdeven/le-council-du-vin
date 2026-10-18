@@ -134,19 +134,25 @@ export function placeNight(rows: TallyRow[]): { row: BoundRow; rank: number | nu
 // What each physical cloth is written as in the Annals. The record stays flat,
 // one line per bottle actually carried, because the chalices, the victories
 // and every member's ledger are counted per soul: three people who brought the
-// winning wine each won it. The group's score and standing are stamped on all
-// of them, which is what makes them co-champions.
+// winning wine each won it.
+//
+// Each row keeps ITS OWN score and vote count, and takes the GROUP'S standing.
+// The standing is what makes bound bearers co-champions (championsOf crowns
+// every row at rank 1). The score must stay the cloth's own, because this
+// function runs again on every amendment: stamping the group's mean and the
+// group's vote total onto each row would re-average an average and DOUBLE the
+// votes on each save, and unbinding could never restore what the table
+// actually gave each glass. The group's mean is derived for display, by
+// bindRows, from these untouched per-cloth scores.
 export function annalScores(rows: TallyRow[]): Map<number, { score: number; votes: number; rank: number | null }> {
   const bound = bindRows(rows);
   const out = new Map<number, { score: number; votes: number; rank: number | null }>();
   for (const b of bound) {
     const rank = rankIn(bound, b);
     for (const r of b.rows) {
-      // A spoiled cloth inside a sound group keeps the group's name and place
-      // but carries no score of its own: it was never judged.
-      out.set(r.cloth, r.spoiled && !b.spoiled
-        ? { score: 0, votes: 0, rank: null }
-        : { score: b.score, votes: b.votes, rank });
+      // A spoiled cloth takes no standing even inside a sound group: it was
+      // never judged, whatever its siblings earned.
+      out.set(r.cloth, { score: r.score, votes: r.votes, rank: r.spoiled ? null : rank });
     }
   }
   return out;

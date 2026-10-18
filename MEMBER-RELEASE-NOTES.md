@@ -2,6 +2,18 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 18 October 2026, later
+
+The Reckoning given some ceremony, and the camera put to work.
+
+- **Photograph the label instead of typing.** On the page your summons opens, there is now a camera. Snap the bottle and the three answers fill themselves in: the wine and its vintage from the label, the grape from the label or from what the wine is known to be, and a price. Every line stays yours to correct, and nothing is sealed until you say so. One honest note about the money: the figure is what the wine typically sells for, not what you paid, so if you caught it on sale or it was a gift, change it. If the photograph is too dark or too partial to read, the page says so rather than inventing a bottle for you. The photograph is sent to be read and kept nowhere.
+- **The Reckoning unfolds.** Open it and the crowned wine arrives first, then each standing in turn, then the night's closing passages, rather than the whole page landing at once. If your phone is set to prefer less motion, you get it all immediately.
+- **The bolt now says what it is.** A lightning mark used to sit alone on a line beside a wine, meaning nothing to anyone. It now rides beside the name and reads "split the table", which is what it always meant: the bottle the table most disagreed about.
+- **Smaller things.** The split cloth's finding sits on its own line. "Add photo of bottles" and "Email this to me" are the same button now, with the three moons parting them from the record above.
+- **The Keiser can amend the night after it is sealed.** Binding two souls' identical bottles, and marking one spoiled, were only possible before committing; now they sit on the Reckoning itself.
+
+Behind the curtain: a fault found before it could bite. The record had been stamping a bound wine's average and its combined vote count onto each of its bottles, so the Keiser amending a sealed night would have averaged an average and doubled the votes on every save, and loosening a binding could never have given each glass back what the table actually gave it. Each bottle now keeps its own verdict and takes only the group's standing. 42 further checks guard the reading of a label, including that a blurred photograph comes back unsure rather than confident, that a price range is read at its lower end, and that no invented bottle can enter the record.
+
 ## 18 October 2026
 
 The first gathering that went without a fault, and the table's own requests, built.
