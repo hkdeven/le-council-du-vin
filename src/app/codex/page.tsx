@@ -83,7 +83,7 @@ function draftFrom(a: AnnalEntry, g?: Gathering): Draft {
     host_name: g?.host_name || "",
     host2_id: g?.host2_id || null,
     host2_name: g?.host2_name || "",
-    rows: a.rows.map((r) => ({ cloth: r.cloth != null ? String(r.cloth) : "", title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, spoiled: !!r.spoiled, votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
+    rows: a.rows.map((r) => ({ cloth: r.cloth != null ? String(r.cloth) : "", title: r.title || "", owner: r.owner || "", score: r.votes > 0 || r.score > 0 ? String(r.score) : "", dq: r.dq, spoiled: !!r.spoiled, bind: r.bind != null ? String(r.bind) : "", votes: r.votes, varietals: r.varietals || [], price: r.price != null ? String(r.price) : "" })),
   };
 }
 
@@ -102,7 +102,7 @@ function GatheringEditor({ draft: initial, members, offerings, onCancel, onSave,
   const setRow = (i: number, patch: Partial<DraftRow>) =>
     setD((x) => ({ ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   const addRow = () =>
-    setD((x) => ({ ...x, rows: [...x.rows, { cloth: "", title: "", owner: "", score: "", dq: false, spoiled: false, votes: 1, varietals: [], price: "" }] }));
+    setD((x) => ({ ...x, rows: [...x.rows, { cloth: "", title: "", owner: "", score: "", dq: false, spoiled: false, bind: "", votes: 1, varietals: [], price: "" }] }));
   const dropRow = (i: number) => setD((x) => ({ ...x, rows: x.rows.filter((_, j) => j !== i) }));
 
   // Hosts from imported history may be a bare name with no member id; keep
@@ -196,6 +196,11 @@ function GatheringEditor({ draft: initial, members, offerings, onCancel, onSave,
             <input type="number" min="1" inputMode="numeric" value={r.cloth} onChange={(e) => setRow(i, { cloth: e.target.value })}
               placeholder="?" title="The pour number, when known; leave blank if the pouring order was never recorded"
               style={{ width: 58, padding: "4px 8px", flex: "none" }} />
+            {/* Two souls, one wine: name the cloth this bottle is the same
+                as, and the pair is judged once. Clearing it loosens them. */}
+            <span className="eyebrow" style={{ flex: "none" }} title="The same wine as which cloth? Leave blank unless two souls brought one wine.">Same as</span>
+            <input type="number" min="1" inputMode="numeric" value={r.bind || ""} onChange={(e) => setRow(i, { bind: e.target.value })}
+              placeholder="&mdash;" title="The cloth this bottle is the same wine as" style={{ width: 52, padding: "4px 8px", flex: "none" }} />
             <span style={{ flex: 1 }} />
             <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: r.dq ? "var(--wine)" : "var(--dim)", cursor: "pointer" }}>
               <input type="checkbox" checked={r.dq} onChange={(e) => setRow(i, { dq: e.target.checked, ...(e.target.checked ? { spoiled: false } : {}) })} style={{ width: "auto" }} />
@@ -393,6 +398,23 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
                 </span>
                 {split?.cloth === r.cloth && <i className="ti ti-bolt" title="The split cloth" style={{ color: "var(--gold2)", fontSize: 12, marginLeft: 5 }} />}
                 {r.owner ? <span style={{ color: "var(--dim)" }}> · {r.owner}</span> : null}
+                {/* The codex keeps one line per bottle carried, because the
+                    chalices are counted per soul. The mark is what explains
+                    why two lines share a standing. */}
+                {(() => {
+                  const key = r.bind ?? null;
+                  if (key == null) return null;
+                  const twins = a.rows.filter((x) => (x.bind ?? null) === key && x.cloth !== r.cloth).map((x) => x.cloth).filter((c): c is number => c != null);
+                  if (!twins.length) return null;
+                  return (
+                    <span className="whisper" style={{ fontSize: 12 }}>
+                      {" "}· one wine with{" "}
+                      {twins.map((c, i) => (
+                        <span key={c}>{i > 0 ? " and " : ""}<Cloth n={c} size={15} style={{ verticalAlign: "-3px" }} /></span>
+                      ))}
+                    </span>
+                  );
+                })()}
                 {(r.varietals?.length || r.price != null) ? (
                   <span className="whisper" style={{ fontSize: 12 }}>
                     {" "}· {[r.varietals?.join(", "), r.price != null ? `R${r.price}` : null].filter(Boolean).join(" · ")}
@@ -961,7 +983,7 @@ export default function Codex() {
               draft={{
                 number: Math.max(0, ...annals.map((a) => a.number), ...gatherings.map((g) => g.number || 0)) + 1,
                 theme: "", date: "", host_id: null, host_name: "", host2_id: null, host2_name: "",
-                rows: [{ cloth: "", title: "", owner: "", score: "", dq: false, spoiled: false, votes: 1, varietals: [], price: "" }],
+                rows: [{ cloth: "", title: "", owner: "", score: "", dq: false, spoiled: false, bind: "", votes: 1, varietals: [], price: "" }],
               }}
               members={members}
               onCancel={() => setAdding(false)}

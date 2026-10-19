@@ -131,28 +131,33 @@ export function placeNight(rows: TallyRow[]): { row: BoundRow; rank: number | nu
   return ranked.sort((a, b) => order(a) - order(b) || (a.rank ?? 0) - (b.rank ?? 0) || a.row.cloth - b.row.cloth);
 }
 
-// What each physical cloth is written as in the Annals. The record stays flat,
-// one line per bottle actually carried, because the chalices, the victories
-// and every member's ledger are counted per soul: three people who brought the
-// winning wine each won it.
+// What each physical cloth is written as in the Annals.
 //
-// Each row keeps ITS OWN score and vote count, and takes the GROUP'S standing.
-// The standing is what makes bound bearers co-champions (championsOf crowns
-// every row at rank 1). The score must stay the cloth's own, because this
-// function runs again on every amendment: stamping the group's mean and the
-// group's vote total onto each row would re-average an average and DOUBLE the
-// votes on each save, and unbinding could never restore what the table
-// actually gave each glass. The group's mean is derived for display, by
-// bindRows, from these untouched per-cloth scores.
-export function annalScores(rows: TallyRow[]): Map<number, { score: number; votes: number; rank: number | null }> {
+// The record stays flat, one line per bottle actually carried, because the
+// chalices and the victories are counted per soul. But NOBODY KNOWS WHICH
+// GLASS WAS WHOSE: three souls poured the same wine into three cloths and
+// the table judged the cloths, not the bearers. Crediting one of them with
+// 7.8 and another with 6.9 would be inventing a fact. So every bound row
+// carries the GROUP'S score, the group's vote count and the group's place,
+// and the three bearers stand exactly level.
+//
+// Each row also keeps `raw` for its own cloth, which is the only thing that
+// makes amendment safe: this function runs again on every amendment, and
+// re-averaging an average would walk the score and double the votes on each
+// save. Writers must feed the raw figures back in, never the shared ones.
+export interface AnnalScore { score: number; votes: number; rank: number | null; rawScore: number; rawVotes: number }
+
+export function annalScores(rows: TallyRow[]): Map<number, AnnalScore> {
   const bound = bindRows(rows);
-  const out = new Map<number, { score: number; votes: number; rank: number | null }>();
+  const out = new Map<number, AnnalScore>();
   for (const b of bound) {
     const rank = rankIn(bound, b);
     for (const r of b.rows) {
-      // A spoiled cloth takes no standing even inside a sound group: it was
-      // never judged, whatever its siblings earned.
-      out.set(r.cloth, { score: r.score, votes: r.votes, rank: r.spoiled ? null : rank });
+      // A spoiled cloth keeps its own verdict in the record and takes no
+      // place: it was never judged on merit, whatever its siblings earned.
+      out.set(r.cloth, r.spoiled
+        ? { score: r.score, votes: r.votes, rank: null, rawScore: r.score, rawVotes: r.votes }
+        : { score: b.score, votes: b.votes, rank, rawScore: r.score, rawVotes: r.votes });
     }
   }
   return out;

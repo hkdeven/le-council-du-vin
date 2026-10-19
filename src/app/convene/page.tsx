@@ -75,7 +75,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
     // Only offer it where it can work: a demo browser has no post office, and
     // the key may not be set.
     if (!gatheringsLive()) return;
-    fetch("/api/offering?t=probe").then((r) => r.json()).then((b) => setCanScan(!!b?.canReadLabel)).catch(() => {});
+    fetch("/api/offering/label").then((r) => r.json()).then((b) => setCanScan(!!b?.available)).catch(() => {});
   }, []);
   const scanLabel = async (file: File) => {
     if (scanning || sealDisabled) return;
@@ -179,7 +179,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
             <button onClick={() => setEditing(true)} className="lcv-shimmer-quiet"
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "12px 20px", cursor: "pointer" }}>
               <i className="ti ti-bottle" style={{ fontSize: 14 }} />
-              Log your offering
+              Log your wine
             </button>
           )}
           <div style={{ overflow: "hidden", maxHeight: editing ? 440 : 0, opacity: editing ? 1 : 0, transform: editing ? "translateY(0)" : "translateY(-8px)", transition: "max-height 0.6s cubic-bezier(.2,.8,.25,1), opacity 0.5s ease 0.08s, transform 0.5s cubic-bezier(.2,.8,.25,1)" }}>
@@ -352,6 +352,21 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
             {nudge === "sent" ? "The letters have ridden" : nudge === "sending" ? "Writing…" : `Send reminder to log wine (${stillUnnamed})`}
           </button>
         </div>
+      )}
+      {/* When there is nothing to send, say so. A button that is simply
+          absent cannot be told apart from a button that is broken, which
+          cost an evening of guessing. */}
+      {isKeiser && !g.prophecy && stillUnnamed === 0 && unsealed !== null && waking.length > 0 && (
+        <p className="whisper" style={{ fontSize: 13, margin: "10px 0 0" }}>
+          <i className="ti ti-check" style={{ fontSize: 12, marginRight: 6 }} />
+          Every soul who has answered has logged a wine. Nothing to remind.
+        </p>
+      )}
+      {isKeiser && unsealed === null && (
+        <p className="whisper" style={{ fontSize: 13, margin: "10px 0 0", color: "var(--spoiled)" }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 6 }} />
+          The offerings could not be counted, so the reminder is withheld.
+        </p>
       )}
       {!mayConsult && !busy && (
         <Tip

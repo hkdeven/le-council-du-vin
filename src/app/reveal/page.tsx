@@ -29,6 +29,9 @@ interface RevealRow {
   dq: boolean; // disqualified by the Keiser for breaking theme
   spoiled?: boolean; // the bottle came up bad: recorded, never judged
   bind?: number | null; // the same wine as every row sharing this key
+  // What THIS cloth was given, as against the shared figure `score` shows.
+  rawScore?: number;
+  rawVotes?: number;
   varietals?: string[]; // carried from the claimed offering
   price?: number | null; // rand, when the owner logged it
 }
@@ -656,7 +659,7 @@ export default function Reveal() {
       setStats(st);
       setOfferings(offs);
       if (annal) {
-        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null, varietals: r.varietals, price: r.price })));
+        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null, rawScore: r.raw_score ?? r.score, rawVotes: r.raw_votes ?? r.votes, varietals: r.varietals, price: r.price })));
         setCommitted(true);
       } else {
         setRows(Array.from({ length: wineCount }, (_, i) => i + 1).map((cloth) => ({
@@ -720,7 +723,7 @@ export default function Reveal() {
       // the annals. Once the night is in the annals, the annals are drawn.
       const annal = await fetchAnnal(g.id);
       if (annal) {
-        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null, varietals: r.varietals, price: r.price })));
+        setRows(annal.rows.map((r, i) => ({ cloth: r.cloth ?? i + 1, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null, rawScore: r.raw_score ?? r.score, rawVotes: r.raw_votes ?? r.votes, varietals: r.varietals, price: r.price })));
         setCommitted(true);
         return;
       }
@@ -740,7 +743,10 @@ export default function Reveal() {
   // cloths are one wine with one standing, and a spoiled bottle takes none.
   // The arithmetic lives in src/lib/tally.ts, proved by scripts/verify-tally.ts.
   const asTally = (r: RevealRow): TallyRow => ({
-    cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes,
+    // RAW, never the shared figure: feeding a group's mean back through the
+    // binding would re-average an average on every amendment.
+    cloth: r.cloth, title: r.title, owner: r.owner,
+    score: r.rawScore ?? r.score, votes: r.rawVotes ?? r.votes,
     dq: r.dq, spoiled: !!r.spoiled, bind: r.bind ?? null,
   });
   const boundView = bindRows(view.map(asTally));
@@ -784,6 +790,8 @@ export default function Reveal() {
         return {
           cloth: r.cloth, owner: r.owner, title: r.title,
           score: p?.score ?? r.score, votes: p?.votes ?? r.votes,
+          raw_score: p?.rawScore ?? r.rawScore ?? r.score,
+          raw_votes: p?.rawVotes ?? r.rawVotes ?? r.votes,
           dq: r.dq, rank: r.dq ? null : p?.rank ?? null,
           spoiled: r.spoiled ? true : undefined,
           bind: r.bind ?? undefined,

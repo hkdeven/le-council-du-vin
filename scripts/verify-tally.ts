@@ -85,8 +85,11 @@ const r = (cloth: number, score: number, votes: number, o: Partial<TallyRow> = {
   // the cloth's own, so the record never re-averages an average.
   const rows = [r(1, 7.0, 5), r(2, 8.2, 5, { bind: 2 }), r(3, 8.0, 5, { bind: 2 })];
   const w = annalScores(rows);
-  check("each bound cloth records the verdicts it actually got", near(w.get(2)!.score, 8.2) && near(w.get(3)!.score, 8.0));
-  check("and its own vote count, never the group's total", w.get(2)!.votes === 5 && w.get(3)!.votes === 5);
+  // Nobody knows which glass was whose, so the bearers stand level: the
+  // group's score and the group's place on every bound row.
+  check("bound cloths record the SAME score", near(w.get(2)!.score, 8.1) && near(w.get(3)!.score, 8.1));
+  check("and the same vote count", w.get(2)!.votes === 10 && w.get(3)!.votes === 10);
+  check("while each keeps its own raw verdict for amending", near(w.get(2)!.rawScore, 8.2) && near(w.get(3)!.rawScore, 8.0));
   check("both bound cloths record the same place", w.get(2)!.rank === 1 && w.get(3)!.rank === 1);
   check("the unbound cloth is unaffected", near(w.get(1)!.score, 7.0) && w.get(1)!.rank === 2);
   check("every bottle carried is still its own line", w.size === 3);
@@ -98,17 +101,18 @@ const r = (cloth: number, score: number, votes: number, o: Partial<TallyRow> = {
   // row. Writing the group's mean and the group's vote total onto each row
   // would re-average an average and double the votes on each save.
   const rows = [r(1, 7.0, 5), r(2, 8.2, 6, { bind: 2 }), r(3, 8.0, 4, { bind: 2 })];
+  // A writer must feed the RAW figures back in, never the shared ones, or
+  // the score walks and the votes double on every save.
   let carried = rows;
   for (let i = 0; i < 5; i++) {
     const w = annalScores(carried);
-    carried = carried.map((x) => ({ ...x, score: w.get(x.cloth)!.score, votes: w.get(x.cloth)!.votes }));
+    carried = carried.map((x) => ({ ...x, score: w.get(x.cloth)!.rawScore, votes: w.get(x.cloth)!.rawVotes }));
   }
   const after = annalScores(carried);
-  check("five amendments do not move a score", near(after.get(2)!.score, 8.2) && near(after.get(3)!.score, 8.0));
-  check("five amendments do not inflate the votes", after.get(2)!.votes === 6 && after.get(3)!.votes === 4);
-  const boundAfter = bindRows(carried).find((b) => b.cloth === 2)!;
-  check("and the group's mean is unchanged", near(boundAfter.score, (8.2 * 6 + 8.0 * 4) / 10), String(boundAfter.score));
-  check("and its vote count is right once, not twice", boundAfter.votes === 10);
+  const mean = (8.2 * 6 + 8.0 * 4) / 10;
+  check("five amendments do not move the shared score", near(after.get(2)!.score, mean) && near(after.get(3)!.score, mean));
+  check("five amendments do not inflate the votes", after.get(2)!.votes === 10 && after.get(3)!.votes === 10);
+  check("and each cloth's raw verdict survives them all", near(after.get(2)!.rawScore, 8.2) && near(after.get(3)!.rawScore, 8.0));
 
   // Loosening the binding must give each cloth back exactly what it earned.
   const loosened = carried.map((x) => ({ ...x, bind: null }));
@@ -121,7 +125,7 @@ const r = (cloth: number, score: number, votes: number, o: Partial<TallyRow> = {
   // cloth does not, and its own score stays in the record.
   const rows = [r(1, 9.0, 5), r(2, 7.0, 5, { bind: 2 }), r(3, 3.0, 5, { bind: 2, spoiled: true })];
   const w = annalScores(rows);
-  check("the spoiled cloth keeps its score in the record", near(w.get(3)!.score, 3.0));
+  check("a spoiled cloth keeps its own score, never the group's", near(w.get(3)!.score, 3.0));
   check("but takes no standing", w.get(3)!.rank === null);
   check("while its sibling takes the group's", w.get(2)!.rank === 2);
 }
@@ -204,7 +208,7 @@ const r = (cloth: number, score: number, votes: number, o: Partial<TallyRow> = {
   check("the group takes one standing", rankIn(bound, same) === 2);
 
   const w = annalScores(rows);
-  check("each sound bound cloth records its own verdict", near(w.get(2)!.score, 7.8) && near(w.get(4)!.score, 7.6));
+  check("the sound bound cloths share the group's score", near(w.get(2)!.score, 7.7) && near(w.get(4)!.score, 7.7));
   check("the spoiled cloth's own score stays in the record", near(w.get(3)!.score, 3.1) && w.get(3)!.votes === 5);
   check("and the spoiled cloth takes no place", w.get(3)!.rank === null);
   check("while its sound siblings share a place", w.get(2)!.rank === 2 && w.get(4)!.rank === 2);

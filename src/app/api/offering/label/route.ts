@@ -46,6 +46,14 @@ async function signedInMember(req: Request): Promise<boolean> {
   }
 }
 
+// Is the camera worth offering at all? The Convene form has no token to
+// present, and asking the offering route with a made-up one came back 404
+// with no answer in it, so the button never appeared. This says only whether
+// the key is set, which gives nothing away.
+export async function GET() {
+  return NextResponse.json({ ok: true, available: !!process.env.ANTHROPIC_API_KEY });
+}
+
 export async function POST(req: Request) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return NextResponse.json({ ok: false, skipped: "not configured" });

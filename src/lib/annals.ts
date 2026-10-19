@@ -25,6 +25,11 @@ export interface AnnalRow {
   // victories are counted per soul, and each bound row carries the group's
   // score and standing. See src/lib/tally.ts.
   bind?: number | null;
+  // A bound row shows the GROUP's score, because nobody knows which glass
+  // was whose. These keep the cloth's own verdict, which is the only thing
+  // that lets an amendment recompute without re-averaging an average.
+  raw_score?: number;
+  raw_votes?: number;
   varietals?: string[]; // the grapes, Keiser-identified or carried from the offering
   price?: number | null; // rand, when known
 }

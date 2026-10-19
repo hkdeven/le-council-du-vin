@@ -5,6 +5,7 @@
 // rejected loudly, never silently counted as 0 or skipped (ticket #4).
 
 import type { AnnalRow } from "./annals";
+import { annalScores } from "./tally";
 
 // The editor's raw field values, as typed. Everything arrives as strings;
 // null/undefined are tolerated (and treated as blank) so a malformed caller
@@ -18,6 +19,10 @@ export interface DraftRowInput {
   // The bottle came up bad: kept in the record, never judged, and counted
   // against nobody. It is not a disqualification; see src/lib/tally.ts.
   spoiled?: boolean;
+  // Two souls, one wine: the cloth this row is bound to. Carried through the
+  // editor so that amending a night by hand does not silently undo a binding
+  // the Keiser made on the reveal.
+  bind?: string;
   votes: number;
   varietals: string[];
   price: string;
@@ -35,7 +40,7 @@ const str = (v: unknown): string => (v == null ? "" : String(v)).trim();
 // A row with nothing on it (no name, no owner, no score, no mark) is a
 // leftover blank, not a wine; it is dropped, never an error.
 export const isBlankRow = (r: DraftRowInput): boolean =>
-  !str(r.title) && !str(r.owner) && !str(r.score) && !r.dq && !r.spoiled && !(r.varietals?.length) && !str(r.price);
+  !str(r.title) && !str(r.owner) && !str(r.score) && !r.dq && !r.spoiled && !str(r.bind) && !(r.varietals?.length) && !str(r.price);
 
 export const keptRows = (rows: DraftRowInput[]): DraftRowInput[] => rows.filter((r) => !isBlankRow(r));
 
@@ -96,14 +101,43 @@ export function validateMeetingDraft(d: MeetingDraftInput): string[] {
 // votes drop to 0 so the codex shows "—" and averages skip the row — it is
 // NEVER a real 0.0. A DQ'd wine keeps any score it was given (the record
 // remembers) but takes no rank and can never be crowned.
+// A row's binding, as the editor holds it: a cloth number typed by hand.
+// Kept only when it names a cloth that is really in the night and is not the
+// row's own, so a stray digit can never orphan a bottle. The group key is
+// always the LOWEST cloth in the set, however the Keiser typed it, which is
+// what every reader assumes. See src/lib/tally.ts.
+function bindOf(r: DraftRowInput, kept: DraftRowInput[]): number | undefined {
+  const raw = str(r.bind);
+  if (raw === "" || !Number.isFinite(Number(raw))) return undefined;
+  const target = Number(raw);
+  const mine = Number(str(r.cloth));
+  if (!Number.isFinite(mine) || target === mine) return undefined;
+  const cloths = new Set(kept.map((x) => Number(str(x.cloth))).filter(Number.isFinite));
+  if (!cloths.has(target)) return undefined;
+  // Walk the chain so that 3 bound to 2 and 2 bound to 1 all settle on 1.
+  const seen = new Set<number>([mine]);
+  let key = target;
+  for (let i = 0; i < kept.length; i++) {
+    if (seen.has(key)) break;
+    seen.add(key);
+    const next = kept.find((x) => Number(str(x.cloth)) === key);
+    const onward = next ? Number(str(next.bind)) : NaN;
+    if (!Number.isFinite(onward) || !cloths.has(onward)) break;
+    key = onward;
+  }
+  return Math.min(mine, ...seen);
+}
+
 export function reckonRows(rows: DraftRowInput[]): AnnalRow[] {
   const kept = keptRows(rows);
-  const scored = kept.filter((r) => !r.dq && !r.spoiled && str(r.score) !== "").map((r) => Number(str(r.score)));
-  return kept.map((r) => {
+
+  // Each row as the table actually judged it, before any binding is applied.
+  const raw = kept.map((r) => {
     const score = str(r.score);
     const cloth = str(r.cloth);
     const price = str(r.price);
     return {
+      row: r,
       // A blank cloth means the pouring order was never known; record nothing.
       cloth: cloth !== "" && Number.isFinite(Number(cloth)) ? Number(cloth) : null,
       title: str(r.title),
@@ -111,10 +145,45 @@ export function reckonRows(rows: DraftRowInput[]): AnnalRow[] {
       score: score === "" ? 0 : Number(score),
       votes: score === "" ? 0 : r.votes || 1,
       dq: r.dq,
-      spoiled: r.spoiled ? true : undefined,
-      rank: r.dq || r.spoiled || score === "" ? null : 1 + scored.filter((s) => s > Number(score)).length,
-      varietals: r.varietals?.length ? r.varietals : undefined,
+      spoiled: !!r.spoiled,
+      bind: bindOf(r, kept),
       price: price !== "" && Number.isFinite(Number(price)) ? Number(price) : undefined,
+    };
+  });
+
+  // Then the same arithmetic the reveal uses, so a night entered by hand and
+  // a night sealed on the night agree: bound cloths share one score and one
+  // place, a spoiled bottle takes neither, and ties share. Rows with no
+  // cloth number cannot be bound or placed by it, so they keep the simple
+  // reckoning they have always had.
+  const placeable = raw.filter((r): r is typeof r & { cloth: number } => r.cloth != null);
+  const placed = annalScores(placeable.map((r) => ({
+    cloth: r.cloth, title: r.title, owner: r.owner, score: r.score, votes: r.votes, dq: r.dq, spoiled: r.spoiled, bind: r.bind ?? null,
+  })));
+  // The old path, for a record that never knew its pouring order.
+  const loose = raw.filter((r) => r.cloth == null && !r.dq && !r.spoiled && r.votes > 0).map((r) => r.score);
+
+  return raw.map((r) => {
+    const p = r.cloth != null ? placed.get(r.cloth) : undefined;
+    const rank = p
+      ? p.rank
+      : r.dq || r.spoiled || r.votes === 0
+      ? null
+      : 1 + loose.filter((x) => x > r.score).length;
+    return {
+      cloth: r.cloth,
+      title: r.title,
+      owner: r.owner,
+      score: p?.score ?? r.score,
+      votes: p?.votes ?? r.votes,
+      dq: r.dq,
+      spoiled: r.spoiled ? true : undefined,
+      bind: r.bind,
+      raw_score: r.votes > 0 ? r.score : undefined,
+      raw_votes: r.votes > 0 ? r.votes : undefined,
+      rank,
+      varietals: r.row.varietals?.length ? r.row.varietals : undefined,
+      price: r.price,
     };
   });
 }

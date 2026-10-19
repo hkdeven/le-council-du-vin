@@ -2,6 +2,16 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 19 October 2026, evening
+
+Repairs, most of them to things built earlier today.
+
+- **Bound bottles now stand level.** When two souls bring the same wine, nobody knows which glass the table was judging, so both bearers now carry the same score as well as the same place. They were sharing a place but keeping different scores, which credited one of them with a verdict that might have been the other's.
+- **A binding survives the codex.** It was recorded on the night but the codex never showed it, and amending that night by hand quietly undid it. The codex now marks which cloths are one wine, and the Keiser can bind or loosen them there as well, which matters once a reveal has passed beyond the veil and the codex is the only way in.
+- **Scan the label now appears on the convening.** The button was built but never shown: the page asked the Council whether the camera was available in a way that could never answer. It asks properly now.
+- **Log your wine** is what the button says, on the convening as well as in the letter.
+- **The reminder tells you when there is nothing to remind.** If every soul who answered has logged a wine, it says so, rather than simply vanishing and leaving the Keiser unsure whether it is finished or broken.
+
 ## 19 October 2026, later
 
 A promise kept in earnest.
