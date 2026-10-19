@@ -1,5 +1,8 @@
 # Le Council du Vin
 
+> **Picking this up fresh? Read [HANDOFF.md](HANDOFF.md) first.** It holds the live state: what is not yet proven, what was applied to production by hand, and the standing rules that are not discoverable from the code.
+
+
 > _in vino veritas_
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/b91ca720-46e1-481e-ba82-17fc682cdd9e/deploy-status)](https://app.netlify.com/projects/le-council-du-vin/deploys)
