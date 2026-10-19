@@ -79,6 +79,57 @@ curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/sealed_offering_members" \
 
 ---
 
+## 2a. Known bugs, reported from production and not yet fixed
+
+Both found on an iPhone, in Chrome, on 19 October, during the first real use
+of the label scan.
+
+### The scan gives no sign of life, and does not hold the page
+
+The button's label changes to "Reading the label…" and that is all. The icon
+swapped to `ti ti-loader-2`, **which does not spin**: Tabler ships the glyph,
+the rotation has to be a CSS animation and there is none. So a lookup that
+takes several seconds, longer on a weak signal, looks like nothing happening.
+Worse, the rest of the page stays live, so a member can wander off mid-read
+and come back to a form that has quietly filled itself in, or navigate away
+and lose the scan entirely.
+
+What it needs: a genuinely animating indicator, and the page held while the
+read is in flight (the same backdrop treatment as `TwinPopup` in
+`src/components/WineWarning.tsx`, with a cancel). Both forms carry the
+button: `src/app/offering/page.tsx` and the Convene offering form in
+`src/app/convene/page.tsx`.
+
+### The browser was evicted when the read finished
+
+On the first real scan, Chrome on iPhone **backgrounded itself** as the read
+completed and had to be reopened.
+
+Most likely cause, to be confirmed rather than assumed: memory. `shrink()` in
+`src/lib/photoShrink.ts` decodes the photograph at **full resolution** before
+drawing it into the smaller canvas. A 12-megapixel iPhone photo is roughly
+48 MB as raw pixels, and the original file, the decoded bitmap, the canvas
+and the base64 string can be alive at the same moment. iOS reclaims tabs hard
+when a page spikes, and the symptom (the tab dying exactly as the work
+finished) fits.
+
+Worth trying, in order:
+
+1. Decode straight to the target size: `createImageBitmap(file, {
+   resizeWidth, resizeHeight, resizeQuality: "high" })`, so the full-size
+   bitmap never exists. Check Safari support and keep the current path as a
+   fallback.
+2. Release eagerly: `bitmap.close()` before `toDataURL`, drop the canvas by
+   setting `width = height = 0`, and let the data URL go out of scope as soon
+   as the request is sent.
+3. Lower `MAX_EDGE` (1568 today) and measure. The label only has to be
+   legible.
+4. Send the photograph as a `Blob` through `FormData` rather than base64 in
+   JSON, which removes the one-third inflation and the large string entirely.
+
+Note this cannot be reproduced on a desktop browser, and it is exactly the
+kind of fault the testing gap in section 1 leaves to the members to find.
+
 ## 3. Applied to production by hand
 
 SQL already run in the Supabase editor (project `pdxdllxyvejtchbzybfa`). All of

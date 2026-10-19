@@ -2,6 +2,11 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## Known, and being worked on
+
+- **Scanning a label gives too little sign of life.** The button says it is reading, but nothing moves and the rest of the page stays live, so it is easy to wander off mid-read. It will be given a proper waiting state that holds the page until the wine comes back.
+- **On an iPhone, the browser has closed itself once as a scan finished.** Being looked into: most likely the photograph being opened at full size before it is shrunk, which a phone will not always forgive. Reopen the browser and the wine can be logged again, or typed in.
+
 ## 19 October 2026, evening
 
 Repairs, most of them to things built earlier today.
