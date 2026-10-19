@@ -72,3 +72,38 @@ export function MetBeforeNotice({ met }: { met: MetBefore }) {
     </div>
   );
 }
+
+// Sealing over a wine already sealed. The member had to tap "change it" to
+// get here, but the write itself was silent, and a scan can rewrite all
+// three fields in one tap: naming what is about to be lost is cheap.
+export function OverwriteConfirm({ was, now, onConfirm, onCancel }: {
+  was: string; now: string; onConfirm: () => void; onCancel: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Replace your sealed wine" onClick={onCancel}
+      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+      <div onClick={(e) => e.stopPropagation()} className="rise"
+        style={{ maxWidth: 380, width: "100%", background: "linear-gradient(180deg,#141110,#0b0a09)", border: "1px solid var(--gold)", borderRadius: 14, padding: "22px 20px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.6)" }}>
+        <i className="ti ti-replace" style={{ fontSize: 28, color: "var(--gold2)" }} aria-hidden="true" />
+        <p className="disp" style={{ fontSize: 16, lineHeight: 1.4, color: "var(--gold2)", margin: "12px 0 0" }}>
+          You have already sealed a wine for this night.
+        </p>
+        <p style={{ fontSize: 15.5, lineHeight: 1.6, color: "var(--parch)", margin: "12px 0 0" }}>
+          Sealing again replaces <strong style={{ color: "var(--gold2)", fontWeight: 400 }}>{was}</strong> with{" "}
+          <strong style={{ color: "var(--gold2)", fontWeight: 400 }}>{now}</strong>. Only one wine stands per soul.
+        </p>
+        <button className="btn gold" style={{ marginTop: 20, fontSize: 13 }} onClick={onConfirm} autoFocus>
+          Replace it
+        </button>
+        <button className="btn" style={{ marginTop: 9, fontSize: 13 }} onClick={onCancel}>
+          Keep the first
+        </button>
+      </div>
+    </div>
+  );
+}

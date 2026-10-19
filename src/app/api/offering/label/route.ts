@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   // The same development-only fixture the offering route carries, so a label
   // can be read on a machine that has no service role key. Shut in any
   // production build, and whenever login enforcement is on.
-  const fixture = body.t === "demo" && process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false";
+  const fixture = (body.t === "demo" || body.t === "demo-sealed") && process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false";
   const who = fixture || !body.t ? null : await bearerOf(body.t || "");
   // No token means the member is signed in and logging their wine on Convene.
   const member = !fixture && !who ? await signedInMember(req) : false;

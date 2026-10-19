@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   // The development fixture, so both warnings can be looked at without a
   // real summons. Shut in any production build, as the offering route's is.
-  if (body.t === "demo" && process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false") {
+  if ((body.t === "demo" || body.t === "demo-sealed") && process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false") {
     const past = tastedBefore(title, [
       { number: 14, date: "2026-09-12", rows: [{ title, owner: "The Keiser", score: 8.4, votes: 7, rank: 1 }] },
     ]);

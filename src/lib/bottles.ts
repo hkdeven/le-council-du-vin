@@ -94,6 +94,23 @@ export async function saveOffering(gatheringId: string, memberId: string, offeri
 // re-reads the claims through this, and one dropped request at that tap would
 // have written every bottle as unclaimed, silently, the old wound by a new
 // road. A caller that can live without the answer catches; the commit must not.
+// WHO has sealed a wine, never WHAT they sealed.
+//
+// The convening must know how many souls the vine is still waiting on, and
+// until the cloths lift nobody may read another's offering, not even the
+// Keiser. So this asks a door of its own (`sealed_offering_members`, a
+// SECURITY DEFINER function) which hands back member ids alone.
+export async function sealedOfferingMembers(gatheringId: string): Promise<Set<string>> {
+  if (gatheringsLive()) {
+    const { data, error } = await supabase!.rpc("sealed_offering_members", { gid: gatheringId });
+    if (error) throw new Error(`The sealed offerings would not count: ${error.message}`);
+    return new Set(((data as string[]) || []).filter(Boolean));
+  }
+  // Demo: the browser's own store is the whole table.
+  const all = await fetchAllOfferings(gatheringId);
+  return new Set(Object.entries(all).filter(([, o]) => o.title).map(([id]) => id));
+}
+
 export async function fetchAllOfferings(gatheringId: string): Promise<Record<string, Offering>> {
   if (gatheringsLive()) {
     const { data, error } = await supabase!

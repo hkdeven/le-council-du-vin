@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { priceCaveat } from "@/lib/labelRead";
 import { shrink } from "@/lib/photoShrink";
-import { TwinPopup, MetBeforeNotice } from "@/components/WineWarning";
+import { TwinPopup, MetBeforeNotice, OverwriteConfirm } from "@/components/WineWarning";
 import type { MetBefore } from "@/lib/wineMatch";
 
 // Three questions, and the night is ready. Opened from the button in the
@@ -102,8 +102,17 @@ function OfferingForm() {
     } catch { /* a warning that cannot be fetched is simply not shown */ }
   };
 
-  const seal = async () => {
+  // What was already sealed, so a second sealing can name what it replaces.
+  const sealedTitle = data?.offering.title?.trim() || "";
+  const [confirming, setConfirming] = useState(false);
+
+  const seal = async (replacing = false) => {
     if (busy || !title.trim()) return;
+    // Only one wine stands per soul, so a second sealing overwrites the
+    // first. The member chose to come back and change it, but the write
+    // itself was silent, and a scan can rewrite all three fields in one tap.
+    if (!replacing && sealedTitle && sealedTitle !== title.trim()) { setConfirming(true); return; }
+    setConfirming(false);
     setBusy(true);
     try {
       const r = await fetch("/api/offering", {
@@ -229,13 +238,17 @@ function OfferingForm() {
         {caveat && <p className="whisper" style={{ fontSize: 12.5, margin: "5px 0 0", lineHeight: 1.45 }}>{caveat}</p>}
       </div>
 
-      <button className="btn gold" style={{ marginTop: 18 }} onClick={seal} disabled={busy || !title.trim()}>
+      <button className="btn gold" style={{ marginTop: 18 }} onClick={() => seal()} disabled={busy || !title.trim()}>
         {busy ? "Sealing…" : "Seal my offering"}
       </button>
       <p className="whisper" style={{ fontSize: 13, textAlign: "center", margin: "12px 0 0", lineHeight: 1.5 }}>
         No eye but yours, not even the Keiser&rsquo;s, until the cloths lift.
       </p>
       {twin && <TwinPopup text={twin} onClose={() => setTwin("")} />}
+      {confirming && (
+        <OverwriteConfirm was={sealedTitle} now={title.trim()}
+          onConfirm={() => seal(true)} onCancel={() => setConfirming(false)} />
+      )}
 
       <div style={{ marginTop: 26, border: "1px solid var(--line)", borderRadius: 10, padding: "12px 13px", textAlign: "left" }}>
         <p className="eyebrow" style={{ fontSize: 9.5, margin: "0 0 6px" }}>Why it is asked before the night</p>

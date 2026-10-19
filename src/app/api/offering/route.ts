@@ -18,18 +18,24 @@ const UNKNOWN = "This link is no longer good. Open the Council and log your wine
 // production, so a developer's machine can otherwise never open this page.
 // Shut twice over: only outside a production build, and only when login
 // enforcement has been explicitly switched off, which production never does.
-const FIXTURE_TOKEN = "demo";
+// "demo" opens an empty form; "demo-sealed" pretends a wine was already
+// sealed, so the overwrite confirmation can be walked without a summons.
+const FIXTURE_TOKENS = new Set(["demo", "demo-sealed"]);
 const fixtureAllowed = () =>
   process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false";
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("t") || "";
-  if (token === FIXTURE_TOKEN && fixtureAllowed()) {
+  if (FIXTURE_TOKENS.has(token) && fixtureAllowed()) {
     return NextResponse.json({
       ok: true, name: "Seer Matthew", numberRoman: "XIX", theme: "Cape Bordeaux Blends",
       date: new Date().toISOString().slice(0, 10), closed: false,
       canReadLabel: !!process.env.ANTHROPIC_API_KEY,
-      offering: { title: "", price: null, varietals: [] },
+      // `&had=` pretends a wine was already sealed, so the overwrite
+      // confirmation can be seen without a real summons.
+      offering: token === "demo-sealed"
+        ? { title: "Meerlust Rubicon 2018", price: 395, varietals: ["Cabernet Sauvignon"] }
+        : { title: "", price: null, varietals: [] },
     });
   }
   const who = await bearerOf(token);
@@ -59,7 +65,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { t?: string; grape?: string; title?: string; price?: string };
-  if (body.t === FIXTURE_TOKEN && fixtureAllowed()) {
+  if (FIXTURE_TOKENS.has(body.t || "") && fixtureAllowed()) {
     // The fixture seals nothing: it echoes back what it was given so the page
     // can be walked end to end without touching anybody's night.
     return NextResponse.json({ ok: true, offering: { title: (body.title || "").trim(), price: body.price ? Number(String(body.price).replace(/[^\d.]/g, "")) : null, varietals: (body.grape || "").split(",").map((g) => g.trim()).filter(Boolean) } });

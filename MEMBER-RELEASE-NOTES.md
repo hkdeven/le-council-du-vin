@@ -2,6 +2,16 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 19 October 2026, later
+
+A promise kept in earnest.
+
+- **Your wine is now secret from the vault as well as from the page.** The Council has always told you that the wine you log is hidden from every other soul, even the Keiser, until the reveal. The app honoured that; the database did not. Its rule said any signed-in account could read every wine logged for the coming night, with its price and whose it was. Nobody had to be clever: it was one request from a browser, and nothing recorded that it happened. There is no sign anyone ever did, and the rule is now what the promise always said: you read your own wine whenever you like, and anyone's only once the cloths have lifted, which means once every soul who answered the call has sealed their ballot. The Keiser is not excepted, which is the whole point.
+- **Sealing a second wine now asks first.** You could always come back and change your offering, but the second sealing happened in silence, and a scan can rewrite all three answers in one tap. Now it names what it is about to replace and waits for you to say so. Correcting a price or a grape goes straight through.
+- **The vine moved indoors.** The Prophecy has to weigh every wine in the room before it can name a winner, and it used to do that on the Keiser's own phone, which is precisely why the vault had to be left open. It now reads the room on the Council's server and hands back one name. Nobody's bottle passes through anybody's device, the Keiser's included.
+
+Behind the curtain: the new rule was proved on a throwaway copy of the real database, impersonating a genuine member rather than the Keiser, whose account passes most tests whether or not they work. Fifteen checks: a member sees their own wine and no other, cannot find another's by name, cannot sweep the table, the Keiser is refused the coming night, a stranger with an account reads nothing, a night opens the moment the last ballot is sealed, a sleeping seat is never waited on, and a committed night stays open for ever. The same fifteen were then run against the old rule, which failed eight of them, so the checks are known to bite rather than merely to pass.
+
 ## 19 October 2026
 
 Warnings before you pour, and the Council's hour settled.

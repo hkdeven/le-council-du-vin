@@ -8,7 +8,7 @@ import { swr, writeSwr } from "@/lib/swr";
 import { sendEmail } from "@/lib/sendEmail";
 import { shrink } from "@/lib/photoShrink";
 import { priceCaveat } from "@/lib/labelRead";
-import { TwinPopup, MetBeforeNotice } from "@/components/WineWarning";
+import { TwinPopup, MetBeforeNotice, OverwriteConfirm } from "@/components/WineWarning";
 import type { MetBefore } from "@/lib/wineMatch";
 import { fetchGatherings, createGathering, updateGathering, deleteGathering, setRsvp, rsvpOf, pickUpcoming, gatheringsLive, type RsvpAnswer, type RsvpLists, DEFAULT_GATHER_TIME } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
@@ -17,10 +17,9 @@ import { toRoman } from "@/lib/util";
 import { useAuth } from "@/components/AuthProvider";
 import MoonDivider from "@/components/MoonDivider";
 import { useWineCount } from "@/lib/useWineCount";
-import { fetchOffering, saveOffering, fetchAllOfferings, type Offering as OfferingData } from "@/lib/bottles";
-import { speakProphecy, prophecyRecord } from "@/lib/prophecy";
+import { fetchOffering, saveOffering, sealedOfferingMembers, type Offering as OfferingData } from "@/lib/bottles";
+import { prophecyRecord } from "@/lib/prophecy";
 import { fetchAnnals } from "@/lib/annals";
-import { fetchBallotHistory } from "@/lib/ballots";
 import GrapePicker from "@/components/GrapePicker";
 import Tip from "@/components/Tip";
 import { detectVarietals } from "@/lib/varietals";
@@ -113,13 +112,22 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
       setPrice(saved?.price != null ? String(saved.price) : "");
       setVarietals(saved?.varietals || []);
       setSealed(!!saved?.title);
+      setSealedTitle(saved?.title?.trim() || "");
       setEditing(false);
     });
     return () => { active = false; };
   }, [gatheringId, meId]);
 
-  const seal = () => {
+  // The wine as it stands in the vault, so a second sealing can name what it
+  // replaces. Read once when the form opens and after each successful seal.
+  const [sealedTitle, setSealedTitle] = useState("");
+  const [confirming, setConfirming] = useState(false);
+
+  const seal = (replacing = false) => {
     if (!title.trim()) return;
+    // Only one wine stands per soul: sealing again overwrites the first.
+    if (!replacing && sealedTitle && sealedTitle !== title.trim()) { setConfirming(true); return; }
+    setConfirming(false);
     const grapes = [...new Set([...varietals, ...detectVarietals(title)])];
     setVarietals(grapes);
     saveOffering(gatheringId, meId, {
@@ -129,7 +137,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
     })
       // Only claim it is sealed once it truly is: the old optimistic flip
       // announced "your wine is sealed" over the top of its own error.
-      .then(() => { setSealed(true); setEditing(false); })
+      .then(() => { setSealed(true); setEditing(false); setSealedTitle(title.trim()); })
       .catch((e) => alert(`Could not seal your offering: ${e.message}`));
   };
   const erase = () => {
@@ -209,11 +217,15 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
               {scanCaveat && <p className="whisper" style={{ fontSize: 12.5, margin: "0 0 8px", lineHeight: 1.45 }}>{scanCaveat}</p>}
               {metBefore && <div style={{ marginBottom: 8 }}><MetBeforeNotice met={metBefore} /></div>}
               {twin && <TwinPopup text={twin} onClose={() => setTwin("")} />}
+              {confirming && (
+                <OverwriteConfirm was={sealedTitle} now={title.trim()}
+                  onConfirm={() => seal(true)} onCancel={() => setConfirming(false)} />
+              )}
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
                   <GrapePicker value={varietals} onChange={setVarietals} listId={`offer-grapes-${gatheringId}`} />
                 </div>
-                <button className="btn gold" style={{ width: "auto", padding: "10px 16px" }} onClick={seal} disabled={!title.trim() || sealDisabled}>
+                <button className="btn gold" style={{ width: "auto", padding: "10px 16px" }} onClick={() => seal()} disabled={!title.trim() || sealDisabled}>
                   Seal it
                 </button>
               </div>
@@ -263,8 +275,10 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
     // still taken, because a soul who answers the call after the vine has
     // spoken still has a bottle with no name on it.
     let alive = true;
-    fetchAllOfferings(g.id)
-      .then((offerings) => { if (alive) setUnsealed(waking.filter((id: string) => !offerings[id]?.title).length); })
+    // Ids alone: no soul's wine may be read here, the Keiser's own browser
+    // included. See sealedOfferingMembers in src/lib/bottles.ts.
+    sealedOfferingMembers(g.id)
+      .then((sealedIds) => { if (alive) setUnsealed(waking.filter((id: string) => !sealedIds.has(id)).length); })
       .catch(() => { if (alive) setUnsealed(null); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,27 +297,22 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
       const annals = await fetchAnnals();
       setRecord(prophecyRecord(allMeetings, annals));
       if (!g.prophecy) {
-        // A sleeping soul cannot seal an offering, so counting them here would
-        // silence the vine forever: the night could never be prophesied.
-        const sleepingIds = new Set(members.filter((m) => m.active === false).map((m) => m.id));
-        const waking = attendees.filter((id) => !sleepingIds.has(id));
-        if (waking.length === 0) {
-          setRefusal("The vine holds its tongue: no waking souls have answered the call yet.");
+        // THE VINE READS THE ROOM ON THE SERVER. It must weigh every wine
+        // logged for the night, and no soul's browser may see another's,
+        // the Keiser's least of all. The route does the reading and hands
+        // back one name; its own gate and sleeping rules match these.
+        const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+        const res = await fetch("/api/prophecy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ gatheringId: g.id }),
+        });
+        const body = await res.json();
+        if (!body?.ok) {
+          setRefusal(body?.refusal || `The vine faltered: ${body?.error || body?.skipped || "no answer"}`);
           return;
         }
-        const offerings = await fetchAllOfferings(g.id);
-        const missing = waking.filter((id: string) => !offerings[id]?.title).length;
-        if (missing > 0) {
-          setRefusal(`The vine holds its tongue: ${missing} of ${waking.length} offerings remain unsealed.`);
-          return;
-        }
-        const history = await fetchBallotHistory(annals.map((a) => a.gatheringId), members.map((m) => m.id));
-        const verdict = speakProphecy({ attendees: waking, offerings, members, annals, ballots: history, nowMs: Date.now() });
-        if (!verdict) {
-          setRefusal("The vine holds its tongue: it has too little history to speak from.");
-          return;
-        }
-        onSpoken({ prophecy: verdict });
+        onSpoken({ prophecy: body.verdict });
       }
       setOpen(true);
     } catch (e) {

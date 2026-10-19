@@ -696,3 +696,71 @@ alter table offering_links enable row level security;
 -- Deliberately no policies: the service role bypasses RLS, everyone else is
 -- refused. If a policy is ever added here, the link stops being a secret.
 create index if not exists offering_links_gathering on offering_links(gathering_id);
+
+-- ── The sealed offering, sealed in earnest (2026-10-19) ───────────────────
+-- The app has always promised that a member's wine is "hidden from every
+-- other soul, even the Keiser, until the reveal". The app kept that promise;
+-- THE VAULT DID NOT. The read policy was `auth.uid() is not null`, so any
+-- signed-in soul could ask the database directly and read every wine logged
+-- for the coming night, with its price and its bearer. Twenty seconds in a
+-- browser console, and nothing to show it had happened.
+--
+-- From here the vault keeps it too. A member reads their own row always, and
+-- everyone's rows only once the cloths have lifted, which is the moment the
+-- night stops being blind.
+--
+-- "Lifted" cannot mean the commit: the claims are laid BEFORE the Keiser
+-- commits, and the reveal must be able to read them. It cannot mean a clock
+-- either, because the rite itself must stay blind. It means exactly what the
+-- reveal means by it: every soul who answered the call, and is still awake,
+-- has sealed a ballot.
+create or replace function cloths_lifted(gid uuid) returns boolean
+  language sql security definer stable
+  set search_path = public
+as $$
+  select
+    -- A night already in the annals is open for ever after.
+    exists (select 1 from annals a where a.gathering_id = gid)
+    or (
+      -- Otherwise: at least one awake soul answered, and none of them is
+      -- still being waited on. A night nobody answered never opens.
+      with answered as (
+        select m.id
+        from gatherings g
+        -- `attendees` is text[], not uuid[]: the ids are stored as strings.
+        cross join lateral unnest(coalesce(g.attendees, '{}'::text[])) as att(mid)
+        join members m on m.id::text = att.mid and m.active is not false
+        where g.id = gid
+      )
+      select count(*) > 0
+         and count(*) filter (
+               where not exists (
+                 select 1 from ballots b
+                 where b.gathering_id = gid and b.member_id = answered.id and b.sealed
+               )
+             ) = 0
+      from answered
+    );
+$$;
+
+-- The Keiser is deliberately NOT exempt: "even the Keiser" is the promise,
+-- and he is the one soul with a reason to look. The vine still reads the
+-- room, but it now does so on the server (see /api/prophecy), never on his
+-- device.
+drop policy if exists "offerings read" on offerings;
+create policy "offerings read" on offerings for select
+  using (member_id = my_member_id() or cloths_lifted(gathering_id));
+
+-- THE VINE MUST STILL COUNT. The Prophecy may not speak until every soul who
+-- answered has sealed an offering, and the convening shows how many are
+-- outstanding. That needs to know WHICH members have logged a wine, never
+-- WHAT they logged, so it gets a door of its own that returns ids alone.
+create or replace function sealed_offering_members(gid uuid) returns setof uuid
+  language sql security definer stable
+  set search_path = public
+as $$
+  select member_id from offerings
+  where gathering_id = gid and coalesce(btrim(title), '') <> '';
+$$;
+revoke all on function sealed_offering_members(uuid) from public;
+grant execute on function sealed_offering_members(uuid) to authenticated;
