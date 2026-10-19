@@ -173,10 +173,14 @@ const SUMMONS = {
   numberRoman: "XVII",
   theme: "Cape Cabernet",
   dateLabel: SOON_LABEL,
-  timeLabel: "19:00",
+  timeLabel: "18:30",
   host: "Seer Matthew",
   venue: "12 Vineyard Road, Constantia. Gate code 1120; ring twice.",
   name: "Priestess Larissa",
+  // The real letter carries the soul's own one-tap link, so the preview must
+  // show both buttons together: that pairing is the whole reason the second
+  // one is an outline.
+  offeringUrl: "https://lecouncilduvin.co.za/offering?t=sample",
 };
 write("12-summons.html", summonsEmail(SUMMONS).html);
 

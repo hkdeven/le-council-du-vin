@@ -7,6 +7,11 @@ import { supabase, isLive, enforceLogin } from "./supabase";
 // `gatherings` table, so every member sees the same meetings and they persist.
 // Demo: this browser's localStorage.
 
+// The hour the Council pours, unless a night says otherwise. One constant,
+// because the default was written out by hand in seven places and they could
+// drift apart.
+export const DEFAULT_GATHER_TIME = "18:30";
+
 const KEY = "lcv_gatherings";
 export const gatheringsLive = () => isLive && enforceLogin && !!supabase;
 
@@ -59,7 +64,7 @@ function fromRow(r: Record<string, any>): Gathering {
     host2_name: r.host2_name ?? null,
     prophecy: r.prophecy ?? null,
     gather_date: r.gather_date,
-    gather_time: r.gather_time ?? "19:00",
+    gather_time: r.gather_time ?? DEFAULT_GATHER_TIME,
     status: r.status || "upcoming",
     wine_count: r.wine_count ?? 6,
     reveal_photos: r.reveal_photos ?? null,
@@ -142,7 +147,7 @@ export function revealWindowClosed(g: Gathering | null, nowMs = Date.now()): boo
 // souls to gather and pour before scoring. Before then no one may enter.
 const RITE_DELAY_MS = 30 * 60 * 1000;
 export function riteOpensAt(g: Gathering): Date {
-  return new Date(new Date(`${g.gather_date}T${g.gather_time || "19:00"}`).getTime() + RITE_DELAY_MS);
+  return new Date(new Date(`${g.gather_date}T${g.gather_time || DEFAULT_GATHER_TIME}`).getTime() + RITE_DELAY_MS);
 }
 export function isRiteOpen(g: Gathering | null): boolean {
   if (!g) return false;

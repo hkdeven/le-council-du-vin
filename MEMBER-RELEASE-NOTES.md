@@ -2,6 +2,21 @@
 
 A running record for the members: every release, and the unseen work behind it. Newest first.
 
+## 19 October 2026
+
+Warnings before you pour, and the Council's hour settled.
+
+- **You are told when somebody has already logged your wine.** Name a bottle that another soul has logged for the same night and the page stops you with a notice: bring it if you must, but the two will be pooled and averaged into one standing, so you are encouraged to bring something else. It never says who the other soul is.
+- **And when the Council has drunk it before.** A wine already in the annals brings up a second notice under its name, saying which gathering met it, who carried it and what it scored, and pointing out when your vintage differs from the one tasted. Neither warning stops you sealing anything.
+- **Scan the label from the app too.** The camera was only on the page your summons opens; the offering form on Convene now has it as well.
+- **The Council pours at 18:30.** Every new gathering is set to half past six unless its night says otherwise, and the hour the calendar invite carries, the hour the rite opens by, and the hour the summons prints all follow the same single figure.
+- **The crowned wine opens.** It was the one bottle on the Reckoning whose verdicts could not be read, because it is drawn apart from the rankings. It now opens like any other.
+- **Several wines at once.** Opening one wine's verdicts no longer closes the last.
+- **Spoiled and cast out now read beside the bearer's name** rather than falling onto a line of their own.
+- **The letter reads better.** Its second button, Meeting details, is now an outline so it stops competing with the one above it, and that one now says Log your wine.
+
+Behind the curtain: the Council's hour had been written out by hand in seven places and could have drifted apart; it is one constant now, and the suite that guards the calendar invite caught the change, which also revealed that those 39 checks had never been part of the standard run. They are. Matching one wine against another is guesswork, so 51 checks hold the rules to account, most of them about what must NOT match: two wines from one estate are not one wine, a bare estate name sweeps up nothing, and a single shared word never joins two bottles.
+
 ## 18 October 2026, later
 
 The Reckoning given some ceremony, and the camera put to work.

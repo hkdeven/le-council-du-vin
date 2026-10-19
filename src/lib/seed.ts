@@ -33,7 +33,7 @@ export const seedThemes: Theme[] = [
 
 // Default copy stamped onto every new meeting (the Keiser can edit per meeting).
 export const DEFAULT_RULES =
-  "You must arrive by 19:00 for your wine to be included. Be sure to chill your wine when appropriate and remove cork foil/markings beforehand. Snacks and bread will be provided, but additional noshy bits and bubbles are always welcomed.";
+  "You must arrive by 18:30 for your wine to be included. Be sure to chill your wine when appropriate and remove cork foil/markings beforehand. Snacks and bread will be provided, but additional noshy bits and bubbles are always welcomed.";
 export const DEFAULT_THREAT =
   "Please note — wines that do not follow theme will not be scored or ranked, future invites to wine night and bowls will not be extended, and your seat will be forfeit to another. If you are one of two, both seats may be forfeit at the discretion of the Keiser.";
 

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { seedMembers, DEFAULT_RULES, DEFAULT_THREAT } from "@/lib/seed";
 import { loadMembers, rosterOrder } from "@/lib/members";
 import { swr, writeSwr } from "@/lib/swr";
 import { sendEmail } from "@/lib/sendEmail";
-import { fetchGatherings, createGathering, updateGathering, deleteGathering, setRsvp, rsvpOf, pickUpcoming, type RsvpAnswer, type RsvpLists } from "@/lib/gatherings";
+import { shrink } from "@/lib/photoShrink";
+import { priceCaveat } from "@/lib/labelRead";
+import { TwinPopup, MetBeforeNotice } from "@/components/WineWarning";
+import type { MetBefore } from "@/lib/wineMatch";
+import { fetchGatherings, createGathering, updateGathering, deleteGathering, setRsvp, rsvpOf, pickUpcoming, gatheringsLive, type RsvpAnswer, type RsvpLists, DEFAULT_GATHER_TIME } from "@/lib/gatherings";
 import { useRiteOpen } from "@/lib/useRiteOpen";
 import { supabase } from "@/lib/supabase";
 import { toRoman } from "@/lib/util";
@@ -40,6 +44,66 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
   const [varietals, setVarietals] = useState<string[]>([]);
   const [sealed, setSealed] = useState(false);
   const [editing, setEditing] = useState(false);
+
+  // The same camera the summons' page carries, for members who log their wine
+  // in the app instead. The route reads the label and looks the wine up; every
+  // field it fills stays the member's to change before they seal.
+  const labelRef = useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanCaveat, setScanCaveat] = useState("");
+  // The same two warnings the letter's page shows: a twin already logged for
+  // tonight (naming nobody), and a wine the Council has met before. Neither
+  // forbids the bottle.
+  const [twin, setTwin] = useState("");
+  const [metBefore, setMetBefore] = useState<MetBefore | null>(null);
+  const checkWine = async (name: string) => {
+    if (!gatheringsLive() || name.trim().length < 4) { setTwin(""); setMetBefore(null); return; }
+    try {
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      const r = await fetch("/api/offering/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ title: name, gatheringId }),
+      });
+      const b = await r.json();
+      if (!b?.ok) return;
+      setTwin(b.tonightWords || "");
+      setMetBefore(b.before || null);
+    } catch { /* a warning that cannot be fetched is simply not shown */ }
+  };
+  const [canScan, setCanScan] = useState(false);
+  useEffect(() => {
+    // Only offer it where it can work: a demo browser has no post office, and
+    // the key may not be set.
+    if (!gatheringsLive()) return;
+    fetch("/api/offering?t=probe").then((r) => r.json()).then((b) => setCanScan(!!b?.canReadLabel)).catch(() => {});
+  }, []);
+  const scanLabel = async (file: File) => {
+    if (scanning || sealDisabled) return;
+    setScanning(true); setScanCaveat("");
+    try {
+      const { data, mediaType } = await shrink(file);
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      const r = await fetch("/api/offering/label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ image: data, mediaType }),
+      });
+      const b = await r.json();
+      if (!r.ok || !b.ok) { alert(b.error || b.skipped || "The label could not be read."); return; }
+      const got = b.reading as { title: string; grape: string; price: number | null; priceNote: string; confident: boolean };
+      if (got.title) setTitle(got.title);
+      if (got.grape) setVarietals([...new Set(got.grape.split(",").map((x: string) => x.trim()).filter(Boolean))]);
+      if (got.price != null) { setPrice(String(got.price)); setScanCaveat(priceCaveat(got.priceNote)); }
+      if (!got.confident) setScanCaveat("The label was hard to make out. Check every line before sealing.");
+      if (got.title) checkWine(got.title);
+    } catch {
+      alert("That photograph could not be opened. Try another, or type the wine in.");
+    } finally {
+      setScanning(false);
+      if (labelRef.current) labelRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -116,11 +180,21 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
               <p className="whisper" style={{ margin: "0 0 10px", fontSize: 14 }}>
                 Log the wine you shall bring. Hidden from every other soul, even the Keiser, until the reveal.
               </p>
+              {canScan && (
+                <>
+                  <input ref={labelRef} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) scanLabel(f); }} />
+                  <button className="btn" style={{ marginBottom: 8, fontSize: 13 }} onClick={() => labelRef.current?.click()} disabled={scanning}>
+                    <i className={`ti ti-${scanning ? "loader-2" : "camera"}`} style={{ marginRight: 7 }} />
+                    {scanning ? "Reading the label…" : "Scan the label"}
+                  </button>
+                </>
+              )}
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  onBlur={() => { const hits = detectVarietals(title); if (hits.length) setVarietals((v) => [...new Set([...v, ...hits])]); }}
+                  onBlur={() => { const hits = detectVarietals(title); if (hits.length) setVarietals((v) => [...new Set([...v, ...hits])]); checkWine(title); }}
                   placeholder="e.g. 2022 Alheit Cartology"
                   style={{ flex: 1 }}
                 />
@@ -132,6 +206,9 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
                   style={{ width: 110 }}
                 />
               </div>
+              {scanCaveat && <p className="whisper" style={{ fontSize: 12.5, margin: "0 0 8px", lineHeight: 1.45 }}>{scanCaveat}</p>}
+              {metBefore && <div style={{ marginBottom: 8 }}><MetBeforeNotice met={metBefore} /></div>}
+              {twin && <TwinPopup text={twin} onClose={() => setTwin("")} />}
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
                   <GrapePicker value={varietals} onChange={setVarietals} listId={`offer-grapes-${gatheringId}`} />
@@ -182,8 +259,9 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
   const waking = useMemo(() => attendees.filter((id) => !sleepingIds.has(id)), [attendees, sleepingIds]);
   useEffect(() => {
     // An already-spoken verdict is a matter of record: it needs no gate to be
-    // read back, and the vine can never un-know what it knew.
-    if (g.prophecy) { setUnsealed(0); return; }
+    // read back, and the vine can never un-know what it knew. The count is
+    // still taken, because a soul who answers the call after the vine has
+    // spoken still has a bottle with no name on it.
     let alive = true;
     fetchAllOfferings(g.id)
       .then((offerings) => { if (alive) setUnsealed(waking.filter((id: string) => !offerings[id]?.title).length); })
@@ -194,6 +272,7 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
 
   // The vine may speak only with full knowledge of the room.
   const mayConsult = !!g.prophecy || (waking.length > 0 && unsealed === 0);
+  const stillUnnamed = unsealed ?? 0;
 
   const consult = async () => {
     setRefusal(null);
@@ -248,7 +327,7 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
           Keiser to chase them by hand, one tap writes to each unnamed soul
           with their own one-tap link. The Council has no scheduler; this is
           the hand that stands in for one. */}
-      {isKeiser && !g.prophecy && (unsealed ?? 0) > 0 && (
+      {isKeiser && stillUnnamed > 0 && (
         <div style={{ marginTop: 10 }}>
           <button
             onClick={async () => {
@@ -261,7 +340,7 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
             disabled={nudge !== "idle"}
             style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "1px solid var(--line)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, padding: "8px 16px", cursor: nudge === "idle" ? "pointer" : "default", opacity: nudge === "sending" ? 0.5 : 1 }}>
             <i className="ti ti-mail-forward" style={{ fontSize: 13 }} />
-            {nudge === "sent" ? "The letters have ridden" : nudge === "sending" ? "Writing…" : `Ask the ${unsealed} to name their bottle`}
+            {nudge === "sent" ? "The letters have ridden" : nudge === "sending" ? "Writing…" : `Send reminder to log wine (${stillUnnamed})`}
           </button>
         </div>
       )}
@@ -400,7 +479,7 @@ function MeetingBody({
     (mem) => mem.role !== "initiate" && !attendees.includes(mem.id) && !declined.includes(mem.id)
   );
   const date = fmtDate(m.gather_date);
-  const time = m.gather_time || "19:00";
+  const time = m.gather_time || DEFAULT_GATHER_TIME;
   // The rite opens 30 minutes after the scheduled start — not before. The hook
   // re-renders the moment it opens, so the button appears without a refresh.
   const riteOpen = useRiteOpen(m);
@@ -776,7 +855,7 @@ export default function Convene() {
       theme_title: title, theme_description: null,
       host_id: host?.id || null, host_name: host?.cult_name || "",
       host2_id: host2?.id || null, host2_name: host2?.cult_name || null,
-      gather_date: newDate, gather_time: "19:00",
+      gather_date: newDate, gather_time: DEFAULT_GATHER_TIME,
       status: "upcoming", wine_count: 6,
       rules_text: DEFAULT_RULES, threat_text: DEFAULT_THREAT,
       venue_instructions: host?.venue_instructions || null, attendees: [],

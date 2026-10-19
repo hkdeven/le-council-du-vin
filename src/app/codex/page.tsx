@@ -5,7 +5,7 @@ import { toRoman } from "@/lib/util";
 import { fetchAnnals, fetchDqCounts, commitAnnal, deleteAnnal, DQ_THRESHOLD, AnnalEntry, type AnnalRow, championsOf, victoriesFrom, claimBottle } from "@/lib/annals";
 import { validateMeetingDraft, reckonRows, type DraftRowInput } from "@/lib/meeting-entry";
 import { fetchBallotHistory, type HistoryBallot } from "@/lib/ballots";
-import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive } from "@/lib/gatherings";
+import { fetchGatherings, createGathering, updateGathering, deleteGathering, gatheringsLive, DEFAULT_GATHER_TIME } from "@/lib/gatherings";
 import { prophecyRecord } from "@/lib/prophecy";
 import { fetchAllOfferings } from "@/lib/bottles";
 import { loadMembers } from "@/lib/members";
@@ -605,7 +605,7 @@ export default function Codex() {
     } else if (!gid) {
       const created = await createGathering({
         id: `g-${d.date}-${d.number}`, moon_label: "A moon remembered", theme_description: null,
-        gather_time: "19:00", reveal_photos: null, rules_text: null, threat_text: null,
+        gather_time: DEFAULT_GATHER_TIME, reveal_photos: null, rules_text: null, threat_text: null,
         venue_instructions: null, attendees: [],
         ...gpatch,
       } as Gathering);

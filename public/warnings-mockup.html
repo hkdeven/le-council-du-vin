@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Council du Vin · the two warnings</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{--gold:#9c8a5f;--gold2:#cbbd93;--parch:#cbc5b7;--bright:#ddd7c9;--dim:#7c766a;--faint:#5a554c;--line:rgba(160,150,120,0.2);--line2:rgba(180,168,120,0.42)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#060505;color:var(--parch);font-family:"EB Garamond",Georgia,serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:430px;margin:0 auto;padding:24px 16px 70px}
+  .disp{font-family:"Cinzel",serif;letter-spacing:0.04em}
+  h1{font-family:"Cinzel",serif;font-weight:500;color:var(--gold2);font-size:16px;text-align:center;margin:4px 0 0}
+  .note{font-family:"Cormorant Garamond",serif;font-style:italic;color:var(--faint);font-size:14px;text-align:center;margin:8px 0 0;line-height:1.55}
+  .plabel{font-family:"Cinzel",serif;text-transform:uppercase;letter-spacing:0.14em;font-size:10.5px;color:var(--gold2);margin:32px 0 10px;text-align:center}
+  .field{display:block;font-family:"Cinzel",serif;font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:#6f6653;margin-bottom:5px}
+  .inp{border:1px solid var(--line2);border-radius:8px;background:#0d0c0a;padding:11px 12px;font-size:15.5px;color:var(--gold2);min-height:42px}
+
+  /* 1. the popup, as it covers the page */
+  .scrim{border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,0.78);padding:26px 16px;display:flex;align-items:center;justify-content:center}
+  .pop{max-width:380px;width:100%;background:linear-gradient(180deg,#141110,#0b0a09);border:1px solid var(--gold);border-radius:14px;padding:22px 20px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.6)}
+  .pop i.big{font-size:30px;color:var(--gold2)}
+  .pop .lead{font-family:"Cinzel",serif;font-size:16px;line-height:1.4;color:var(--gold2);margin:12px 0 0}
+  .pop .body{font-size:15.5px;line-height:1.6;color:var(--parch);margin:12px 0 0}
+  .btn{display:block;width:100%;margin-top:20px;background:var(--gold2);color:#0a0908;font-family:"Cinzel",serif;font-size:13px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;padding:13px;border-radius:8px;text-align:center;border:none}
+
+  /* 2. the notice, as it sits under the wine's name */
+  .notice{margin:9px 0 0;border:1px solid var(--gold);border-radius:10px;padding:12px 13px;background:rgba(156,138,95,0.10);text-align:left}
+  .notice .lead{font-family:"Cinzel",serif;margin:0;font-size:14.5px;line-height:1.4;color:var(--gold2)}
+  .notice p{margin:7px 0 0;font-size:15px;line-height:1.55}
+  .notice .detail{color:var(--bright)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The two warnings</h1>
+  <p class="note">Neither stops a member sealing the wine. One stops the page.</p>
+
+  <div class="plabel">1 &middot; Someone else logged this wine tonight</div>
+  <div class="scrim">
+    <div class="pop">
+      <i class="ti ti-alert-triangle big"></i>
+      <p class="lead">Someone else has already logged this wine for the night!</p>
+      <p class="body">Bring it if you must, but your score and ranking will be pooled and averaged with the other matching bottles. You are highly encouraged to bring a different bottle.</p>
+      <div class="btn">Understood</div>
+    </div>
+  </div>
+  <p class="note">A popup over the whole page, dismissed by the button, by Escape, or by tapping outside it. It never names who logged the other bottle.</p>
+
+  <div class="plabel">2 &middot; The Council has drunk it before</div>
+  <div>
+    <label class="field">Name of the wine</label>
+    <div class="inp">Kanonkop Paul Sauer 2019</div>
+    <div class="notice">
+      <p class="lead"><i class="ti ti-alert-triangle" style="font-size:13px;margin-right:7px"></i>Be original. The Council has tasted this before!</p>
+      <p class="detail">Gathering XIV, brought by The Keiser, and it scored 8.4.</p>
+      <p>Bring it if you must, but you will be ridiculed and looked down upon.</p>
+    </div>
+  </div>
+  <p class="note">Stays on the page, under the name it belongs to. The middle line is drawn from the annals, so it names the night, the bearer and the score, and says so when the vintage differs from the one being brought.</p>
+
+  <div class="plabel">Both at once</div>
+  <div class="scrim" style="padding:14px 10px">
+    <div style="width:100%">
+      <label class="field">Name of the wine</label>
+      <div class="inp" style="opacity:0.5">Kanonkop Paul Sauer 2019</div>
+      <div class="notice" style="opacity:0.5">
+        <p class="lead"><i class="ti ti-alert-triangle" style="font-size:13px;margin-right:7px"></i>Be original. The Council has tasted this before!</p>
+        <p class="detail">Gathering XIV, brought by The Keiser, and it scored 8.4.</p>
+        <p>Bring it if you must, but you will be ridiculed and looked down upon.</p>
+      </div>
+      <div class="pop" style="margin:16px auto 0">
+        <i class="ti ti-alert-triangle big"></i>
+        <p class="lead">Someone else has already logged this wine for the night!</p>
+        <p class="body">Bring it if you must, but your score and ranking will be pooled and averaged with the other matching bottles. You are highly encouraged to bring a different bottle.</p>
+        <div class="btn">Understood</div>
+      </div>
+    </div>
+  </div>
+  <p class="note">When a wine is both, the popup comes first and the notice is waiting behind it.</p>
+</div>
+</body>
+</html>

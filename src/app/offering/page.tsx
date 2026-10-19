@@ -3,6 +3,9 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { priceCaveat } from "@/lib/labelRead";
+import { shrink } from "@/lib/photoShrink";
+import { TwinPopup, MetBeforeNotice } from "@/components/WineWarning";
+import type { MetBefore } from "@/lib/wineMatch";
 
 // Three questions, and the night is ready. Opened from the button in the
 // summons, with no login: the token in the address names the soul and the
@@ -20,69 +23,6 @@ interface Loaded {
   offering: { title: string; price: number | null; varietals: string[] };
 }
 
-// A photograph taken on a phone is several megabytes of detail nobody needs
-// to read a label, and an iPhone hands over HEIC, which neither Anthropic nor
-// this route accepts. So the browser always re-encodes to JPEG and shrinks
-// the long edge, which solves both at once:
-//
-//   - 1568px is the edge above which the model downsizes anyway, so sending
-//     more is paid-for detail that is thrown away.
-//   - A 12-megapixel iPhone photo of 3 to 5 MB comes out around 250 KB, well
-//     under Netlify's 6 MB cap on a function's body (and base64 inflates by
-//     a third, so the raw file could not have been sent safely in any case).
-//   - HEIC decodes through either path below, because the phone itself has
-//     the codec; what leaves the browser is JPEG regardless.
-//
-// Two decode paths, because neither works everywhere: createImageBitmap is
-// the fast one, and an <img> is the one Safari has always had. If both fail
-// the member is told plainly rather than being sent a file the route will
-// refuse.
-const MAX_EDGE = 1568;
-
-async function decode(file: File): Promise<{ width: number; height: number; draw: CanvasImageSource; done: () => void }> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    return { width: bitmap.width, height: bitmap.height, draw: bitmap, done: () => bitmap.close?.() };
-  } catch {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = new Image();
-      img.decoding = "sync";
-      await new Promise<void>((ok, no) => {
-        img.onload = () => ok();
-        img.onerror = () => no(new Error("undecodable"));
-        img.src = url;
-      });
-      return { width: img.naturalWidth, height: img.naturalHeight, draw: img, done: () => URL.revokeObjectURL(url) };
-    } catch (e) {
-      URL.revokeObjectURL(url);
-      throw e;
-    }
-  }
-}
-
-async function shrink(file: File): Promise<{ data: string; mediaType: string }> {
-  const { width, height, draw, done } = await decode(file);
-  try {
-    const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(width * scale));
-    canvas.height = Math.max(1, Math.round(height * scale));
-    canvas.getContext("2d")!.drawImage(draw, 0, 0, canvas.width, canvas.height);
-    let quality = 0.82;
-    let url = canvas.toDataURL("image/jpeg", quality);
-    // A label photographed against a busy table can still be large. Step the
-    // quality down rather than the size: text must stay readable.
-    while (url.length > 2_800_000 && quality > 0.5) {
-      quality -= 0.12;
-      url = canvas.toDataURL("image/jpeg", quality);
-    }
-    return { data: url.slice(url.indexOf(",") + 1), mediaType: "image/jpeg" };
-  } finally {
-    done();
-  }
-}
-
 function OfferingForm() {
   const token = useSearchParams().get("t") || "";
   const [state, setState] = useState<"loading" | "ready" | "sealed" | "refused">("loading");
@@ -97,6 +37,10 @@ function OfferingForm() {
   const [caveat, setCaveat] = useState("");
   const [unsure, setUnsure] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Two warnings, neither of which stops anybody: a twin already logged for
+  // tonight (named to nobody), and a wine the Council has met before.
+  const [twin, setTwin] = useState("");
+  const [metBefore, setMetBefore] = useState<MetBefore | null>(null);
 
   const readLabel = async (file: File) => {
     if (reading === "reading") return;
@@ -116,6 +60,7 @@ function OfferingForm() {
       if (got.grape) setGrape(got.grape);
       if (got.price != null) { setPrice(String(got.price)); setCaveat(priceCaveat(got.priceNote)); }
       setUnsure(!got.confident);
+      if (got.title) checkWine(got.title);
     } catch {
       alert("That photograph could not be opened. Try another, or type the wine in.");
     } finally {
@@ -140,6 +85,22 @@ function OfferingForm() {
       })
       .catch(() => { setState("refused"); setRefusal("The Council could not be reached. Try again in a moment."); });
   }, [token]);
+
+  // Asked as the member leaves the name field, and again after a scan, so
+  // the warning arrives before they seal rather than after.
+  const checkWine = async (name: string) => {
+    if (!token || name.trim().length < 4) { setTwin(""); setMetBefore(null); return; }
+    try {
+      const r = await fetch("/api/offering/check", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ t: token, title: name }),
+      });
+      const b = await r.json();
+      if (!b?.ok) return;
+      setTwin(b.tonightWords || "");
+      setMetBefore(b.before || null);
+    } catch { /* a warning that cannot be fetched is simply not shown */ }
+  };
 
   const seal = async () => {
     if (busy || !title.trim()) return;
@@ -253,7 +214,8 @@ function OfferingForm() {
 
       <div style={{ marginTop: 16 }}>
         <label className="field" htmlFor="wine">Name of the wine</label>
-        <input id="wine" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Producer and vintage" autoComplete="off" />
+        <input id="wine" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => checkWine(title)} placeholder="Producer and vintage" autoComplete="off" />
+        {metBefore && <MetBeforeNotice met={metBefore} />}
       </div>
       <div style={{ marginTop: 12 }}>
         <label className="field" htmlFor="grape">The grape</label>
@@ -273,6 +235,7 @@ function OfferingForm() {
       <p className="whisper" style={{ fontSize: 13, textAlign: "center", margin: "12px 0 0", lineHeight: 1.5 }}>
         No eye but yours, not even the Keiser&rsquo;s, until the cloths lift.
       </p>
+      {twin && <TwinPopup text={twin} onClose={() => setTwin("")} />}
 
       <div style={{ marginTop: 26, border: "1px solid var(--line)", borderRadius: 10, padding: "12px 13px", textAlign: "left" }}>
         <p className="eyebrow" style={{ fontSize: 9.5, margin: "0 0 6px" }}>Why it is asked before the night</p>

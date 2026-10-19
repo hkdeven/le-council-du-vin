@@ -18,13 +18,14 @@
 //     calendar instead of littering it with duplicates.
 
 import { DEFAULT_TZ, tzOffsetMin } from "./astrology";
+import { DEFAULT_GATHER_TIME } from "./gatherings";
 
 export interface SummonsEvent {
   gatheringId: string;
   number: number;
   theme: string;
   date: string; // YYYY-MM-DD, the local wall clock of the gathering
-  time?: string | null; // HH:MM local; the Council pours at 19:00 unless told otherwise
+  time?: string | null; // HH:MM local; the Council pours at DEFAULT_GATHER_TIME unless told otherwise
   durationMin?: number; // a wine night runs three hours by default
   tz?: string;
   hostName?: string | null;
@@ -96,7 +97,7 @@ const sequenceFor = (nowMs: number) => Math.floor((nowMs - Date.UTC(2025, 0, 1))
 export function summonsIcs(e: SummonsEvent): string {
   const nowMs = e.nowMs ?? Date.now();
   const tz = e.tz || DEFAULT_TZ;
-  const startMs = zonedToUtc(e.date, e.time || "19:00", tz);
+  const startMs = zonedToUtc(e.date, e.time || DEFAULT_GATHER_TIME, tz);
   const endMs = startMs + (e.durationMin ?? 180) * 60000;
 
   const title = `Le Council du Vin · Gathering ${roman(e.number)}${e.theme ? `: ${e.theme}` : ""}`;

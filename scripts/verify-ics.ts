@@ -2,6 +2,7 @@
 //
 //   npx tsx scripts/verify-ics.ts
 
+import { DEFAULT_GATHER_TIME } from "../src/lib/gatherings";
 import { summonsIcs, summonsUid, zonedToUtc } from "../src/lib/ics";
 
 let pass = 0, fail = 0;
@@ -112,7 +113,11 @@ check("a different night takes a different UID", summonsUid("g-abc") !== summons
 }
 
 // ── Defaults ────────────────────────────────────────────────────────────────
-check("no time given falls to 19:00", summonsIcs({ ...base, time: null }).includes("DTSTART:20260808T170000Z"));
+// The Council pours at 18:30 (SAST, +02:00), so a night with no hour set
+// starts at 16:30 UTC. One constant decides this everywhere; see
+// DEFAULT_GATHER_TIME in src/lib/gatherings.ts.
+check("no time given falls to the Council's hour", summonsIcs({ ...base, time: null }).includes("DTSTART:20260808T163000Z"));
+check("and that hour is 18:30", DEFAULT_GATHER_TIME === "18:30");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

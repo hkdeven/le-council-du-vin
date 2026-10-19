@@ -5,7 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers, saveMember, removeMember, rosterOrder } from "@/lib/members";
 import { deleteApplicationsByEmail } from "@/lib/applications";
-import { fetchCurrentGathering } from "@/lib/gatherings";
+import { fetchCurrentGathering, DEFAULT_GATHER_TIME } from "@/lib/gatherings";
 import { fetchDqCounts, DQ_THRESHOLD } from "@/lib/annals";
 import { sendEmail } from "@/lib/sendEmail";
 import { supabase } from "@/lib/supabase";
@@ -434,7 +434,7 @@ function HeraldsEditor() {
     number: toRoman(gathering.number),
     theme: gathering.theme_title,
     date: fmtGDate(gathering.gather_date),
-    time: gathering.gather_time || "19:00",
+    time: gathering.gather_time || DEFAULT_GATHER_TIME,
     host: gathering.host_name || "",
     venue: gathering.venue_instructions || null,
   } : {};
@@ -454,7 +454,7 @@ function HeraldsEditor() {
       date: gathering.gather_date,
       time: gathering.gather_time || null,
       dateLabel: fmtGDate(gathering.gather_date),
-      timeLabel: gathering.gather_time || "19:00",
+      timeLabel: gathering.gather_time || DEFAULT_GATHER_TIME,
       host: [gathering.host_name, gathering.host2_name].filter(Boolean).join(" & "),
       venue: gathering.venue_instructions || null,
       name: myName || null,
@@ -508,7 +508,7 @@ function HeraldsEditor() {
         <div className="scr" style={{ fontSize: 16 }}>Prove the calendar summons</div>
         <p className="whisper" style={{ margin: "2px 0 8px", fontSize: 13 }}>
           {gathering
-            ? `Sends the real summons for Gathering ${toRoman(gathering.number)} to your own inbox, the very letter a member receives on answering a call. Open it on the vessel you wish to prove: the night should offer itself to your calendar, at ${gathering.gather_time || "19:00"} on ${fmtGDate(gathering.gather_date)}.`
+            ? `Sends the real summons for Gathering ${toRoman(gathering.number)} to your own inbox, the very letter a member receives on answering a call. Open it on the vessel you wish to prove: the night should offer itself to your calendar, at ${gathering.gather_time || DEFAULT_GATHER_TIME} on ${fmtGDate(gathering.gather_date)}.`
             : "No gathering scheduled: summon one on Convene first."}
         </p>
         <button className="btn gold" style={{ width: "auto", padding: "10px 20px" }} disabled={!gathering || busy !== null}

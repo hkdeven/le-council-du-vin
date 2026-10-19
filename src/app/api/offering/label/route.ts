@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { bearerOf } from "@/lib/offeringLink";
 import { LABEL_PROMPT, parseLabelAnswer } from "@/lib/labelRead";
 
@@ -23,6 +24,28 @@ const OK_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
 
+// Two doors, because a wine is logged in two places. The letter's reader
+// carries a token; a member who opened the app instead carries their own
+// Supabase session, exactly as every other member-triggered route reads it.
+// A sleeping seat is refused at both, and reading a label is the only thing
+// either door opens.
+async function signedInMember(req: Request): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
+  if (!url || !anon || !token) return false;
+  try {
+    const sb = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
+    const { data: u } = await sb.auth.getUser();
+    const email = u?.user?.email;
+    if (!email) return false;
+    const { data: m } = await sb.from("members").select("active").ilike("email", email).maybeSingle();
+    return !!m && m.active !== false;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return NextResponse.json({ ok: false, skipped: "not configured" });
@@ -32,8 +55,10 @@ export async function POST(req: Request) {
   // can be read on a machine that has no service role key. Shut in any
   // production build, and whenever login enforcement is on.
   const fixture = body.t === "demo" && process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENFORCE_LOGIN === "false";
-  const who = fixture ? null : await bearerOf(body.t || "");
-  if (!fixture && !who) return bad("This link is no longer good.", 404);
+  const who = fixture || !body.t ? null : await bearerOf(body.t || "");
+  // No token means the member is signed in and logging their wine on Convene.
+  const member = !fixture && !who ? await signedInMember(req) : false;
+  if (!fixture && !who && !member) return bad("This link is no longer good.", 404);
   if (who?.closed) return bad("The cloths have already lifted on this night.", 409);
 
   // Accept a bare base64 payload or a whole data URL, since a browser gives

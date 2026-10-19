@@ -164,7 +164,13 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
   onPhotos: (next: string[]) => void;
 }) {
   const [mailState, setMailState] = useState<"idle" | "sending" | "sent">("idle");
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState<Set<number>>(new Set());
+  const toggle = (cloth: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(cloth)) next.add(cloth);
+      return next;
+    });
   const [bindMode, setBindMode] = useState(false);
   const [binding, setBinding] = useState<number[]>([]);
   // The unfolding. 0 = nothing yet, 1 = the crowning, 2.. = one standing at a
@@ -272,15 +278,15 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
     const colour = row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--parch)";
     const verdicts = verdictsFor(row.cloths);
     const openable = canReadVerdicts && verdicts.length > 0;
-    const isOpen = open === row.cloth;
+    const isOpen = open.has(row.cloth);
     return (
       <div style={{ borderBottom: "1px solid var(--line)", opacity: row.dq || row.spoiled ? 0.88 : 1 }}>
         <div
-          onClick={() => openable && setOpen(isOpen ? null : row.cloth)}
+          onClick={() => openable && toggle(row.cloth)}
           role={openable ? "button" : undefined}
           tabIndex={openable ? 0 : undefined}
           aria-expanded={openable ? isOpen : undefined}
-          onKeyDown={(e) => { if (openable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOpen(isOpen ? null : row.cloth); } }}
+          onKeyDown={(e) => { if (openable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(row.cloth); } }}
           style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 2px", color: colour, cursor: openable ? "pointer" : "default" }}
         >
           <span className="disp" style={{ width: 24, flex: "none", textAlign: "center", fontSize: rank != null ? 14 : 11, color: row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
@@ -290,8 +296,6 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
             <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 15 }}>
               <span style={{ textDecoration: row.dq ? "line-through" : "none" }}>{row.title || "Bottle"}</span>
               {row.cloths.map((c) => <Cloth key={c} n={c} tone={tone} />)}
-              {row.dq && <span className="tag" style={{ color: "var(--wine)", borderColor: "#6d3a3e" }}>off theme</span>}
-              {row.spoiled && <span className="tag" style={{ color: "var(--spoiled)", borderColor: "#8a6c3a" }}>spoiled</span>}
               {/* The bolt used to sit alone on a line of its own, meaning
                   nothing to anyone who had not read the code. */}
               {split?.cloth === row.cloth && (
@@ -300,12 +304,12 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
                 </span>
               )}
             </span>
-            {row.owner && (
-              <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14.5, color: row.dq ? "#c99" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
-                {row.owner}
-                {row.cloths.length > 1 && <span className="whisper" style={{ fontSize: 13, color: "var(--faint)" }}> · one wine, {row.cloths.length} cloths</span>}
-              </span>
-            )}
+            <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14.5, color: row.dq ? "#c99" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
+              {row.owner}
+              {row.cloths.length > 1 && <span className="whisper" style={{ fontSize: 13, color: "var(--faint)" }}>· one wine, {row.cloths.length} cloths</span>}
+              {row.dq && <span className="tag" style={{ color: "var(--wine)", borderColor: "#6d3a3e" }}>off theme</span>}
+              {row.spoiled && <span className="tag" style={{ color: "var(--spoiled)", borderColor: "#8a6c3a" }}>spoiled</span>}
+            </span>
             {row.spoiled && <span className="whisper" style={{ display: "block", fontSize: 13 }}>Kept in the record, counted against no one.</span>}
           </span>
           <span className="disp" style={{ fontSize: 14, flex: "none", color: row.dq ? "var(--wine)" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
@@ -364,8 +368,13 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
       <Band>The Crowning</Band>
       {shown >= 1 && (champions.length === 0 ? (
         <p className="whisper" style={{ margin: 0, fontSize: 15 }}>No champion this moon.</p>
-      ) : champions.map((c) => (
-        <div key={c.cloth} style={{ display: "flex", alignItems: "center", gap: 15, textAlign: "left", margin: "0 0 12px" }}>
+      ) : champions.map((c) => {
+        const champVerdicts = verdictsFor(c.cloths);
+        const champOpen = open.has(c.cloth);
+        const champOpenable = canReadVerdicts && champVerdicts.length > 0;
+        return (
+        <div key={c.cloth} style={{ textAlign: "left", margin: "0 0 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
           {/* Only the victor wears a face. */}
           <Face src={c.owners.length === 1 ? avatarFor(c.owners[0]) : null} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -390,9 +399,20 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
                 ))}
               </div>
             )}
+            {champOpenable && (
+              <button
+                onClick={() => toggle(c.cloth)}
+                aria-expanded={champOpen}
+                style={{ width: "auto", background: "none", border: "none", padding: 0, marginTop: 5, cursor: "pointer", color: "var(--gold)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                the table&rsquo;s verdicts <i className={`ti ti-chevron-${champOpen ? "up" : "down"}`} style={{ fontSize: 13 }} />
+              </button>
+            )}
           </div>
         </div>
-      )))}
+        {champOpen && <Verdicts list={champVerdicts} showCloth={c.cloths.length > 1} />}
+        </div>
+        );
+      }))}
 
       {shown >= 1 && g.prophecy && champions.length > 0 && (() => {
         const right = champions.some((c) => c.owners.includes(g.prophecy!.name));

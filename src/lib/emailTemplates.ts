@@ -69,6 +69,16 @@ function button(href: string, label: string): string {
     <a href="${href}" style="display:inline-block;background-color:#cbbd93;color:#0a0908;font-family:${HEAD_FONT};font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:13px 30px;border-radius:8px;">${label}</a>
   </td></tr></table>`;
 }
+
+// The quieter button, for the second call to action in a letter. Two filled
+// gold buttons one above the other fight each other; an outline lets the
+// first one lead. Outlook ignores border-radius and draws it square, which
+// is fine: the outline still reads as a button.
+function buttonQuiet(href: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:20px auto 6px;"><tr><td align="center" style="border:1px solid #9c8a5f;border-radius:8px;">
+    <a href="${href}" style="display:inline-block;background-color:transparent;color:#cbbd93;font-family:${HEAD_FONT};font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:13px 30px;border-radius:8px;">${label}</a>
+  </td></tr></table>`;
+}
 // A full-width horizontal rule. Table-based so Outlook draws it too.
 function rule(): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;"><tr>
@@ -200,7 +210,7 @@ export interface SummonsEmailParams {
   numberRoman?: string;
   theme?: string;
   dateLabel?: string; // "Saturday 8 August 2026"
-  timeLabel?: string; // "19:00"
+  timeLabel?: string; // "18:30"
   host?: string;
   venue?: string | null;
   name?: string; // the soul who answered
@@ -241,14 +251,14 @@ export function summonsEmail(sp: SummonsEmailParams): Email {
       // three questions sit one tap away on a page of their own.
       (sp.offeringUrl ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 4px;">
         <tr><td style="border:1px solid #4a4132;border-radius:10px;padding:14px 16px;">
-          <p style="margin:0 0 8px;font-family:${HEAD_FONT};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#9c8a5f;">Name your bottle</p>
+          <p style="margin:0 0 8px;font-family:${HEAD_FONT};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#9c8a5f;">Log your wine</p>
           <p style="margin:0;font-family:${BODY_FONT};font-size:15px;color:#cabfa2;line-height:1.6;">Tell us what you are bringing now and there is nothing to type on the night. Three questions, half a minute, and no password to remember.</p>
-          ${button(sp.offeringUrl, "Name your bottle")}
+          ${button(sp.offeringUrl, "Log your wine")}
           <p style="margin:8px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#7c766a;text-align:center;">Sealed from every eye, the Keiser's included, until the cloths lift.</p>
         </td></tr>
       </table>` : "") +
       `<p style="margin:0 0 14px;color:#cabfa2;font-family:${BODY_FONT};font-size:16px;line-height:1.62;text-align:center;">Bring a bottle true to the theme, cloaked and unmarked.</p>` +
-      button(`${SITE}/convene`, "Meeting details"),
+      buttonQuiet(`${SITE}/convene`, "Meeting details"),
       `Your seat is kept for ${gathering}. The night is attached for your calendar.`,
       `<p style="margin:14px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:#5a554c;">should the hour change, a fresh summons will amend the night in your calendar; it will not double it</p>`
     ),
@@ -265,7 +275,7 @@ export function nameYourBottleEmail(np: { name?: string | null; numberRoman?: st
       moons() +
       heading("One question remains") +
       p(`${np.name ? `${esc(np.name)}, t` : "T"}he Council gathers ${np.tomorrow ? "tomorrow evening" : "soon"}${np.theme ? `, on ${esc(np.theme)}` : ""}, and yours is the last bottle the vine cannot see. Name it now and the night can begin the moment you arrive.`) +
-      button(np.offeringUrl, "Name your bottle") +
+      button(np.offeringUrl, "Log your wine") +
       `<p style="margin:12px 0 0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#7c766a;">Half a minute. No password. You may change it until the cloths lift.</p>`,
       `Your bottle for Gathering ${esc(np.numberRoman || "")} has not been named.`
     ),
