@@ -318,7 +318,15 @@ function MeetingBody({
   const { sleeping, email: myEmail, mode: authMode, member: me } = useAuth();
   const [showGuests, setShowGuests] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [remindBusy, setRemindBusy] = useState(false);
+  const [remindMsg, setRemindMsg] = useState<string | null>(null);
   const attendees = m.attendees || [];
+  // Those who have answered the call AND carry an address — the only souls a
+  // reminder rides to (sleeping seats who answered before dozing are included).
+  const reminderEmails = useMemo(
+    () => attendees.map((id) => members.find((x) => x.id === id)?.email).filter((e): e is string => !!e),
+    [attendees, members],
+  );
   const date = fmtDate(m.gather_date);
   const time = m.gather_time || "19:00";
   // The rite opens 30 minutes after the scheduled start — not before. The hook
@@ -357,6 +365,29 @@ function MeetingBody({
         if (id === meId) summon(next.includes(id));
       })
       .catch((e) => alert(`Could not update the RSVP: ${e.message}`));
+
+  // Keiser-only: nudge everyone who has answered to seal the wine they mean to
+  // bring. Writes only to the RSVP'd, one letter each (the route never leaks
+  // addresses between members), and only in the live Council.
+  const remindOfferings = async () => {
+    if (authMode !== "live") { setRemindMsg("Reminders only ride in the live Council."); return; }
+    if (!reminderEmails.length) { setRemindMsg("No one who has answered carries an address."); return; }
+    if (!window.confirm(`Remind ${reminderEmails.length} soul${reminderEmails.length === 1 ? "" : "s"} to log their wine?`)) return;
+    setRemindBusy(true); setRemindMsg(null);
+    const res = await sendEmail("offering-reminder", reminderEmails, {
+      number: toRoman(m.number),
+      theme: m.theme_title || "",
+      date,
+      time,
+      host: [m.host_name, m.host2_name].filter(Boolean).join(" & "),
+      venue: m.venue_instructions || null,
+    });
+    setRemindBusy(false);
+    if (res.skipped) setRemindMsg("Email isn't configured: set RESEND_API_KEY + NOTIFY_FROM in Netlify.");
+    else if (res.ok) setRemindMsg(`The reminder flies to ${res.sent} soul${res.sent === 1 ? "" : "s"}.`);
+    else if (res.sent) setRemindMsg(`Reached ${res.sent}; ${res.failed} did not take.`);
+    else setRemindMsg(res.error || "The reminder would not send.");
+  };
 
   const share = () => {
     // WhatsApp markdown: *bold*
@@ -532,6 +563,20 @@ function MeetingBody({
                 ))}
               </div>
             )}
+          </div>
+        )}
+        {isKeiser && attendees.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="btn"
+              style={{ width: "auto", padding: "9px 18px" }}
+              onClick={remindOfferings}
+              disabled={remindBusy || reminderEmails.length === 0}
+              title="Email everyone who has answered the call, asking them to log the wine they'll bring"
+            >
+              {remindBusy ? "Sending…" : `Remind ${reminderEmails.length} to log their wine`}
+            </button>
+            {remindMsg && <div className="whisper" style={{ fontSize: 13, marginTop: 6 }}>{remindMsg}</div>}
           </div>
         )}
         {isCurrent && allMeetings && (

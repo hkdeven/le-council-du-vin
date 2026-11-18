@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { summonsIcs } from "@/lib/ics";
 import { createClient } from "@supabase/supabase-js";
-import { anointEmail, elevateEmail, inviteEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
+import { anointEmail, elevateEmail, inviteEmail, offeringReminderEmail, expulsionEmail, natalChartEmail, foretellingEmail, kundliEmail, vedicForetellingEmail, featureRequestEmail, wakeRequestEmail, reckoningEmail, summonsEmail, type SummonsEmailParams, Email, InviteParams, NatalEmailParams, ForetellingEmailParams, KundliEmailParams, VedicForetellingEmailParams, ReckoningEmailParams } from "@/lib/emailTemplates";
 
 // Sends the Council's branded emails via Resend. Keiser-triggered types are
 // verified as the Keiser (via their Supabase token). Self-send types (natal,
@@ -89,6 +89,7 @@ export async function POST(req: Request) {
     case "anoint": email = anointEmail(params?.name || ""); break;
     case "elevate": email = elevateEmail(params?.name || ""); break;
     case "invite": email = inviteEmail(params || {}); break;
+    case "offering-reminder": email = offeringReminderEmail(params || {}); break;
     case "expulsion": email = expulsionEmail(params?.name || "", params?.count); break;
     case "natal": email = natalChartEmail(params || {}); break;
     case "foretelling": email = foretellingEmail(params || {}); break;

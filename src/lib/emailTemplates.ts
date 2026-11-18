@@ -192,6 +192,29 @@ export function inviteEmail(gp: InviteParams): Email {
   };
 }
 
+// 3b. Reminder to those who have ANSWERED the call: name the bottle you will
+// bring. (MANUAL, Keiser-triggered from the Convene card — only the RSVP'd are
+// written to.) The button lands on /convene, where "your offering" is logged.
+export function offeringReminderEmail(gp: InviteParams): Email {
+  const details = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px;border-top:1px solid #241f18;border-bottom:1px solid #241f18;">
+    ${gp.theme ? detailRow("Theme", gp.theme) : ""}
+    ${gp.date ? detailRow("When", `${gp.date}${gp.time ? ` &middot; from ${gp.time}` : ""}`) : ""}
+    ${gp.host ? detailRow("Host", gp.host) : ""}
+  </table>`;
+  return {
+    subject: `Name your bottle${gp.theme ? `: ${gp.theme}` : ""}`,
+    html: layout(
+      moons() +
+      heading(`Name your bottle`) +
+      p(`Your seat is kept for Gathering${gp.number ? ` <span style="font-family:${HEAD_FONT};font-size:24px;font-weight:600;letter-spacing:2px;">${gp.number}</span>` : ""}. Before we convene, whisper the wine you mean to bring.`) +
+      details +
+      p(`Log your offering and it stays sealed from every eye — the Keiser's own included — until the cloths are lifted. Once all who have answered have named a bottle, the vine reads the room and speaks its prophecy for the night.`) +
+      button(`${SITE}/convene`, "Log your offering"),
+      `Name the bottle you will bring${gp.number ? ` to Gathering ${gp.number}` : ""} — it stays secret until the reveal.`
+    ),
+  };
+}
+
 // The summons: sent when a soul answers a call, carrying the night itself as
 // an .ics so it lands in their calendar. The send route attaches the file with
 // content_type "text/calendar; method=REQUEST", which is what persuades Apple
