@@ -118,6 +118,72 @@ function Row({ label, tip, value, valueTip, hint }: { label: string; tip?: strin
 
 const ALL_ROLES: Role[] = ["initiate", "member", "keiser"];
 
+// Keiser-only birth editor for a roster row: fix a member's date, time, and
+// place of birth without waiting on them. Changing the place re-geocodes it to
+// coordinates + timezone, which is what the natal engine actually reads; the
+// date and time persist as typed.
+function MemberBirthFields({ m, edit }: { m: Member; edit: (id: string, patch: Partial<Member>) => void }) {
+  const [place, setPlace] = useState(m.birth_place || "");
+  const [hits, setHits] = useState<GeoHit[] | null>(null);
+  const [seeking, setSeeking] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const pick = (h: GeoHit) => {
+    setPlace(h.label); setHits(null); setErr(null);
+    edit(m.id, { birth_place: h.label, birth_lat: h.latitude, birth_lon: h.longitude, birth_tz: h.timezone });
+  };
+  const seek = async () => {
+    if (!place.trim() || seeking) return;
+    setSeeking(true); setErr(null);
+    const { hits: found, error } = await geocodePlace(place);
+    setSeeking(false);
+    if (error) { setErr(error); setHits(null); return; }
+    if (found.length === 1) pick(found[0]); else setHits(found);
+  };
+  return (
+    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="eyebrow" style={{ fontSize: 10 }}>Birth details · for their chart</div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <label className="field" style={{ marginTop: 0 }}>Date of birth</label>
+          <input type="date" value={m.date_of_birth || ""} onChange={(e) => edit(m.id, { date_of_birth: e.target.value || null })} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="field" style={{ marginTop: 0 }}>Time of birth</label>
+          <input type="time" value={(m.time_of_birth || "").slice(0, 5)} onChange={(e) => edit(m.id, { time_of_birth: e.target.value || null })} />
+        </div>
+      </div>
+      <div>
+        <label className="field" style={{ marginTop: 0 }}>Place of birth</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Town, region, country"
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); seek(); } }} style={{ flex: 1 }} />
+          <button className="btn" style={{ width: "auto", padding: "0 16px", flex: "none" }} disabled={seeking || !place.trim()} onClick={seek}>
+            {seeking ? "Seeking…" : "Locate"}
+          </button>
+        </div>
+        {m.birth_place && m.birth_lat != null && (
+          <p className="whisper" style={{ fontSize: 12, margin: "5px 0 0" }}>
+            <i className="ti ti-map-pin" style={{ fontSize: 11, marginRight: 4 }} />Pinned: {m.birth_place}{m.birth_tz ? ` · ${m.birth_tz}` : ""}
+          </p>
+        )}
+        {err && <p className="whisper" style={{ fontSize: 12, margin: "5px 0 0", color: "var(--wine)" }}>The atlas stumbled: {err}</p>}
+        {hits && hits.length === 0 && !err && (
+          <p className="whisper" style={{ fontSize: 12, margin: "5px 0 0" }}>No such place found — try a larger town nearby.</p>
+        )}
+        {hits && hits.length > 0 && (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+            {hits.map((h, i) => (
+              <button key={i} className="btn" style={{ width: "100%", padding: "7px 10px", textAlign: "left" }} onClick={() => pick(h)}>
+                <i className="ti ti-map-pin" style={{ fontSize: 12, marginRight: 6 }} />{h.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // The full roster. Every soul sees the roll (avatars open their cards);
 // only the Keiser may expand a row to amend the account, or elevate.
 function RosterEditor() {
@@ -318,6 +384,7 @@ function RosterEditor() {
                   <label className="field" style={{ marginTop: 0 }}>Venue instructions</label>
                   <textarea value={m.venue_instructions || ""} onChange={(e) => edit(m.id, { venue_instructions: e.target.value || null })} placeholder="Gate codes, parking, the dog…" />
                 </div>
+                <MemberBirthFields m={m} edit={edit} />
                 {/* Sleep and waking: the whole of it. A sleeping member keeps
                     every door their rank opens and writes nothing anywhere. */}
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
