@@ -86,9 +86,9 @@ export function OverwriteConfirm({ was, now, onConfirm, onCancel }: {
   }, [onCancel]);
   return (
     <div role="dialog" aria-modal="true" aria-label="Replace your sealed wine" onClick={onCancel}
-      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto", padding: "max(18px, env(safe-area-inset-top, 0px)) 18px max(18px, env(safe-area-inset-bottom, 0px))" }}>
       <div onClick={(e) => e.stopPropagation()} className="rise"
-        style={{ maxWidth: 380, width: "100%", background: "linear-gradient(180deg,#141110,#0b0a09)", border: "1px solid var(--gold)", borderRadius: 14, padding: "22px 20px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.6)" }}>
+        style={{ maxWidth: 380, width: "100%", margin: "auto", background: "linear-gradient(180deg,#141110,#0b0a09)", border: "1px solid var(--gold)", borderRadius: 14, padding: "22px 20px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.6)" }}>
         <i className="ti ti-replace" style={{ fontSize: 28, color: "var(--gold2)" }} aria-hidden="true" />
         <p className="disp" style={{ fontSize: 16, lineHeight: 1.4, color: "var(--gold2)", margin: "12px 0 0" }}>
           You have already sealed a wine for this night.

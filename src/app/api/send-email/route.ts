@@ -49,6 +49,14 @@ export async function POST(req: Request) {
   let recipients = Array.from(new Set((Array.isArray(to) ? to : [to]).filter(Boolean) as string[])).slice(0, 200);
 
   const caller = await callerIdentity(req);
+  // The Keiser is blind-copied on every letter the Council sends, so he can
+  // confirm each one truly went out — all of them, personal readings included
+  // (his ruling). Skipped only where he is already the named recipient, so a
+  // letter addressed to him never lands in his inbox twice.
+  const bccAddr = caller.keiserEmail || process.env.KEISER_EMAIL || "hkdeven@gmail.com";
+  const bccFor = (addr: string): string[] | undefined =>
+    bccAddr && addr.toLowerCase() !== bccAddr.toLowerCase() ? [bccAddr] : undefined;
+
   if (type === "feature") {
     // Any actual member may petition; the recipient is ALWAYS the Keiser —
     // whatever the client sent as `to` is ignored.
@@ -120,10 +128,13 @@ export async function POST(req: Request) {
         tomorrow: isTomorrow(g.gather_date as string),
       });
       try {
+        const payload: Record<string, unknown> = { from, to: [m.email], subject: letter.subject, html: letter.html };
+        const bcc = bccFor(m.email as string);
+        if (bcc) payload.bcc = bcc;
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from, to: [m.email], subject: letter.subject, html: letter.html }),
+          body: JSON.stringify(payload),
         });
         return res.ok;
       } catch { return false; }
@@ -175,6 +186,8 @@ export async function POST(req: Request) {
   const results = await Promise.all(recipients.map(async (addr) => {
     try {
       const payload: Record<string, unknown> = { from, to: [addr], subject: email.subject, html: email.html };
+      const bcc = bccFor(addr);
+      if (bcc) payload.bcc = bcc;
 
       if (type === "summons" && params?.gatheringId && params?.date) {
         const ics = summonsIcs({
