@@ -125,8 +125,8 @@ function RosterEditor() {
   const isKeiser = role === "keiser";
   const [members, setMembers] = useState<Member[]>([]);
   const [rosterLoaded, setRosterLoaded] = useState(false);
-  // Open by default (the roll is daily reading), but it can be folded away.
-  const [unfolded, setUnfolded] = useState(true);
+  // Collapsed by default, so the profile page opens tidy; tap to unfold the roll.
+  const [unfolded, setUnfolded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   // Keiser editing a member's portrait: pick a file for a member, then crop it.
   const photoRef = useRef<HTMLInputElement>(null);
@@ -662,8 +662,8 @@ export default function Profile() {
   const [placeError, setPlaceError] = useState<string | null>(null); // the lookup itself failed
   const [seeking, setSeeking] = useState(false);
   const [venue, setVenue] = useState("");
-  // Open by default, but it can be folded away.
-  const [venueOpen, setVenueOpen] = useState(true);
+  // Collapsed by default, so the profile page opens tidy; tap to unfold.
+  const [venueOpen, setVenueOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [rawFile, setRawFile] = useState<string | null>(null);
