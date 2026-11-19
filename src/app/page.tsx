@@ -89,34 +89,11 @@ export default function Gate() {
 }
 
 function LoginPanel({ onBack }: { onBack: () => void }) {
-  const { signInWithGoogle, signInWithOtp, signInWithPassword, resetPassword } = useAuth();
-  const [tab, setTab] = useState<"password" | "link">("password");
+  const { signInWithGoogle, signInWithOtp } = useAuth();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-
-  const doPassword = async () => {
-    setBusy(true); setErr(null); setMsg(null);
-    const res = await signInWithPassword(email, password);
-    setBusy(false);
-    if (res.error) setErr(res.error);
-  };
-
-  const doReset = async () => {
-    setErr(null); setMsg(null);
-    // The button always answers: without an email there is nothing to send to.
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
-      setErr("First enter your email above, then ask again.");
-      return;
-    }
-    setBusy(true);
-    const res = await resetPassword(email.trim());
-    setBusy(false);
-    if (res.error) setErr(res.error);
-    else setMsg("If the Council knows this address, a restoration rite is on its way.");
-  };
 
   const doLink = async () => {
     setBusy(true); setErr(null); setMsg(null);
@@ -144,48 +121,18 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="name@vessel.com"
         autoComplete="email"
+        onKeyDown={(e) => { if (e.key === "Enter" && email && !busy) doLink(); }}
       />
-      {tab === "password" && (
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="your secret word"
-          autoComplete="current-password"
-          onKeyDown={(e) => e.key === "Enter" && doPassword()}
-        />
-      )}
 
       {err && <p style={{ color: "#c98", fontSize: 13, margin: 0 }}>{err}</p>}
       {msg && <p className="scr" style={{ fontSize: 15, margin: 0 }}>{msg}</p>}
 
-      {tab === "password" ? (
-        <>
-          <button className="btn gold" disabled={busy || !email || !password} onClick={doPassword}>
-            {busy ? "Entering…" : "Enter"}
-          </button>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <button onClick={doReset} disabled={busy} title="We send a link to choose a new secret word"
-              style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>
-              Forgot password
-            </button>
-            <button onClick={() => { setTab("link"); setErr(null); setMsg(null); }}
-              style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}>
-              Send a magic link
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <button className="btn gold" disabled={busy || !email} onClick={doLink}>
-            {busy ? "Sending…" : "Send magic link"}
-          </button>
-          <button onClick={() => { setTab("password"); setErr(null); setMsg(null); }}
-            style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, textAlign: "center" }}>
-            Enter with a secret word instead
-          </button>
-        </>
-      )}
+      <button className="btn gold" disabled={busy || !email} onClick={doLink}>
+        {busy ? "Sending…" : "Send a magic link"}
+      </button>
+      <p className="whisper" style={{ fontSize: 13, margin: 0, textAlign: "center", fontStyle: "italic" }}>
+        We&rsquo;ll email you a link that signs you straight in — no password to remember.
+      </p>
 
       <button onClick={onBack}
         style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, textAlign: "center" }}>

@@ -202,7 +202,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(() => {
     setAuthError(null);
-    supabase?.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+    // Always show Google's account chooser. Without this, a member on a browser
+    // with another Google account already active is signed in silently as that
+    // account — whose address won't match their seat, so the gate turns them
+    // away as a stranger. select_account makes them pick the right inbox.
+    supabase?.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo, queryParams: { prompt: "select_account" } },
+    });
   }, [redirectTo]);
 
   const signInWithOtp = useCallback(
