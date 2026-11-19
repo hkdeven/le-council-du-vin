@@ -26,13 +26,17 @@ export default function Gate() {
   // landing page (no forced forward).
   useEffect(() => {
     if (mode === "live" && status === "member") {
-      // A link they followed before logging in (AppShell wrote it) wins over
-      // Convene; only our own paths are honoured, never an outside address.
+      // A deep link they followed before logging in (a shared card / heavens /
+      // soul address, which AppShell wrote) carries them there. A main nav page
+      // never does: login always defaults to Convene, so a logged-out visit to
+      // /profile — which AppShell also saves — can't hijack the entrance. Only
+      // our own paths are ever honoured, never an outside address.
       let to = "/convene";
       try {
         const saved = sessionStorage.getItem("lcv_return_to");
         sessionStorage.removeItem("lcv_return_to");
-        if (saved && /^\/[a-z]/.test(saved) && !saved.startsWith("//")) to = saved;
+        const navHome = /^\/(convene|profile|oracle|codex|tribunal|rite|reveal)(\/|$)/;
+        if (saved && /^\/[a-z]/.test(saved) && !saved.startsWith("//") && !navHome.test(saved)) to = saved;
       } catch {}
       router.replace(to);
     }
