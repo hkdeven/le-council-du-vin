@@ -70,7 +70,7 @@ export default function BottleReveal({ photos: initial, gatheringId, onPhotos }:
             </label>
             <button
               onClick={() => setShown(false)}
-              style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15 }}
+              style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15 }}
             >
               <i className="ti ti-eye-off" style={{ marginRight: 5 }} /> Conceal once more
             </button>

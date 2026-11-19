@@ -124,7 +124,7 @@ function Eyebrow({ children, tip, style }: { children: React.ReactNode; tip?: st
 }
 const bodyStyle: React.CSSProperties = {
   fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9",
-  fontFamily: "'EB Garamond', serif", margin: "0 0 10px",
+  fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px",
 };
 const monthYear = (ms: number) =>
   new Date(ms).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -231,7 +231,7 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
 
   const rowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0", textAlign: "left" };
   const labStyle: React.CSSProperties = { display: "inline-flex", alignItems: "center", fontFamily: "'Cinzel',serif", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--gold)", fontSize: 10 };
-  const valStyle: React.CSSProperties = { fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 16, textAlign: "right", display: "inline-flex", alignItems: "center" };
+  const valStyle: React.CSSProperties = { fontFamily: "'Inter', system-ui, sans-serif", color: "var(--gold2)", fontSize: 16, textAlign: "right", display: "inline-flex", alignItems: "center" };
 
   return (
     <>
@@ -264,9 +264,9 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
           <MoonRow />
           <Eyebrow tip={T.KINDRED_TIP}>Kindred stars</Eyebrow>
           {kin.map((k, i) => (
-            <div key={k.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < kin.length - 1 ? "1px solid var(--line)" : "none", fontSize: 14.5, textAlign: "left", fontFamily: "'EB Garamond',serif" }}>
+            <div key={k.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < kin.length - 1 ? "1px solid var(--line)" : "none", fontSize: 14.5, textAlign: "left", fontFamily: "'Inter', system-ui, sans-serif" }}>
               <span>{k.name}</span>
-              <span style={{ color: k.total >= 24 ? "var(--gold2)" : k.total >= 18 ? "var(--parch)" : "var(--dim)", fontFamily: "'Cormorant Garamond',serif", fontSize: 15 }}>
+              <span style={{ color: k.total >= 24 ? "var(--gold2)" : k.total >= 18 ? "var(--parch)" : "var(--dim)", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15 }}>
                 {fmtScore(k.total)} of 36 · {k.verdict}
               </span>
             </div>
@@ -305,7 +305,7 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
             <span style={{ display: "inline-flex", alignItems: "center", fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: "0.08em", color: isNow ? "var(--gold2)" : past ? "var(--faint)" : "var(--parch)" }}>
               {d.lord.toUpperCase()}{isNow && " · NOW"}<Tip align="left" text={T.DASHA_TIP[d.lord]} />
             </span>
-            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: "italic", fontSize: 13, color: isNow ? "var(--gold2)" : "var(--dim)" }}>
+            <span style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13, color: isNow ? "var(--gold2)" : "var(--dim)" }}>
               {yearOf(d.fromMs)} to {yearOf(d.toMs)}
             </span>
           </div>
@@ -337,7 +337,7 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
           <p className="whisper" style={{ margin: "2px 0 0", fontSize: 14, color: "var(--parch)" }}>sign, ask, and begin on these days</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", margin: "8px 0 4px" }}>
             {muhurta.favourable.map((d) => (
-              <span key={d.ms} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, color: "var(--gold2)", border: "1px solid var(--line2)", borderRadius: 14, padding: "5px 14px" }}>{d.label}</span>
+              <span key={d.ms} style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, color: "var(--gold2)", border: "1px solid var(--line2)", borderRadius: 14, padding: "5px 14px" }}>{d.label}</span>
             ))}
           </div>
           {muhurta.hostile.length > 0 && (
@@ -345,7 +345,7 @@ function KundliBody({ chart, v, isSelf, style, pickStyle, kin, muhurta }: {
               <div style={{ fontFamily: "'Cinzel',serif", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--gold2)", fontSize: 10.5, marginTop: 10 }}>Let pass quietly</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", margin: "8px 0 4px" }}>
                 {muhurta.hostile.map((d) => (
-                  <span key={d.ms} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, color: "var(--faint)", border: "1px solid var(--line)", borderRadius: 14, padding: "5px 14px" }}>{d.label}</span>
+                  <span key={d.ms} style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, color: "var(--faint)", border: "1px solid var(--line)", borderRadius: 14, padding: "5px 14px" }}>{d.label}</span>
                 ))}
               </div>
             </>

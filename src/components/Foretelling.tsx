@@ -23,17 +23,17 @@ function OmenBlock({ o }: { o: Omen }) {
         <span className="eyebrow" style={{ flex: 1, fontSize: 11, lineHeight: 1.5 }}>{o.title}</span>
         <span style={{ color: "var(--faint)", fontSize: 12, whiteSpace: "nowrap" }}>{o.when}</span>
       </div>
-      <div style={{ fontFamily: "'EB Garamond', serif", fontSize: 14.5, color: "var(--parch)", lineHeight: 1.55 }}>{o.plain || o.body}</div>
+      <div style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14.5, color: "var(--parch)", lineHeight: 1.55 }}>{o.plain || o.body}</div>
     </div>
   );
 }
 
 const LENS_KEY = "lcv_sky_lens"; // west | vedic
 
-const bodyStyle: React.CSSProperties = { fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "var(--bright, #ddd7c9)", fontFamily: "'EB Garamond', serif", margin: "0 0 10px" };
+const bodyStyle: React.CSSProperties = { fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "var(--bright, #ddd7c9)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px" };
 const rowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "5px 0", textAlign: "left" };
 const labStyle: React.CSSProperties = { display: "inline-flex", alignItems: "center", fontFamily: "'Cinzel',serif", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--gold)", fontSize: 10 };
-const valStyle: React.CSSProperties = { fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 16, textAlign: "right" };
+const valStyle: React.CSSProperties = { fontFamily: "'Inter', system-ui, sans-serif", color: "var(--gold2)", fontSize: 16, textAlign: "right" };
 
 function MoonRow() {
   return (
@@ -145,7 +145,7 @@ export function ForetellingContent({ member, isSelf, onGo }: { member: CardMembe
               <div className="eyebrow" style={{ fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 2, marginBottom: 6 }}>
                 The day&rsquo;s star<Tip text="Tara bala: the Moon's mansion today, counted from the birth star. Nine taras turn in a fixed wheel; some carry the day, some ask it to wait." />
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid var(--line2)", borderRadius: 14, padding: "6px 16px", fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: "var(--gold2)", margin: "2px 0 8px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid var(--line2)", borderRadius: 14, padding: "6px 16px", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 16, color: "var(--gold2)", margin: "2px 0 8px" }}>
                 <i className="ti ti-north-star" style={{ fontSize: 14, color: "var(--gold)" }} />{vedic.dayStar.tara}
               </div>
               <p style={bodyStyle}>{vedic.dayStar.passage}</p>
@@ -176,7 +176,7 @@ export function ForetellingContent({ member, isSelf, onGo }: { member: CardMembe
           {vedic?.gochara.map((r, i) => (
             <div key={r.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < vedic.gochara.length - 1 ? "1px solid var(--line)" : "none", fontSize: 14, textAlign: "left" }}>
               <span style={{ display: "inline-flex", alignItems: "center", fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: "0.08em", color: "var(--parch)" }}>{r.lord.toUpperCase()}<Tip align="left" text={GRAHA_TIP[r.key]} /></span>
-              <span style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: "italic", fontSize: 14, color: r.favourable ? "var(--gold2)" : "var(--dim)" }}>{r.line.replace("your", v.pos)}</span>
+              <span style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14, color: r.favourable ? "var(--gold2)" : "var(--dim)" }}>{r.line.replace("your", v.pos)}</span>
             </div>
           ))}
           {vedic && <p style={{ ...bodyStyle, marginTop: 10, marginBottom: 0 }}>{gocharaPassage(vedic.gochara, v)}</p>}
@@ -189,7 +189,7 @@ export function ForetellingContent({ member, isSelf, onGo }: { member: CardMembe
           {vedic?.turnings.map((t) => (
             <div key={t.ms} style={{ display: "flex", gap: 12, alignItems: "baseline", padding: "7px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
               <span style={{ flex: "none", width: 92, display: "inline-flex", alignItems: "flex-start", fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: "0.06em", color: "var(--gold2)" }}>{t.label}</span>
-              <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 14.5, color: "var(--bright, #ddd7c9)", lineHeight: 1.45 }}>{isSelf ? t.text : t.text.replace(/\byour\b/g, "their").replace(/\byou\b/g, "them")}</span>
+              <span style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14.5, color: "var(--bright, #ddd7c9)", lineHeight: 1.45 }}>{isSelf ? t.text : t.text.replace(/\byour\b/g, "their").replace(/\byou\b/g, "them")}</span>
             </div>
           ))}
           {vedic && vedic.clock.length > 0 && (
@@ -202,7 +202,7 @@ export function ForetellingContent({ member, isSelf, onGo }: { member: CardMembe
               {vedic.clock.map((c, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < vedic.clock.length - 1 ? "1px solid var(--line)" : "none", fontSize: 14, textAlign: "left" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: "0.08em", color: c.now ? "var(--gold2)" : "var(--parch)" }}>{c.lord}{c.now && " · NOW"}<Tip align="left" text={DASHA_TIP[c.lordKey]} /></span>
-                  <span style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: "italic", fontSize: 13, color: c.now ? "var(--gold2)" : "var(--dim)" }}>{c.range}</span>
+                  <span style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13, color: c.now ? "var(--gold2)" : "var(--dim)" }}>{c.range}</span>
                 </div>
               ))}
             </>

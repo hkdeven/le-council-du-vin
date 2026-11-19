@@ -423,7 +423,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
                 {!r.owner && canClaim && (
                   <button
                     onClick={() => { if (window.confirm(`Claim ${r.cloth != null ? `${r.title || "Bottle"} ${r.cloth}` : (r.title || "A bottle unrecorded")} as your own pour?`)) onClaim(a, ri).catch((e) => alert(`The claim would not hold: ${(e as Error).message}`)); }}
-                    style={{ width: "auto", marginLeft: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "1px 10px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+                    style={{ width: "auto", marginLeft: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "1px 10px", cursor: "pointer", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13 }}>
                     <i className="ti ti-hand-grab" style={{ fontSize: 11, marginRight: 4 }} />claim it
                   </button>
                 )}
@@ -444,7 +444,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
                   <div key={member.id} style={{ padding: "3px 0" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                       <Avatar src={member.avatar_url} initials={member.short_name || member.cult_name.slice(0, 2).toUpperCase()} size={22} />
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: "'Cormorant Garamond', serif", fontSize: 14, color: "var(--parch)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.cult_name}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, color: "var(--parch)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.cult_name}</span>
                       <ScorePips score={score} />
                       <span className="disp" style={{ fontSize: 12, width: 20, textAlign: "right", color: "var(--gold2)" }}>{score}</span>
                     </div>
@@ -470,7 +470,7 @@ function AnnalCard({ a, g, isKeiser, members, myName, split, ballots, canSeeBrea
           {split && (() => {
             const w = a.rows.find((r) => r.cloth === split.cloth);
             return (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "3px 10px", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13, marginTop: 8 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "3px 10px", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13, marginTop: 8 }}>
                 <i className="ti ti-bolt" style={{ fontSize: 12 }} />
                 The split cloth: {w?.title || `Bottle ${toRoman(split.cloth)}`} divided the table, {split.min} to {split.max}
               </div>

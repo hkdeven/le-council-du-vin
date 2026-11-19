@@ -229,7 +229,7 @@ function Offering({ gatheringId, meId }: { gatheringId: string; meId: string }) 
                 </button>
               </div>
               <button onClick={() => setEditing(false)}
-                style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 10, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+                style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 10, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13 }}>
                 veil it for now
               </button>
             </div>
@@ -367,7 +367,7 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
               else { setNudge("idle"); alert(`The letters would not ride: ${res.error || res.skipped || "unknown"}`); }
             }}
             disabled={nudge !== "idle"}
-            style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "1px solid var(--line)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, padding: "8px 16px", cursor: nudge === "idle" ? "pointer" : "default", opacity: nudge === "sending" ? 0.5 : 1 }}>
+            style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "1px solid var(--line)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14, padding: "8px 16px", cursor: nudge === "idle" ? "pointer" : "default", opacity: nudge === "sending" ? 0.5 : 1 }}>
             <i className="ti ti-mail-forward" style={{ fontSize: 13 }} />
             {nudge === "sent" ? "The letters have ridden" : nudge === "sending" ? "Writing…" : `Send reminder to log wine (${stillUnnamed})`}
           </button>
@@ -444,7 +444,7 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
   return (
     <div style={{ position: "relative" }}>
       <button onClick={() => setOpen((o) => !o)}
-        style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+        style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{members.find((m) => m.id === value)?.cult_name || "Choose a host"}</span>
         <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ color: "var(--dim)" }} />
       </button>
@@ -452,7 +452,7 @@ function HostPicker({ value, members, onChange }: { value: string; members: Memb
         <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 40, background: "#0e0d0c", border: "1px solid var(--line2)", borderRadius: 8, maxHeight: 260, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
           {members.map((m) => (
             <button key={m.id} onClick={() => { onChange(m.id); setOpen(false); }}
-              style={{ width: "100%", textAlign: "left", background: m.id === value ? "rgba(160,150,120,0.12)" : "none", border: "none", color: m.id === value ? "var(--gold2)" : "var(--parch)", padding: "10px 12px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer" }}>
+              style={{ width: "100%", textAlign: "left", background: m.id === value ? "rgba(160,150,120,0.12)" : "none", border: "none", color: m.id === value ? "var(--gold2)" : "var(--parch)", padding: "10px 12px", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, cursor: "pointer" }}>
               {m.cult_name}
             </button>
           ))}
@@ -725,7 +725,7 @@ function MeetingBody({
 
         {isKeiser && (
           <div style={{ marginTop: 10 }}>
-            <button onClick={() => setShowGuests((s) => !s)} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>
+            <button onClick={() => setShowGuests((s) => !s)} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14 }}>
               <i className="ti ti-users" style={{ marginRight: 5 }} />RSVP on their behalf {showGuests ? "▾" : "▸"}
             </button>
             {showGuests && (
@@ -956,7 +956,7 @@ export default function Convene() {
                 <span className="eyebrow" style={{ display: "block", fontSize: 9.5, marginBottom: 4 }}>The host</span>
                 <button
                   onClick={() => setHostOpen((o) => !o)}
-                  style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}
+                  style={{ width: "100%", background: "#080706", border: "1px solid var(--line)", borderRadius: 8, color: "var(--parch)", padding: "9px 11px", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}
                 >
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {members.find((m) => m.id === newHost)?.cult_name}
@@ -969,7 +969,7 @@ export default function Convene() {
                       <button
                         key={m.id}
                         onClick={() => { setNewHost(m.id); setHostOpen(false); }}
-                        style={{ width: "100%", textAlign: "left", background: m.id === newHost ? "rgba(160,150,120,0.12)" : "none", border: "none", color: m.id === newHost ? "var(--gold2)" : "var(--parch)", padding: "10px 12px", fontFamily: "'EB Garamond', serif", fontSize: 15, cursor: "pointer" }}
+                        style={{ width: "100%", textAlign: "left", background: m.id === newHost ? "rgba(160,150,120,0.12)" : "none", border: "none", color: m.id === newHost ? "var(--gold2)" : "var(--parch)", padding: "10px 12px", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, cursor: "pointer" }}
                       >
                         {m.cult_name}
                       </button>

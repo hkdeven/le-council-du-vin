@@ -25,7 +25,7 @@ export function Row({ label, tip, value, valueTip }: { label: string; tip: strin
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "5px 0" }}>
       <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", fontSize: 10 }}>{label}<Tip text={tip} align="left" /></span>
-      <span style={{ display: "inline-flex", alignItems: "center", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 16 }}>{value}{valueTip && <Tip text={valueTip} />}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 16 }}>{value}{valueTip && <Tip text={valueTip} />}</span>
     </div>
   );
 }

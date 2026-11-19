@@ -281,7 +281,7 @@ export default function Rite() {
       </div>
 
       {countNote && (
-        <p style={{ margin: "10px 0 0", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 12px", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, color: "var(--gold2)", textAlign: "center" }}>
+        <p style={{ margin: "10px 0 0", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 12px", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14, color: "var(--gold2)", textAlign: "center" }}>
           <i className="ti ti-bell" style={{ fontSize: 12, marginRight: 6 }} />{countNote}
         </p>
       )}

@@ -8,7 +8,7 @@
   --panel: #131211;
   --gold: #9c8a5f;
   --gold2: #cbbd93;
-  --parch: #cbc5b7;
+  --parch: #e4ddcc;
   --dim: #7c766a;
   --faint: #5a554c;
   --line: rgba(160, 150, 120, 0.2);
@@ -23,7 +23,7 @@ html,
 body {
   background: var(--ink);
   color: var(--parch);
-  font-family: "EB Garamond", serif;
+  font-family: "Inter", system-ui, sans-serif;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -39,14 +39,14 @@ body {
   color: var(--gold2);
 }
 .scr {
-  font-family: "Cormorant Garamond", serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-style: italic;
   color: var(--gold2);
 }
 .whisper {
   color: var(--faint);
   font-style: italic;
-  font-family: "Cormorant Garamond", serif;
+  font-family: "Inter", system-ui, sans-serif;
 }
 .eyebrow {
   font-family: "Cinzel", serif;
@@ -130,7 +130,7 @@ textarea {
   border-radius: 8px;
   color: var(--parch);
   padding: 9px 11px;
-  font-family: "EB Garamond", serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 15px;
 }
 /* iOS Safari shows no placeholder in an EMPTY date/time input, so once its

@@ -156,7 +156,7 @@ function LoginPanel({ onBack }: { onBack: () => void }) {
       </p>
 
       <button onClick={onBack}
-        style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 4, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, textAlign: "center" }}>
+        style={{ width: "auto", background: "none", border: "none", color: "var(--faint)", cursor: "pointer", padding: 0, marginTop: 4, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15, textAlign: "center" }}>
         <i className="ti ti-arrow-left" style={{ fontSize: 13, marginRight: 4 }} /> turn back
       </button>
     </div>

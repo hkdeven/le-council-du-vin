@@ -30,7 +30,7 @@ export default function GrapePicker({ value, onChange, listId }: {
       {value.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
           {value.map((g) => (
-            <span key={g} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid var(--line2)", borderRadius: 12, padding: "2px 8px 2px 10px", fontSize: 12.5, color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif" }}>
+            <span key={g} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid var(--line2)", borderRadius: 12, padding: "2px 8px 2px 10px", fontSize: 12.5, color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif" }}>
               {g}
               <button onClick={() => onChange(value.filter((x) => x !== g))} aria-label={`Remove ${g}`}
                 style={{ width: "auto", background: "none", border: "none", color: "var(--dim)", cursor: "pointer", padding: 0, display: "inline-flex" }}>
