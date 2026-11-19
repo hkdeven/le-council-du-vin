@@ -6,7 +6,83 @@ detail lives in `README.md` (technical) and `MEMBER-RELEASE-NOTES.md` (what
 the members were told, dated). This file is only: where things stand, what is
 not proven, and the rules that are not written in the code.
 
-Last updated: **19 October 2026**.
+Last updated: **19 November 2026**.
+
+---
+
+## 0. Session of 19 Nov 2026 — shipped a batch, and stood up live testing
+
+**A real meeting is scheduled for 20 Nov. The open worry is the live
+vote→reveal path (see "In flight" below).**
+
+### Shipped to prod this session (all merged to `main`, Netlify-deployed)
+- **Dominik → Dominiko**: `scripts/migrate-dominik.ts` re-credits his held
+  history to his new account. The Keiser ran it against prod himself; it is
+  applied. Script kept as a record (like `migrate-julia.ts`).
+- **Modal fix**: the "replace your wine" dialog (`src/components/WineWarning.tsx`)
+  now scrolls instead of clipping on short screens.
+- **Login**: Google now forces the account chooser (`prompt=select_account` in
+  `AuthProvider.signInWithGoogle`); email+password sign-in removed from the gate
+  (`src/app/page.tsx` `LoginPanel`) — Google + magic link only.
+- **Login flash**: the gate shows "Entering the council…" (shared `Loading`)
+  instead of flashing the signed-out gate during the OAuth/magic-link return.
+- **Login landing**: always defaults to `/convene`; a saved `lcv_return_to`
+  only wins for genuine deep links (`/member`,`/heavens`,`/soul`), never a main
+  nav page like `/profile`.
+- **BCC the Keiser on every email** (`src/app/api/send-email/route.ts`): both
+  send paths blind-copy the Keiser, skipped only when he's already the
+  recipient. Email templates untouched.
+- **Profile**: every section collapsed by default (roster + venue were open).
+- **Prophecy** (`src/app/convene/page.tsx`): "Consult the Prophecy" now explains
+  on tap why it can't speak (no silent disabled button / hidden Tip), and lists
+  **who still owes a wine** by name under the Keiser's reminder
+  (`unnamedSouls`, ids-only, never the wine).
+- **Keiser edits birth data**: roster rows now have a "Birth details" block
+  (`MemberBirthFields` in `src/app/profile/page.tsx`) — date/time persist as
+  typed; place re-geocodes to lat/lon/tz via `geocodePlace`.
+- **Readability**: body text swapped serif (EB Garamond / Cormorant) → **Inter**
+  across 18 `.tsx` + `globals.css` + the font load; gold **Cinzel** headings and
+  the whole palette kept; `--parch` brightened to `#e4ddcc`. **Email templates
+  deliberately stay serif** (mail clients can't rely on a web font).
+
+### Prod DB drift — the real reason it "breaks every week"
+The frontend auto-deploys, but **`supabase/schema.sql` + `supabase/policies.sql`
+are applied by hand**. So any new policy/function lags prod and the app calls
+something that isn't there. Offline tests (all green: `npm test`,
+`verify-tally.ts`) can't see it.
+- Confirmed case: **`sealed_offering_members(uuid)` was missing in prod** this
+  week → "The offerings could not be counted". The Keiser ran the
+  `create or replace` from `policies.sql` in the Supabase SQL editor; fixed.
+- **Prime suspect for 20 Nov**: `reveal_summary(uuid)` (`policies.sql` ~L284)
+  — the reveal's tally source. If it's missing/stale in prod, the reveal
+  degrades to each member seeing only their own scores. **Unverified.**
+- **Durable fix still TODO**: auto-apply `schema.sql`+`policies.sql` on deploy
+  (kill the drift), and keep a real member-session e2e test as a pre-deploy gate.
+
+### In flight (awaiting result when this was written)
+- A **repo-specific cloud env** `le-council-du-vin`
+  (`env_011yixcCqe8M49PJZfiyk8pq`) was created with network access to
+  `pdxdllxyvejtchbzybfa.supabase.co`, `db.pdxdllxyvejtchbzybfa.supabase.co`,
+  `lecouncilduvin.co.za`. **A running session cannot hop onto it** — start a NEW
+  session on that env to get the network.
+- A **worker session** `session_01Ws5Z2THyQ15TuoCzDrk2QE` runs there to: (1)
+  read-only check whether prod has `reveal_summary` + the ballot policies, then
+  (2) run a live vote→reveal test with disposable test members (deleted after),
+  and report back. **Check its result** — it answers whether 20 Nov is safe.
+
+### Parked / not built
+- **"Can't erase a logged wine"** — the offering form only lets you replace,
+  not clear. User deferred it.
+- **"Heralds' Ledger" email console** and the **readability comparison** were
+  **mockups only** (claude.ai artifacts), never built into the app.
+
+### Housekeeping
+- The **service-role key was pasted in chat and handed to the worker** — the
+  Keiser should rotate it after testing:
+  https://supabase.com/dashboard/project/pdxdllxyvejtchbzybfa/settings/api
+- Several merged branches linger on GitHub (the sandbox proxy blocks deleting
+  them); safe to delete from the branches page.
+- The user wants **precise instructions + exact links, never "go find the file"**.
 
 ---
 
