@@ -91,7 +91,7 @@ export function VeiledGate({ member, what, isSelf, onGo }: { member: CardMember;
     <>
       <div className="disp" style={{ fontSize: 20 }}>The sky is veiled</div>
       <p className="whisper" style={{ fontSize: 14, margin: "8px 0 14px" }}>{what}</p>
-      <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, margin: "0 auto 6px", maxWidth: 280 }}>
+      <p style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 16, margin: "0 auto 6px", maxWidth: 280 }}>
         The heavens ask {missing.length === 1 ? "one more truth" : `${missing.length === 2 ? "two" : "three"} more truths`} of {isSelf ? "you" : "them"}:
       </p>
       <div className="pills" style={{ justifyContent: "center", margin: "10px 0 16px" }}>
@@ -182,13 +182,13 @@ export function NatalContent({ member, isSelf, onGo }: { member: CardMember; isS
               >
                 <span style={{ flex: "none", width: 22, color: "var(--gold2)", fontSize: 16, textAlign: "center" }}>{p.glyph}</span>
                 <span className="eyebrow" style={{ flex: 1, fontSize: 11 }}>{p.name}</span>
-                <span style={{ color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 15 }}>
+                <span style={{ color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15 }}>
                   {p.sign.symbol} {p.sign.name} {p.deg}°{p.house ? <span style={{ color: "var(--dim)", fontSize: 13 }}> · {ordinal(p.house)} house</span> : null}
                 </span>
                 <i className="ti ti-chevron-right" style={{ color: "var(--gold)", fontSize: 13, flex: "none", transform: openRow === p.key ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
               </button>
               {openRow === p.key && (
-                <div style={{ textAlign: "left", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14.5, color: "var(--dim)", lineHeight: 1.5, padding: "0 0 10px 32px" }}>
+                <div style={{ textAlign: "left", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14.5, color: "var(--dim)", lineHeight: 1.5, padding: "0 0 10px 32px" }}>
                   {placementText(p)}
                 </div>
               )}
@@ -221,7 +221,7 @@ function WheelReadings({ chart, member, isSelf }: { chart: Chart; member: CardMe
   const birthMoon = birthMoonOf(chart, v);
 
   const eyebrow: React.CSSProperties = { fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 2, marginBottom: 8 };
-  const body: React.CSSProperties = { fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'EB Garamond', serif", margin: "0 0 10px" };
+  const body: React.CSSProperties = { fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px" };
   const moons = (
     <div style={{ display: "flex", justifyContent: "center", gap: 11, color: "var(--gold)", opacity: 0.55, fontSize: 14, margin: "18px 0 12px" }}>
       <i className="ti ti-moon-stars" /><i className="ti ti-moon" /><i className="ti ti-circle" /><i className="ti ti-moon-2" /><i className="ti ti-moon-stars" />
@@ -235,7 +235,7 @@ function WheelReadings({ chart, member, isSelf }: { chart: Chart; member: CardMe
       <span style={{ flex: 1, height: 4, background: "rgba(160,150,120,0.14)", borderRadius: 2, overflow: "hidden" }}>
         <span style={{ display: "block", height: "100%", width: `${(b.count / max) * 100}%`, background: "var(--gold2)", borderRadius: 2, opacity: 0.55 + 0.45 * (b.count / max) }} />
       </span>
-      <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 15, width: 16, flex: "none", textAlign: "right" }}>{b.count}</span>
+      <span style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "var(--gold2)", fontSize: 15, width: 16, flex: "none", textAlign: "right" }}>{b.count}</span>
     </div>
   );
   const ELEM_TIPS: Record<string, string> = {

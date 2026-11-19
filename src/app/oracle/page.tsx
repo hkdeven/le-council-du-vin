@@ -92,7 +92,7 @@ function PollCard({ poll, meId, members, onUpdate, onVoted, onArchive }: {
                 {leading && <span className="tag" style={{ color: "var(--gold2)", borderColor: "var(--line2)" }}>leading</span>}
               </div>
               <button onClick={() => setExpanded(open ? null : o.id)}
-                style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, display: "flex", alignItems: "center", gap: 4 }}>
+                style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14, display: "flex", alignItems: "center", gap: 4 }}>
                 {o.voters.length} can attend <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 13 }} />
               </button>
             </div>
@@ -283,14 +283,14 @@ export default function Oracle() {
 
       {archived.length > 0 && (
         <div style={{ marginTop: 6 }}>
-          <button onClick={() => setShowArchived((s) => !s)} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>
+          <button onClick={() => setShowArchived((s) => !s)} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14 }}>
             <i className="ti ti-archive" style={{ marginRight: 5 }} />Archived polls ({archived.length}) {showArchived ? "▾" : "▸"}
           </button>
           {showArchived && archived.map((p) => (
             <div key={p.id} className="rk" style={{ opacity: 0.6 }}>
               <i className="ti ti-archive" style={{ color: "var(--dim)" }} />
               <div style={{ flex: 1 }}>{p.title} <span className="whisper" style={{ fontSize: 13 }}>· {p.options.length} dates</span></div>
-              <button onClick={() => changePoll(p.id, { status: "open" })} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>restore</button>
+              <button onClick={() => changePoll(p.id, { status: "open" })} style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14 }}>restore</button>
             </div>
           ))}
         </div>
@@ -311,7 +311,7 @@ export default function Oracle() {
                   setProposal(grape);
                   document.getElementById("theme-proposal")?.scrollIntoView({ behavior: "smooth", block: "center" });
                 }}
-                  style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "4px 12px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontSize: 14 }}>
+                  style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--line2)", borderRadius: 12, color: "var(--gold2)", padding: "4px 12px", cursor: "pointer", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14 }}>
                   {grape}<i className="ti ti-plus" style={{ fontSize: 11, color: "var(--dim)" }} />
                 </button>
               ))}
@@ -345,7 +345,7 @@ export default function Oracle() {
               </div>
             )}
             <button onClick={() => favour(t.id)} aria-label="Cast favour" disabled={sleeping}
-              style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: t.favouredByMe ? "var(--gold2)" : "var(--faint)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, display: "flex", alignItems: "center", gap: 5 }}>
+              style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: t.favouredByMe ? "var(--gold2)" : "var(--faint)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15, display: "flex", alignItems: "center", gap: 5 }}>
               <i className="ti ti-flame" />{t.favours} favours
             </button>
             {isKeiser && editingTheme !== t.id && (

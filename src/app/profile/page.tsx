@@ -92,7 +92,7 @@ function InfoTip({ text, align = "left" }: { text: string; align?: "left" | "rig
             position: "absolute", top: "calc(100% + 6px)", [align]: 0, zIndex: 30,
             width: 220, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8,
             padding: "9px 11px", color: "var(--parch)", fontSize: 12.5, lineHeight: 1.5,
-            fontFamily: "'EB Garamond', serif", fontStyle: "normal", textTransform: "none",
+            fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "normal", textTransform: "none",
             letterSpacing: "normal", boxShadow: "0 6px 20px rgba(0,0,0,0.55)",
           } as React.CSSProperties}
         >
@@ -109,7 +109,7 @@ function Row({ label, tip, value, valueTip, hint }: { label: string; tip?: strin
       <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center" }}>
         {label}{tip && <InfoTip text={tip} />}
       </span>
-      <span style={{ display: "inline-flex", alignItems: "center", color: hint ? "var(--faint)" : "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: hint ? "italic" : "normal", fontSize: 16 }}>
+      <span style={{ display: "inline-flex", alignItems: "center", color: hint ? "var(--faint)" : "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: hint ? "italic" : "normal", fontSize: 16 }}>
         {hint || value}{valueTip && !hint && <InfoTip text={valueTip} align="right" />}
       </span>
     </div>
@@ -231,7 +231,7 @@ function RosterEditor() {
                     inside the expanded row. minWidth:0 + ellipsis so a long
                     name truncates rather than squashing the portrait. */}
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: m.active === false ? "#8d8b85" : "var(--gold2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cult_name}</span>
+                  <span style={{ display: "block", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 16, color: m.active === false ? "#8d8b85" : "var(--gold2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cult_name}</span>
                   {m.active === false && (
                     <span className="eyebrow" style={{ display: "block", fontSize: 8.5, color: "var(--faint)", marginTop: 1 }}>
                       <i className="ti ti-zzz" style={{ fontSize: 10, marginRight: 3 }} />sleeping
@@ -627,7 +627,7 @@ function GateLedger() {
         events.map((e) => (
           <div key={e.id} style={{ display: "flex", alignItems: "baseline", gap: 10, borderTop: "1px solid var(--line)", padding: "7px 0" }}>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 15, color: "var(--gold2)" }}>
+              <span style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15, color: "var(--gold2)" }}>
                 {e.member?.cult_name || e.email}
               </span>
               <span className="whisper" style={{ display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1049,7 +1049,7 @@ export default function Profile() {
       {/* Confirmation toast: what was saved, in so many words. */}
       {toast && (
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 22, zIndex: 70, display: "flex", justifyContent: "center", pointerEvents: "none", padding: "0 18px" }}>
-          <div className="lcv-riseup" role="status" style={{ background: "#0d0b0a", border: "1px solid var(--gold)", borderRadius: 12, padding: "10px 18px", color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, boxShadow: "0 14px 44px rgba(0,0,0,0.65)", maxWidth: 480 }}>
+          <div className="lcv-riseup" role="status" style={{ background: "#0d0b0a", border: "1px solid var(--gold)", borderRadius: 12, padding: "10px 18px", color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15, boxShadow: "0 14px 44px rgba(0,0,0,0.65)", maxWidth: 480 }}>
             <i className="ti ti-check" style={{ fontSize: 13, marginRight: 7 }} />
             {toast}
           </div>

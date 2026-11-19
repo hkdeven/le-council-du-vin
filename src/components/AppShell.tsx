@@ -247,7 +247,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               {n.href === "/tribunal" && pending > 0 && (
                 <span
                   aria-label={`${pending} petition${pending === 1 ? "" : "s"} awaiting`}
-                  style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--wine)", color: "#fff", fontFamily: "'EB Garamond', serif", fontSize: 11, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
+                  style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--wine)", color: "#fff", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
                 >
                   {pending}
                 </span>

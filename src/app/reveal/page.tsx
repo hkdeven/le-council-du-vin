@@ -75,7 +75,7 @@ function OwnerSlot({ owner, mine, canClaim, canAct, onClaim, onRelease, style }:
         <span style={style}>{owner}</span>
         {mine && canAct && (
           <button onClick={onRelease} title="Not yours? Release it" aria-label="Release this bottle"
-            style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+            style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13 }}>
             <i className="ti ti-x" style={{ fontSize: 11, marginRight: 3 }} />release
           </button>
         )}
@@ -85,7 +85,7 @@ function OwnerSlot({ owner, mine, canClaim, canAct, onClaim, onRelease, style }:
   if (canClaim && canAct) {
     return (
       <button onClick={onClaim} aria-label="Claim this bottle"
-        style={{ width: "auto", background: "none", border: "1px solid var(--line2)", borderRadius: 14, color: "var(--gold2)", padding: "3px 12px", cursor: "pointer", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14 }}>
+        style={{ width: "auto", background: "none", border: "1px solid var(--line2)", borderRadius: 14, color: "var(--gold2)", padding: "3px 12px", cursor: "pointer", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14 }}>
         <i className="ti ti-hand-grab" style={{ fontSize: 12, marginRight: 5 }} />claim this bottle
       </button>
     );
@@ -125,7 +125,7 @@ function Verdicts({ list, showCloth }: { list: Verdict[]; showCloth: boolean }) 
         <div key={v.memberId} style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
           <Face src={v.avatar} size={34} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14, color: "var(--gold2)" }}>
+            <div style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14, color: "var(--gold2)" }}>
               {v.name}
               {v.mine && (
                 <span style={{ border: "1px solid var(--gold)", borderRadius: 3, padding: "0 5px", fontFamily: "'Cinzel', serif", fontStyle: "normal", fontSize: 8.5, letterSpacing: "0.12em", color: "var(--gold2)", marginLeft: 6, verticalAlign: 1 }}>YOU</span>
@@ -307,7 +307,7 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
                 </span>
               )}
             </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 14.5, color: row.dq ? "#c99" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 14.5, color: row.dq ? "#c99" : row.spoiled ? "var(--spoiled)" : "var(--gold2)" }}>
               {row.owner}
               {row.cloths.length > 1 && <span className="whisper" style={{ fontSize: 13, color: "var(--faint)" }}>· one wine, {row.cloths.length} cloths</span>}
               {row.dq && <span className="tag" style={{ color: "var(--wine)", borderColor: "#6d3a3e" }}>off theme</span>}
@@ -331,19 +331,19 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
                 {row.cloths.length > 1 && <Cloth n={phys.cloth} size={17} />}
                 <button onClick={() => onPatch(phys.cloth, { dq: !phys.dq, ...(phys.dq ? {} : { spoiled: false }) })}
                   title={phys.dq ? "Restore it to the ranking" : "Cast it out: off theme"}
-                  style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: phys.dq ? "var(--gold2)" : "var(--wine)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                  style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: phys.dq ? "var(--gold2)" : "var(--wine)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12.5 }}>
                   <i className={`ti ti-${phys.dq ? "arrow-back-up" : "ban"}`} style={{ fontSize: 11, marginRight: 3 }} />{phys.dq ? "restore" : "disqualify"}
                 </button>
                 <button onClick={() => onPatch(phys.cloth, { spoiled: !phys.spoiled, ...(phys.spoiled ? {} : { dq: false }) })}
                   title={phys.spoiled ? "The bottle was sound after all" : "The bottle came up bad: recorded, never judged"}
-                  style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: phys.spoiled ? "var(--gold2)" : "var(--spoiled)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                  style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: phys.spoiled ? "var(--gold2)" : "var(--spoiled)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12.5 }}>
                   <i className={`ti ti-${phys.spoiled ? "arrow-back-up" : "alert-triangle"}`} style={{ fontSize: 11, marginRight: 3 }} />{phys.spoiled ? "sound" : "spoiled"}
                 </button>
               </span>
             ))}
             {row.cloths.length > 1 && (
               <button onClick={() => onUnbind(row.cloth)} title="Loosen this binding"
-                style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12.5 }}>
                 <i className="ti ti-unlink" style={{ fontSize: 11, marginRight: 3 }} />loosen
               </button>
             )}
@@ -391,11 +391,11 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
                   <span key={phys.cloth} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
                     {c.cloths.length > 1 && <Cloth n={phys.cloth} size={17} />}
                     <button onClick={() => onPatch(phys.cloth, { dq: true, spoiled: false })} title="Cast it out: off theme"
-                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12.5 }}>
                       <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
                     </button>
                     <button onClick={() => onPatch(phys.cloth, { spoiled: true, dq: false })} title="The bottle came up bad: recorded, never judged"
-                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--spoiled)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12.5 }}>
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--spoiled)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12.5 }}>
                       <i className="ti ti-alert-triangle" style={{ fontSize: 11, marginRight: 3 }} />spoiled
                     </button>
                   </span>
@@ -406,7 +406,7 @@ function ReckoningView({ g, rows, stats, email, verdictsFor, avatarFor, canReadV
               <button
                 onClick={() => toggle(c.cloth)}
                 aria-expanded={champOpen}
-                style={{ width: "auto", background: "none", border: "none", padding: 0, marginTop: 5, cursor: "pointer", color: "var(--gold)", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                style={{ width: "auto", background: "none", border: "none", padding: 0, marginTop: 5, cursor: "pointer", color: "var(--gold)", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 5 }}>
                 the table&rsquo;s verdicts <i className={`ti ti-chevron-${champOpen ? "up" : "down"}`} style={{ fontSize: 13 }} />
               </button>
             )}
@@ -975,7 +975,7 @@ export default function Reveal() {
             </span> ·{" "}
             <OwnerSlot owner={w.owner} mine={w.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
               onClaim={() => claim(w.cloth)} onRelease={() => release(w.cloth)}
-              style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold2)" }} />
+              style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15, color: "var(--gold2)" }} />
             {isDq && <span className="tag" style={{ marginLeft: 8, color: "var(--wine)", borderColor: "var(--wine)" }}>off theme · disqualified</span>}
             {isSpoiled && <span className="tag" style={{ marginLeft: 8, color: "var(--spoiled)", borderColor: "#8a6c3a" }}>spoiled</span>}
             {twinned && (
@@ -1000,14 +1000,14 @@ export default function Reveal() {
           {isKeiser && canAct && !bindMode && (
             <>
               <button onClick={() => patch(w.cloth, { dq: !w.dq, ...(w.dq ? {} : { spoiled: false }) })} title={isDq ? "Restore to the ranking" : "Disqualify · off theme"} aria-label={isDq ? "Restore this wine" : "Disqualify this wine"}
-                style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isDq ? "var(--gold2)" : "var(--wine)", padding: 0, marginTop: 2, marginLeft: "auto", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isDq ? "var(--gold2)" : "var(--wine)", padding: 0, marginTop: 2, marginLeft: "auto", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12 }}>
                 <i className={`ti ti-${isDq ? "arrow-back-up" : "ban"}`} style={{ fontSize: 11, marginRight: 3 }} />{isDq ? "restore" : "disqualify"}
               </button>
               {/* Spoiled is its own mark, never a disqualification: casting out
                   counts against a soul and five of them summon them to the
                   tribunal, and a bottle coming up bad is nobody's fault. */}
               <button onClick={() => patch(w.cloth, { spoiled: !w.spoiled, ...(w.spoiled ? {} : { dq: false }) })} title={isSpoiled ? "The bottle was sound after all" : "The bottle came up bad: recorded, never judged"} aria-label={isSpoiled ? "Mark this bottle sound" : "Mark this bottle spoiled"}
-                style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isSpoiled ? "var(--gold2)" : "var(--spoiled)", padding: 0, marginTop: 1, marginLeft: "auto", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                style={{ display: "block", width: "auto", background: "none", border: "none", cursor: "pointer", color: isSpoiled ? "var(--gold2)" : "var(--spoiled)", padding: 0, marginTop: 1, marginLeft: "auto", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12 }}>
                 <i className={`ti ti-${isSpoiled ? "arrow-back-up" : "alert-triangle"}`} style={{ fontSize: 11, marginRight: 3 }} />{isSpoiled ? "sound" : "spoiled"}
               </button>
             </>
@@ -1046,7 +1046,7 @@ export default function Reveal() {
                 <div style={{ color: "var(--parch)", fontSize: 14 }}>
                   <OwnerSlot owner={champ.owner} mine={champ.owner === myName && !!myName} canClaim={!!meId && !myClaim && !sleeping} canAct={canAct}
                     onClaim={() => claim(champ.cloth)} onRelease={() => release(champ.cloth)}
-                    style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 16, color: "var(--gold2)" }} />
+                    style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 16, color: "var(--gold2)" }} />
                 </div>
                 <div style={{ marginTop: 4, fontSize: 14 }}>
                   <Inline value={champ.title} placeholder="name the wine…" canEdit={canAct} onChange={(v) => patch(champ.cloth, { title: v })} />
@@ -1055,11 +1055,11 @@ export default function Reveal() {
                 {isKeiser && canAct && (
                   <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 4 }}>
                     <button onClick={() => patch(champ.cloth, { dq: true, spoiled: false })} title="Disqualify · off theme" aria-label="Disqualify this wine"
-                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--wine)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12 }}>
                       <i className="ti ti-ban" style={{ fontSize: 11, marginRight: 3 }} />disqualify
                     </button>
                     <button onClick={() => patch(champ.cloth, { spoiled: true, dq: false })} title="The bottle came up bad: recorded, never judged" aria-label="Mark this bottle spoiled"
-                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--spoiled)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 12 }}>
+                      style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--spoiled)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 12 }}>
                       <i className="ti ti-alert-triangle" style={{ fontSize: 11, marginRight: 3 }} />spoiled
                     </button>
                   </div>
@@ -1092,7 +1092,7 @@ export default function Reveal() {
                     {b.title || "One wine"} <span className="whisper" style={{ fontSize: 13 }}>· cloths {b.cloths.join(", ")}</span>
                   </span>
                   <button onClick={() => unbind(b.cloth)} aria-label="Loosen this binding"
-                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 13 }}>
+                    style={{ width: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--faint)", padding: 0, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 13 }}>
                     <i className="ti ti-unlink" style={{ fontSize: 11, marginRight: 3 }} />loosen
                   </button>
                 </div>

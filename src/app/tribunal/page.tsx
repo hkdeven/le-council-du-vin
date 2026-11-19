@@ -255,7 +255,7 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
               {(["anoint", "cast_out", "abstain"] as const).map((v) => (
                 <div key={v} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "5px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
                   <span style={{ flex: "none", width: 76, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: v === "anoint" ? "var(--gold2)" : v === "cast_out" ? "#c17b80" : "var(--dim)" }}>{v.replace("_", " ")}</span>
-                  <span style={{ flex: 1, fontFamily: "'Cormorant Garamond',serif", fontSize: 14, color: "var(--parch)" }}>{votedNames(v)}</span>
+                  <span style={{ flex: 1, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, color: "var(--parch)" }}>{votedNames(v)}</span>
                 </div>
               ))}
               <p className="whisper" style={{ margin: "6px 0 0", fontSize: 12 }}>the record is kept once the decree falls; the Council votes in the light</p>
@@ -298,29 +298,29 @@ function PetitionerModal({ a, portrait, members, isKeiser, myId, onClose, onDecr
               {augury.accord && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
                   <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)" }}>Accord with the table</span>
-                  <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 15 }}>{augury.accord.total % 1 ? `${Math.floor(augury.accord.total)}½` : augury.accord.total} of 36 · {augury.accord.verdict}</span>
+                  <span style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "var(--gold2)", fontSize: 15 }}>{augury.accord.total % 1 ? `${Math.floor(augury.accord.total)}½` : augury.accord.total} of 36 · {augury.accord.verdict}</span>
                 </div>
               )}
               {augury.easiest && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--line)", textAlign: "left" }}>
                   <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)" }}>Sits easiest beside</span>
-                  <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--gold2)", fontSize: 15 }}>{augury.easiest.name} · {augury.easiest.total % 1 ? `${Math.floor(augury.easiest.total)}½` : augury.easiest.total} of 36</span>
+                  <span style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "var(--gold2)", fontSize: 15 }}>{augury.easiest.name} · {augury.easiest.total % 1 ? `${Math.floor(augury.easiest.total)}½` : augury.easiest.total} of 36</span>
                 </div>
               )}
               {augury.hardest && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", textAlign: "left" }}>
                   <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)" }}>Hardest beside</span>
-                  <span style={{ fontFamily: "'Cormorant Garamond',serif", color: "var(--dim)", fontSize: 15 }}>{augury.hardest.name} · {augury.hardest.total % 1 ? `${Math.floor(augury.hardest.total)}½` : augury.hardest.total} of 36</span>
+                  <span style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "var(--dim)", fontSize: 15 }}>{augury.hardest.name} · {augury.hardest.total % 1 ? `${Math.floor(augury.hardest.total)}½` : augury.hardest.total} of 36</span>
                 </div>
               )}
               {!augury.accord && (
                 <p className="whisper" style={{ margin: "0 0 4px", fontSize: 13 }}>no complete member charts to compare against yet</p>
               )}
               <MoonDivider />
-              <p style={{ fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'EB Garamond',serif", margin: "0 0 10px" }}>
+              <p style={{ fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px" }}>
                 <span style={{ color: "var(--gold2)" }}>The palate omen:</span> {augury.palate}
               </p>
-              <p style={{ fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'EB Garamond',serif", margin: 0 }}>
+              <p style={{ fontSize: 15, lineHeight: 1.58, textAlign: "left", color: "#ddd7c9", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
                 <span style={{ color: "var(--gold2)" }}>The shadow:</span> {augury.shadow}
               </p>
             </>

@@ -57,7 +57,7 @@ export default function Tip({ text, align = "right" }: { text: string; align?: "
         <i className="ti ti-info-circle" style={{ fontSize: 13 }} />
       </button>
       {open && (
-        <span ref={tipRef} role="tooltip" style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, zIndex: 60, width: 200, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 10px", color: "var(--parch)", fontSize: 12, lineHeight: 1.5, fontFamily: "'EB Garamond', serif", fontStyle: "normal", letterSpacing: "normal", textTransform: "none", boxShadow: "0 6px 20px rgba(0,0,0,0.55)" } as React.CSSProperties}>
+        <span ref={tipRef} role="tooltip" style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, zIndex: 60, width: 200, background: "#0d0b0a", border: "1px solid var(--line2)", borderRadius: 8, padding: "8px 10px", color: "var(--parch)", fontSize: 12, lineHeight: 1.5, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "normal", letterSpacing: "normal", textTransform: "none", boxShadow: "0 6px 20px rgba(0,0,0,0.55)" } as React.CSSProperties}>
           {text}
         </span>
       )}

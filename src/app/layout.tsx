@@ -28,7 +28,7 @@ export default function RootLayout({
         <meta name="robots" content="noindex, nofollow" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@1,500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@1,500&family=Inter:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
         <link

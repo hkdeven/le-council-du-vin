@@ -31,7 +31,7 @@ export const birthInputOf = (m: CardMember) => ({ dateStr: m.date_of_birth || ""
 // The exact place, with its major city beside it in a quieter voice.
 function PlaceName({ city }: { city: AtlasCity }) {
   return (
-    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: "var(--gold2)", lineHeight: 1.2 }}>
+    <span style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 18, color: "var(--gold2)", lineHeight: 1.2 }}>
       {city[0]}
       <span style={{ fontSize: 13.5, fontStyle: "italic", color: "var(--dim)", marginLeft: 7 }}>{placeContext(city, true)}</span>
     </span>
@@ -219,7 +219,7 @@ function AskOfPlace({ chart, you, your }: { chart: AtlasChart; you: string; your
       <p className="whisper" style={{ margin: "4px 0 8px", fontSize: 13 }}>Name a town, and read what {your} chart says about {you} being there.</p>
       <div style={{ display: "flex", gap: 6 }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && seek()} placeholder="Lisbon, Portugal"
-          style={{ flex: 1, minWidth: 0, background: "#0a0908", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cormorant Garamond', serif", fontSize: 17, padding: "9px 12px" }} />
+          style={{ flex: 1, minWidth: 0, background: "#0a0908", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 17, padding: "9px 12px" }} />
         <button onClick={seek} disabled={seeking || !q.trim()}
           style={{ width: "auto", flex: "none", background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--parch)", fontFamily: "'Cinzel', serif", fontSize: 10.5, letterSpacing: "0.08em", padding: "0 14px", cursor: "pointer", opacity: seeking || !q.trim() ? 0.5 : 1 }}>
           {seeking ? <i className="ti ti-loader-2" /> : "Seek"}
@@ -231,7 +231,7 @@ function AskOfPlace({ chart, you, your }: { chart: AtlasChart; you: string; your
           <p className="whisper" style={{ margin: "0 0 4px", fontSize: 12.5 }}>which of these?</p>
           {hits.slice(0, 6).map((h) => (
             <button key={h.label + h.latitude} onClick={() => pick(h)}
-              style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderBottom: "1px solid var(--line)", color: "var(--parch)", fontFamily: "'Cormorant Garamond', serif", fontSize: 15.5, padding: "7px 2px", cursor: "pointer" }}>
+              style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderBottom: "1px solid var(--line)", color: "var(--parch)", fontFamily: "'Inter', system-ui, sans-serif", fontSize: 15.5, padding: "7px 2px", cursor: "pointer" }}>
               {h.label}
             </button>
           ))}
@@ -255,7 +255,7 @@ function AskOfPlace({ chart, you, your }: { chart: AtlasChart; you: string; your
                   <span style={{ gridRow: "1 / 3", fontSize: 18, lineHeight: 1.1, color: PLANET_COLOUR[h.planet.key] }}>{h.planet.glyph}</span>
                   <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.08em", color: "var(--gold2)" }}>
                     {h.planet.name.toUpperCase()} {LINE_NAME[h.kind].toUpperCase()} <StrengthTag s={h.strength} />
-                    <small style={{ fontFamily: "'EB Garamond', serif", fontSize: 12.5, letterSpacing: 0, color: "var(--dim)" }}>line passes {roundKm(h.km)} km away</small>
+                    <small style={{ fontFamily: "'Inter', system-ui, sans-serif", fontSize: 12.5, letterSpacing: 0, color: "var(--dim)" }}>line passes {roundKm(h.km)} km away</small>
                   </span>
                   <span style={{ fontSize: 15, color: "var(--parch)", lineHeight: 1.45 }}>{LINE_SAY[h.planet.key][h.kind]}</span>
                 </div>

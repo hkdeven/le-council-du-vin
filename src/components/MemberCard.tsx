@@ -136,11 +136,11 @@ function CardModal({ member, chalices, shown, onClose, initialFlipped = false, o
         </div>
         <div className="disp" style={{ fontSize: 19 }}>{member.cult_name}</div>
         {member.title ? (
-          <div style={{ marginTop: 3, fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold)" }}>
+          <div style={{ marginTop: 3, fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15, color: "var(--gold)" }}>
             {member.title}
           </div>
         ) : phase ? (
-          <div style={{ marginTop: 3, display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 15, color: "var(--gold)" }}>
+          <div style={{ marginTop: 3, display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", fontSize: 15, color: "var(--gold)" }}>
             {phase}<Tip text="Moon phase at birth" />
           </div>
         ) : null}
@@ -189,7 +189,7 @@ function CardModal({ member, chalices, shown, onClose, initialFlipped = false, o
               <div style={{ position: "relative", lineHeight: 1.5, padding: "2px 0", overflowWrap: "break-word" }}>
                 <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(203,189,147,0.08), transparent 68%)", pointerEvents: "none" }} />
                 {noseSpread(dossier.nose).map((n) => (
-                  <span key={n.aroma} title={`${n.count}`} style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", margin: "0 6px", display: "inline-block", ...NOSE_W[n.w] }}>{n.aroma}</span>
+                  <span key={n.aroma} title={`${n.count}`} style={{ fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", margin: "0 6px", display: "inline-block", ...NOSE_W[n.w] }}>{n.aroma}</span>
                 ))}
               </div>
             ) : (
@@ -202,7 +202,7 @@ function CardModal({ member, chalices, shown, onClose, initialFlipped = false, o
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i === 0 ? "none" : "1px solid var(--line)", textAlign: "left" }}>
                 <span style={{ flex: "none", width: 34, height: 34, borderRadius: "50%", border: "1px solid var(--line2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cinzel', serif", color: "var(--gold2)", fontSize: 13 }}>{["I", "II", "III"][i]}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", color: "var(--gold2)", fontSize: 17, lineHeight: 1.15 }}>{pr.title}</span>
+                  <span style={{ display: "block", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic", color: "var(--gold2)", fontSize: 17, lineHeight: 1.15 }}>{pr.title}</span>
                   <span style={{ display: "block", color: "var(--dim)", fontSize: 12, marginTop: 2 }}>{pr.meta}</span>
                 </span>
                 <span style={{ flex: "none", textAlign: "right" }}>
