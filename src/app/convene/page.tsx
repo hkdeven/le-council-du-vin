@@ -21,7 +21,6 @@ import { fetchOffering, saveOffering, sealedOfferingMembers, type Offering as Of
 import { prophecyRecord } from "@/lib/prophecy";
 import { fetchAnnals } from "@/lib/annals";
 import GrapePicker from "@/components/GrapePicker";
-import Tip from "@/components/Tip";
 import { detectVarietals } from "@/lib/varietals";
 import { shareToWhatsApp } from "@/lib/share";
 import Avatar from "@/components/Avatar";
@@ -263,7 +262,9 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
   // moment the card is drawn, so the button can be DARK until the vine may
   // truly speak, rather than inviting a tap only to refuse it. null = not yet
   // counted (the gate stays shut until we know).
-  const [unsealed, setUnsealed] = useState<number | null>(null);
+  // The ids of answered souls who have not yet sealed a wine (null = not yet
+  // counted). The Keiser sees their names; the length drives the gate.
+  const [unsealedIds, setUnsealedIds] = useState<string[] | null>(null);
   const sleepingIds = useMemo(
     () => new Set(members.filter((m) => m.active === false).map((m) => m.id)),
     [members]
@@ -278,11 +279,18 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
     // Ids alone: no soul's wine may be read here, the Keiser's own browser
     // included. See sealedOfferingMembers in src/lib/bottles.ts.
     sealedOfferingMembers(g.id)
-      .then((sealedIds) => { if (alive) setUnsealed(waking.filter((id: string) => !sealedIds.has(id)).length); })
-      .catch(() => { if (alive) setUnsealed(null); });
+      .then((sealedIds) => { if (alive) setUnsealedIds(waking.filter((id: string) => !sealedIds.has(id))); })
+      .catch(() => { if (alive) setUnsealedIds(null); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [g.id, g.prophecy, waking.join(",")]);
+
+  const unsealed = unsealedIds === null ? null : unsealedIds.length;
+  // Who still owes a wine, by name — the Keiser's to see. The count is already
+  // shared; this only puts faces to it, never what anyone logged.
+  const unnamedSouls = (unsealedIds || [])
+    .map((id) => members.find((m) => m.id === id)?.cult_name)
+    .filter(Boolean) as string[];
 
   // The vine may speak only with full knowledge of the room.
   const mayConsult = !!g.prophecy || (waking.length > 0 && unsealed === 0);
@@ -292,6 +300,18 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
     setRefusal(null);
     if (open) { setOpen(false); return; }
     if (busy) return;
+    // Not yet ready to speak: say why here, on the tap, instead of a silent
+    // disabled button or a tooltip the reader has to go find.
+    if (!mayConsult) {
+      setRefusal(
+        waking.length === 0
+          ? "The vine speaks only once souls have answered the call, and none have yet."
+          : unsealed === null
+          ? "The vine cannot yet count the offerings sealed. Give it a moment, or draw the page again."
+          : `The vine speaks only once every soul who has answered has sealed an offering. ${unsealed} of ${waking.length} remain unsealed.`
+      );
+      return;
+    }
     setBusy(true);
     try {
       const annals = await fetchAnnals();
@@ -324,8 +344,8 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
 
   return (
     <div style={{ textAlign: "center", marginTop: 14 }}>
-      <button onClick={consult} disabled={busy || !mayConsult}
-        style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "11px 20px", cursor: mayConsult ? "pointer" : "not-allowed", opacity: busy || !mayConsult ? 0.45 : 1 }}>
+      <button onClick={consult} disabled={busy}
+        style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "1px solid var(--line2)", borderRadius: 10, color: "var(--gold2)", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "11px 20px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.45 : 1 }}>
         <i className="ti ti-crystal-ball" style={{ fontSize: 14 }} />
         {open ? "Let it be veiled" : busy ? "Consulting…" : "Consult the Prophecy"}
       </button>
@@ -351,6 +371,11 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
             <i className="ti ti-mail-forward" style={{ fontSize: 13 }} />
             {nudge === "sent" ? "The letters have ridden" : nudge === "sending" ? "Writing…" : `Send reminder to log wine (${stillUnnamed})`}
           </button>
+          {unnamedSouls.length > 0 && (
+            <p className="whisper" style={{ fontSize: 13, margin: "9px 0 0", lineHeight: 1.5 }}>
+              <span style={{ color: "var(--faint)" }}>Still to pour · </span>{unnamedSouls.join(" · ")}
+            </p>
+          )}
         </div>
       )}
       {/* When there is nothing to send, say so. A button that is simply
@@ -367,18 +392,6 @@ function Prophecy({ g, members, allMeetings, isKeiser, onSpoken }: {
           <i className="ti ti-alert-triangle" style={{ fontSize: 12, marginRight: 6 }} />
           The offerings could not be counted, so the reminder is withheld.
         </p>
-      )}
-      {!mayConsult && !busy && (
-        <Tip
-          align="left"
-          text={
-            waking.length === 0
-              ? "The vine speaks only once souls have answered the call, and none have yet."
-              : unsealed === null
-              ? "The vine cannot yet count the offerings sealed. Give it a moment, or draw the page again."
-              : `The vine speaks only once every soul who has answered has sealed an offering. ${unsealed} of ${waking.length} remain unsealed.`
-          }
-        />
       )}
       <div style={{ overflow: "hidden", maxHeight: refusal ? 300 : 0, opacity: refusal ? 1 : 0, transform: refusal ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.98)", transition: "max-height 0.7s cubic-bezier(.2,.8,.25,1), opacity 0.6s ease 0.1s, transform 0.6s cubic-bezier(.2,.8,.25,1) 0.05s" }}>
         {refusal && (
