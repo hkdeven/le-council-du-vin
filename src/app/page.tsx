@@ -4,11 +4,20 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import Loading from "@/components/Loading";
 
 export default function Gate() {
   const { mode, status, signedIn, hasAccess, signOut } = useAuth();
   const authed = mode === "demo" || (signedIn && hasAccess);
   const [showLogin, setShowLogin] = useState(false);
+  // Just back from Google / a magic link? The session is still being read out
+  // of the URL. Show an "entering" state until it resolves, so the bare login
+  // page never flashes past — which read as broken.
+  const [returning, setReturning] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const h = window.location.hash || "", s = window.location.search || "";
+    return /\baccess_token=|\berror=/.test(h) || /[?&]code=/.test(s);
+  });
   const router = useRouter();
 
   // After a real login (SSO / magic link / password) Supabase returns to the
@@ -29,6 +38,18 @@ export default function Gate() {
     }
   }, [mode, status, router]);
 
+  // Never spin forever: if the return never resolves, fall back to the gate.
+  useEffect(() => {
+    if (!returning) return;
+    const t = setTimeout(() => setReturning(false), 10000);
+    return () => clearTimeout(t);
+  }, [returning]);
+
+  // In the live app a signed-in (or still-resolving) soul is carried straight
+  // inside, so the gate shows controls only to a stranger. Everyone mid-entry
+  // sees progress instead of a flash of the login page.
+  const entering = mode === "live" && (status === "loading" || authed || (returning && status !== "no-membership"));
+
   return (
     <section style={{ textAlign: "center", padding: "40px 0 20px" }}>
       <div className="moons" style={{ justifyContent: "center", marginBottom: 18, fontSize: 22 }} aria-hidden="true">
@@ -46,8 +67,8 @@ export default function Gate() {
       />
 
       <div style={{ maxWidth: 320, margin: "0 auto" }}>
-        {status === "loading" ? (
-          <p className="whisper" style={{ fontSize: 15 }}>Consulting the register…</p>
+        {entering ? (
+          <Loading text={returning || authed ? "Entering the council…" : "Consulting the register…"} />
         ) : authed ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Link href="/convene" className="btn gold" style={{ textDecoration: "none", display: "block" }}>
