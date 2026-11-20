@@ -38,6 +38,12 @@ export default function Rite() {
           const n = cg.wine_count ?? 0;
           setCountNote(`The Keiser has set the night at ${n} wine${n === 1 ? "" : "s"}.`);
         }
+        // THE POLL MUST NOT REDRAW THE PAGE. Every read returns a fresh object,
+        // and handing React a new `g` every 6s re-ran everything keyed on it:
+        // the ballot reload hid the card, tore the notes box out from under a
+        // typing member, and refilled it from the vault, losing unsaved words.
+        // Keep the old object unless something in it actually changed.
+        if (prev && cg && JSON.stringify(prev) === JSON.stringify(cg)) return prev;
         return cg;
       });
       if (first) setReady(true);
@@ -83,13 +89,15 @@ export default function Rite() {
   const router = useRouter();
 
   // Restore a previously sealed (or in-progress) ballot for this member.
+  // Keyed on the gathering's id, never the object: the 6s poll must not reload
+  // the ballot (that hid the card and wiped notes being typed).
   useEffect(() => {
-    if (!g) return;
+    if (!gid) return;
     // No member to load a ballot for: nothing is pending, so nothing is hidden.
     if (!meId) { setBallotReady(true); return; }
     let active = true;
     setBallotReady(false);
-    fetchBallot(g.id, meId)
+    fetchBallot(gid, meId)
       .then((b) => {
         if (!active) return;
         if (b) {
@@ -106,7 +114,7 @@ export default function Rite() {
       // which surfaces its errors, be the guard.
       .catch(() => { if (active) setBallotReady(true); });
     return () => { active = false; };
-  }, [meId, g]);
+  }, [meId, gid]);
 
   const score = scores[current] ?? 0;
   const notes = notesByWine[current] ?? "";
