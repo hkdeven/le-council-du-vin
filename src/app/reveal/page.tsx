@@ -761,6 +761,15 @@ export default function Reveal() {
   const rest = [...qualified.filter((r) => !champions.includes(r)), ...dqRows];
   const canAct = !committed || isKeiser; // once in the Annals, only the Keiser may touch it
 
+  // Auto-play the champion flip once the cloths may lift: keep the turn-the-card
+  // animation, but don't make the table tap to see the night's result. A short
+  // beat lets the face-down card register first.
+  useEffect(() => {
+    if (!ready || locked || flipped) return;
+    const t = setTimeout(() => setFlipped(true), 1300);
+    return () => clearTimeout(t);
+  }, [ready, locked, flipped]);
+
   useEffect(() => {
     if (!flipped || shown >= rest.length) return;
     const t = setTimeout(() => setShown((s) => s + 1), shown === 0 ? 900 : 850);

@@ -23,6 +23,22 @@ interface Loaded {
   offering: { title: string; price: number | null; varietals: string[] };
 }
 
+// Defined at module scope on purpose: a component declared inside OfferingForm
+// would be a brand-new type on every render, so each keystroke remounted the
+// whole form and dismissed the phone keyboard with every character.
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main style={{ minHeight: "100dvh", background: "var(--ink)", padding: "30px 16px 60px" }}>
+      <div style={{ maxWidth: 360, margin: "0 auto" }}>
+        <div className="disp" style={{ textAlign: "center", fontSize: 13, letterSpacing: "0.22em", color: "var(--gold2)", marginBottom: 22 }}>
+          LE COUNCIL DU VIN
+        </div>
+        {children}
+      </div>
+    </main>
+  );
+}
+
 function OfferingForm() {
   const token = useSearchParams().get("t") || "";
   const [state, setState] = useState<"loading" | "ready" | "sealed" | "refused">("loading");
@@ -130,17 +146,6 @@ function OfferingForm() {
       setBusy(false);
     }
   };
-
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <main style={{ minHeight: "100dvh", background: "var(--ink)", padding: "30px 16px 60px" }}>
-      <div style={{ maxWidth: 360, margin: "0 auto" }}>
-        <div className="disp" style={{ textAlign: "center", fontSize: 13, letterSpacing: "0.22em", color: "var(--gold2)", marginBottom: 22 }}>
-          LE COUNCIL DU VIN
-        </div>
-        {children}
-      </div>
-    </main>
-  );
 
   if (state === "loading") {
     return <Shell><p className="whisper" style={{ textAlign: "center", fontSize: 15 }}>Opening the letter…</p></Shell>;

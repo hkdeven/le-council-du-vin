@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { seedMembers } from "@/lib/seed";
 import { loadMembers, saveMember, removeMember, rosterOrder } from "@/lib/members";
@@ -955,6 +956,11 @@ export default function Profile() {
               </div>
             )}
             <div style={{ marginTop: 5 }}><span className="tag">{role}</span></div>
+            {name && (
+              <Link href={cardAddress(name, "card")} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 9, textDecoration: "none", fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gold2)", border: "1px solid var(--line2)", borderRadius: 8, padding: "7px 13px" }}>
+                <i className="ti ti-id-badge-2" style={{ fontSize: 13 }} aria-hidden="true" /> View my card
+              </Link>
+            )}
           </div>
         </div>
         <label className="field" style={{ marginTop: 12 }}>Title</label>
