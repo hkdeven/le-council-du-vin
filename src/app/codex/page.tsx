@@ -703,6 +703,14 @@ export default function Codex() {
   // Coin poured: every recorded rand across the codex, shown compactly.
   const coinTotal = annals.reduce((n, a) => n + a.rows.reduce((m, r) => m + (r.price || 0), 0), 0);
   const coinLabel = coinTotal >= 1000 ? `R${(coinTotal / 1000).toFixed(1)}K` : `R${Math.round(coinTotal)}`;
+  // Per soul: every rand each person poured across the codex, highest first.
+  const spendByPerson = Object.entries(
+    annals.reduce((m, a) => {
+      for (const r of a.rows) if (r.owner && r.price) m[r.owner] = (m[r.owner] || 0) + r.price;
+      return m;
+    }, {} as Record<string, number>)
+  ).sort((x, y) => y[1] - x[1]);
+  const [spendOpen, setSpendOpen] = useState(false);
   // Grapes tasted: distinct varietals ever recorded, against the full ledger.
   const grapeList = [...new Set(annals.flatMap((a) => a.rows.flatMap((r) => r.varietals || [])))].sort((x, y) => x.localeCompare(y));
   const grapesTasted = grapeList.length;
@@ -813,9 +821,26 @@ export default function Codex() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 16 }}>
         <Metric value={String(annals.length)} label="gatherings" />
         <Metric value={String(bottlesJudged)} label="bottles judged" />
-        {coinTotal > 0 && <Metric value={coinLabel} label="coin poured" />}
+        {coinTotal > 0 && (
+          <button onClick={() => setSpendOpen((o) => !o)} aria-expanded={spendOpen} title="Spend per person"
+            style={{ display: "block", width: "100%", padding: 0, margin: 0, background: "none", border: "none", cursor: "pointer", textAlign: "inherit", font: "inherit", color: "inherit" }}>
+            <Metric value={coinLabel} label={`coin poured ${spendOpen ? "▾" : "▸"}`} />
+          </button>
+        )}
         <Metric value={foresight.total > 0 ? `${Math.round((foresight.right / foresight.total) * 100)}%` : "NA"} label="prophecies fulfilled" />
       </div>
+
+      {spendOpen && spendByPerson.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Coin poured · by soul</div>
+          {spendByPerson.map(([owner, total]) => (
+            <div key={owner} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
+              <span style={{ color: "var(--parch)", fontSize: 15 }}>{owner}</span>
+              <span style={{ color: "var(--gold2)", fontSize: 15, fontVariantNumeric: "tabular-nums" }}>R{Math.round(total)}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 10 }}>Grapes tasted</div>
